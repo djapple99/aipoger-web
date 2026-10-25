@@ -165,12 +165,12 @@ export function CreatorCenterLayout({
   useEffect(() => {
     if (dialog === "edit" && !props.editingWorkId) setDialog(null);
   }, [dialog, props.editingWorkId]);
-  const count = data?.works.length;
+  const count = data?.works.filter(w => !removedIds.includes(w.id)).length;
   const active = data?.works.filter((w) => w.status === "public" && !removedIds.includes(w.id)).length;
-  const ended = data?.works.filter((w) => w.status === "ended").length;
+  const ended = data?.works.filter((w) => w.status === "ended" && !removedIds.includes(w.id)).length;
   const list = useMemo(
     () =>
-      data?.works.map(w => removedIds.includes(w.id) ? { ...w, active: false, status: "hidden" as const } : w).filter(
+      data?.works.filter(w => !removedIds.includes(w.id)).filter(
         (w) =>
           (status === "all" || w.status === status) &&
           `${w.title} ${w.artist} ${w.genre}`
@@ -216,12 +216,12 @@ export function CreatorCenterLayout({
     setExternal(null);
   };
   const removeWork = async (work: CreatorWork) => {
-    if (removeBusy.current || !props.userId || !work.active) return;
+    if (removeBusy.current || !props.userId) return;
     const confirmed = window.confirm(tx(
-      `確定刪除「${work.title}」？作品將退出公開展示與排行榜，原留言、評分及戰績保留為歷史紀錄。已使用的投稿額度及 Credit 不退還。`,
-      `Delete “${work.title}”? It will leave public pages and charts. Comments, ratings and battle history will be kept. Used submission allowance and Credit are not refunded.`,
-      `「${work.title}」を削除しますか？公開ページとランキングから取り下げます。コメント・評価・対戦履歴は保持され、使用済みの投稿枠とCreditは戻りません。`,
-      `“${work.title}”을 삭제할까요? 공개 페이지와 순위에서 제외됩니다. 댓글, 평점, 대전 기록은 보관되며 사용한 제출 한도와 Credit은 반환되지 않습니다.`,
+      `確定永久刪除「${work.title}」？作品、留言及評分會一併刪除，無法復原。已使用的投稿額度及 Credit 不退還。`,
+      `Permanently delete “${work.title}”? The work, comments and ratings will be deleted. This cannot be undone. Used submission allowance and Credit are not refunded.`,
+      `「${work.title}」を完全に削除しますか？作品・コメント・評価が削除され、元に戻せません。使用済みの投稿枠とCreditは戻りません。`,
+      `“${work.title}”을 영구 삭제할까요? 작품, 댓글, 평점이 함께 삭제되며 복구할 수 없습니다. 사용한 제출 한도와 Credit은 반환되지 않습니다.`,
     ));
     if (!confirmed) return;
     const userId = props.userId;
@@ -231,7 +231,7 @@ export function CreatorCenterLayout({
       if (auth.session?.user.id !== userId) throw new Error("AUTH_REQUIRED");
       const response = await fetch("/api/listen-bar/remove-track", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.session.access_token}` },
-        body: JSON.stringify({ trackId: work.id }),
+        body: JSON.stringify({ trackId: work.id, permanent: true }),
       });
       const result = await response.json();
       if (response.status === 401) throw new Error("AUTH_REQUIRED");
@@ -245,7 +245,7 @@ export function CreatorCenterLayout({
       if (playing?.heartTrackId === work.id || playing?.id === work.id || playing?.id === `bar:${work.id}`) musicPlayer?.close();
       if (external?.id === work.id) setExternal(null);
       if (comment?.id === work.id) setComment(null);
-      setRemoveSuccess(tx("作品已刪除，歷史紀錄可在「已下架」查看。", "Work deleted. Its history remains under Hidden.", "作品を削除しました。履歴は「非公開」で確認できます。", "작품이 삭제되었습니다. 기록은 ‘비공개’에서 확인할 수 있습니다."));
+      setRemoveSuccess(tx("作品已永久刪除。", "Work permanently deleted.", "作品を完全に削除しました。", "작품이 영구 삭제되었습니다."));
       onRefresh();
     } catch (error) {
       if (currentUser.current === userId) {
@@ -276,7 +276,7 @@ export function CreatorCenterLayout({
       ? tx("推廣中", "Promoting", "公開中", "공개 중")
       : s === "ended"
         ? tx("推廣期結束", "Promotion ended", "公開期間終了", "공개 기간 종료")
-        : tx("已下架", "Hidden", "非公開", "비공개");
+        : tx("未公開", "Not public", "非公開", "비공개");
   return (
     <div className={styles.page}>
       <EditorialHeader active="creator" />
@@ -583,7 +583,7 @@ export function CreatorCenterLayout({
                         className={styles.removeWork}
                         title={tx("刪除作品", "Delete work", "作品を削除", "작품 삭제")}
                         aria-label={tx(`刪除 ${w.title}`, `Delete ${w.title}`, `${w.title}を削除`, `${w.title} 삭제`)}
-                        disabled={!w.active || removingId !== null}
+                        disabled={removingId !== null}
                         aria-busy={removingId === w.id}
                         onClick={() => void removeWork(w)}
                       >

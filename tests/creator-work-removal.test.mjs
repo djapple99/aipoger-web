@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadTs, mockAdmin, mocksFor, request, track, USER, uuid } from './helpers/choice-runtime.mjs';
+import { loadTs, mockAdmin, mocksFor, request, USER, uuid } from './helpers/choice-runtime.mjs';
 import { nodes, text } from './helpers/mv-runtime.mjs';
 import { creatorText } from '../src/lib/creator-center-copy.ts';
 import { albumCopy } from '../src/lib/album-copy.ts';
@@ -9,58 +9,42 @@ import { lazyRuntime } from './helpers/lazy-runtime.mjs';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL='https://unit-test.invalid';
 process.env.SUPABASE_SERVICE_ROLE_KEY='unit-test-key';
-const owned=extra=>track(2,{created_by:USER,source:'community',...extra});
-const route=admin=>loadTs('src/app/api/listen-bar/remove-track/route.ts',mocksFor(admin)).POST;
-
-test('removal rejects guests, expired tokens, anonymous accounts and malformed work IDs before writes',async()=>{
- const a=mockAdmin({listen_bar_tracks:[owned()]});const post=route(a);
- assert.equal((await post(request({trackId:uuid(2)},null))).status,401);
- assert.equal((await post(request({trackId:uuid(2)},'expired'))).status,401);
- assert.equal((await post(request({trackId:'not-a-uuid'}))).status,400);
+const deleteRequest=(body,token)=>request({permanent:true,...body},token);
+const route=admin=>loadTs('src/app/api/listen-bar/remove-track/route.ts',{
+ ...mocksFor(admin),'@/lib/server-creator-work-cleanup':{flushDeletedWorkFiles:async()=>{throw new Error('Storage unavailable')}},
+}).POST;
+const removalAdmin=(result={data:{ok:true},error:null})=>{
+ const a=mockAdmin();a.calls=[];a.rpc=async(name,args)=>{a.calls.push({name,args});return result};return a;
+};
+test('permanent removal rejects guests, expired/anonymous login and malformed IDs before RPC',async()=>{
+ const a=removalAdmin(),post=route(a);
+ assert.equal((await post(deleteRequest({trackId:uuid(2)},null))).status,401);
+ assert.equal((await post(deleteRequest({trackId:uuid(2)},'expired'))).status,401);
+ assert.equal((await post(deleteRequest({trackId:'bad'}))).status,400);
  a.auth.getUser=async()=>({data:{user:{id:USER,is_anonymous:true}},error:null});
- assert.equal((await post(request({trackId:uuid(2)}))).status,401);
- assert.equal(a.operations.filter(o=>o.action!=='read').length,0);
+ assert.equal((await post(deleteRequest({trackId:uuid(2)}))).status,401);assert.equal(a.calls.length,0);
 });
-
-test('members cannot remove another creator or official work, regardless of request body identity',async()=>{
- const a=mockAdmin({listen_bar_tracks:[owned({created_by:uuid(3)})]});
- assert.equal((await route(a)(request({trackId:uuid(2),userId:uuid(3),isOwner:true}))).status,403);
- a.tables.listen_bar_tracks=[owned({source:'official'})];
- assert.equal((await route(a)(request({trackId:uuid(2)}))).status,404);
- assert.equal(a.operations.filter(o=>o.action==='update').length,0);
+test('permanent removal passes only the verified actor and work ID to the transactional RPC',async()=>{
+ const a=removalAdmin(),r=await route(a)(deleteRequest({trackId:uuid(2),userId:uuid(3),isOwner:true}));
+ assert.equal(r.status,200);assert.deepEqual(a.calls,[{name:'delete_creator_work',args:{p_track:uuid(2),p_actor:USER}}]);
+ assert.equal(r.headers.get('cache-control'),'private, no-store');
 });
-
-test('a regular creator can soft-delete a published link/MV/album without deleting history, media or rewards',async()=>{
- for(const kind of ['link','mv','album']){
-  const original=owned({audio_path:null,external_url:'https://youtu.be/MdxaU0l3FzI',is_music_video:kind==='mv',work_kind:kind==='album'?'album':'single',ai_music_showtime_certified:true});
-  const history={listen_bar_track_comments:[{id:'comment',track_id:uuid(2)}],listen_bar_track_ratings:[{track_id:uuid(2),score:8.7}],battle_result_archives:[{id:'battle'}],creator_credit_entries:[{id:'credit',delta:10}]};
-  const a=mockAdmin({listen_bar_tracks:[original],...history});const response=await route(a)(request({trackId:uuid(2)}));
-  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');
-  assert.equal((await response.json()).ok,true);
-  const saved=a.tables.listen_bar_tracks[0];assert.equal(saved.is_active,false);assert.equal(saved.review_status,'removed');assert.ok(saved.removed_at);
-  for(const key of ['created_by','audio_path','external_url','work_kind','is_music_video'])assert.equal(saved[key],original[key]);
-  for(const [key,value] of Object.entries(history))assert.deepEqual(a.tables[key],value);
-  assert.equal(a.operations.filter(o=>o.action!=='read').length,1);assert.ok(a.operations.every(o=>!o.storage&&o.action!=='delete'));
+test('forbidden and failed deletes remain failures without exposing internal database details',async()=>{
+ for(const [code,status] of [['42501',403],['XX000',500]]){
+  const a=removalAdmin({data:null,error:{code,message:'private internal trigger'}}),r=await route(a)(deleteRequest({trackId:uuid(2)}));
+  assert.equal(r.status,status);assert.doesNotMatch(await r.text(),/private internal trigger/);
  }
 });
-
-test('retrying a completed removal is idempotent and never rewrites the removal timestamp',async()=>{
- const a=mockAdmin({listen_bar_tracks:[owned()]});const post=route(a);
- await post(request({trackId:uuid(2)}));const stamp=a.tables.listen_bar_tracks[0].removed_at;
- const response=await post(request({trackId:uuid(2)}));assert.equal(response.status,200);assert.equal((await response.json()).alreadyRemoved,true);
- assert.equal(a.tables.listen_bar_tracks[0].removed_at,stamp);assert.equal(a.operations.filter(o=>o.action==='update').length,1);
+test('already deleted requests are idempotent; failed file cleanup never reports the deleted work as retained',async()=>{
+ const a=removalAdmin({data:{ok:true,alreadyDeleted:true},error:null});
+ assert.equal((await (await route(a)(deleteRequest({trackId:uuid(2)}))).json()).alreadyDeleted,true);
+ const b=removalAdmin({data:{ok:true,cleanupJob:uuid(7)},error:null});
+ const r=await route(b)(deleteRequest({trackId:uuid(2)}));assert.equal(r.status,200);assert.equal((await r.json()).cleanupPending,true);
 });
 
-test('the final write rechecks ownership and reports a concurrent change instead of false success',async()=>{
- const a=mockAdmin({listen_bar_tracks:[owned()]});const from=a.from;
- a.from=table=>{const q=from(table),update=q.update;q.update=payload=>{a.tables[table][0].created_by=uuid(99);return update(payload)};return q;};
- const response=await route(a)(request({trackId:uuid(2)}));assert.equal(response.status,409);
- assert.equal(a.tables.listen_bar_tracks[0].is_active,true);
-});
-
-async function mount(t,{lang='zh',confirmed=true,sessionUser=USER,failed=false,status,delay=false,playingId=uuid(2)}={}){
+async function mount(t,{lang='zh',confirmed=true,sessionUser=USER,failed=false,status,delay=false,playingId=uuid(2),active=true}={}){
  let cursor=0,dirty=true,tree;const states=[],refs=[],effects=[],requests=[],confirms=[];let refreshed=0,closed=0,resolveRequest;
- let props={userId:USER,name:'Test creator',avatar:null,favorites:[],savedChoiceCount:0,editingWorkId:null,privateLoading:false,privateError:'',legacy:null,onManage(){},onLegacy(){},onSubmitted(){},loading:false,error:'',onRefresh(){refreshed++},data:{isOwner:false,works:[{id:uuid(2),title:'Published MV',artist:'Test creator',genre:'Original 自我風格',aiTool:'Suno',createdAt:'2026-10-25T00:00:00Z',coverUrl:'/cover.jpg',audioUrl:'',external:{provider:'youtube',mediaId:'MdxaU0l3FzI',url:'https://youtu.be/MdxaU0l3FzI'},isMusicVideo:true,active:true,status:'public',supporters:3,comments:2,lyrics:''}],comments:[],commenters:2,commentCount:2,credits:{enabled:true,balance:15},linkSubmissionReady:true}};
+ let props={userId:USER,name:'Test creator',avatar:null,favorites:[],savedChoiceCount:0,editingWorkId:null,privateLoading:false,privateError:'',legacy:null,onManage(){},onLegacy(){},onSubmitted(){},loading:false,error:'',onRefresh(){refreshed++},data:{isOwner:false,works:[{id:uuid(2),title:'Published MV',artist:'Test creator',genre:'Original 自我風格',aiTool:'Suno',createdAt:'2026-10-25T00:00:00Z',coverUrl:'/cover.jpg',audioUrl:'',external:{provider:'youtube',mediaId:'MdxaU0l3FzI',url:'https://youtu.be/MdxaU0l3FzI'},isMusicVideo:true,active,status:active?'public':'hidden',supporters:3,comments:2,lyrics:''}],comments:[],commenters:2,commentCount:2,credits:{enabled:true,balance:15},linkSubmissionReady:true}};
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return[states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true}]},useRef(initial){return refs[cursor++]??={current:initial}},useMemo(fn){cursor++;return fn()},useEffect(fn,deps=[]){const i=cursor++;if(!effects[i]||deps.some((v,n)=>!Object.is(v,effects[i].deps[n]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()}}}};
  const window=new EventTarget();window.location={search:'',hash:'',assign(){}};window.confirm=message=>{confirms.push(message);return confirmed};
  const modules={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},'next/link':{default:'link'},'lucide-react':Object.fromEntries(['Coins','Heart','MessageCircleMore','Music2','Play','Pencil','Trash2','X'].map(x=>[x,x])),
@@ -82,8 +66,8 @@ test('the normal-member row exposes deletion directly and cancelling never sends
 
 test('confirmed removal uses the owned ID, updates the row only after success and stops only that work',async t=>{
  const u=await mount(t);u.button().onClick();await u.flush();
- assert.equal(u.requests.length,1);assert.equal(u.requests[0].url,'/api/listen-bar/remove-track');assert.deepEqual(JSON.parse(u.requests[0].body),{trackId:uuid(2)});
- assert.equal(u.refreshed(),1);assert.equal(u.closed(),1);assert.equal(u.button().disabled,true);assert.match(u.text(),/作品已刪除/);
+ assert.equal(u.requests.length,1);assert.equal(u.requests[0].url,'/api/listen-bar/remove-track');assert.deepEqual(JSON.parse(u.requests[0].body),{trackId:uuid(2),permanent:true});
+ assert.equal(u.refreshed(),1);assert.equal(u.closed(),1);assert.equal(u.button(),undefined);assert.match(u.text(),/作品已永久刪除/);assert.doesNotMatch(u.text(),/Published MV|已下架/);
 });
 
 test('failed removal keeps the work available and retryable without stopping playback',async t=>{
@@ -106,9 +90,17 @@ test('double clicks cannot submit twice and deleting another work does not stop 
 });
 
 test('a late response cannot alter a newly signed-in account',async t=>{
- const u=await mount(t,{delay:true});u.button().onClick();await u.flush();await u.switchUser();u.resolve();await u.flush();assert.equal(u.refreshed(),0);assert.equal(u.closed(),0);assert.doesNotMatch(u.text(),/作品已刪除/);
+ const u=await mount(t,{delay:true});u.button().onClick();await u.flush();await u.switchUser();u.resolve();await u.flush();assert.equal(u.refreshed(),0);assert.equal(u.closed(),0);assert.doesNotMatch(u.text(),/作品已永久刪除/);
 });
 
 for(const lang of ['en','ja','ko'])test(`deletion labels and confirmation are localized (${lang})`,async t=>{
  const u=await mount(t,{lang,confirmed:false});u.button().onClick();await u.flush();assert.equal(u.confirms.length,1);assert.match(u.confirms[0],/Published MV/);assert.doesNotMatch(u.confirms[0],/確定刪除/);
+});
+
+test('previously unpublished works can also be permanently deleted',async t=>{
+ const u=await mount(t,{active:false});assert.equal(u.button().disabled,false);u.button().onClick();await u.flush();assert.equal(u.button(),undefined);assert.equal(u.refreshed(),1);
+});
+
+test('old clients without the permanent confirmation cannot delete data',async()=>{
+ const a=removalAdmin();const r=await route(a)(request({trackId:uuid(2)}));assert.equal(r.status,409);assert.equal(a.calls.length,0);
 });

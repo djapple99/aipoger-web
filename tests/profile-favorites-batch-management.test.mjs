@@ -37,7 +37,7 @@ test("Profile own Bar Heartbreak songs expose paged batch removal", () => {
   assert.ok(profilePage.includes("selectedListenBarItemIds"));
   assert.ok(profilePage.includes("removeListenBarItems"));
   assert.ok(profilePage.includes('fetch("/api/listen-bar/remove-track"'));
-  assert.ok(profilePage.includes("撤下選取"));
+  assert.ok(profilePage.includes("刪除選取"));
   assert.ok(profilePage.includes("每頁 10 首"));
   assert.ok(profilePage.includes("songBatchConfirm"));
 });

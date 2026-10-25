@@ -2,6 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {authorizeCronRequest} from '@/lib/cron-auth';
 import {creatorAdmin} from '@/lib/server-creator-auth';
 import {AUDIO_STAGING_BUCKET,AUDIO_VERIFIED_BUCKET} from '@/lib/audio-asset-ref';
+import {flushDeletedWorkFiles} from '@/lib/server-creator-work-cleanup';
 export const preferredRegion="hnd1";
 export const maxDuration=120;
 export async function GET(request:NextRequest) {
@@ -14,6 +15,7 @@ export async function GET(request:NextRequest) {
    if(results.some(r=>r.error))throw new Error('Storage cleanup failed');
    const result=await admin.from('verified_audio_assets').delete().eq('id',asset.id).eq('status','cleanup');if(result.error)throw result.error;removed++;
   }
-  return NextResponse.json({removed},{headers:{'Cache-Control':'no-store'}});
+  const deletedWorks=await flushDeletedWorkFiles(admin);
+  return NextResponse.json({removed,deletedWorks},{headers:{'Cache-Control':'no-store'}});
  } catch{return NextResponse.json({error:'AUDIO_CLEANUP_FAILED'},{status:500});}
 }

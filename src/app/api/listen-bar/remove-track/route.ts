@@ -1,151 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS } from "@/lib/ai-music-showtime";
-
-type ListenBarRemoveTrackDatabase = {
-  public: {
-    Tables: {
-      listen_bar_tracks: {
-        Row: {
-          id: string;
-          title: string | null;
-          created_by: string | null;
-          source: "official" | "community" | null;
-          bar_phase?: "challenger" | "public" | null;
-          is_active: boolean | null;
-          ai_music_showtime_certified?: boolean | null;
-          ai_music_showtime_public_removed_at?: string | null;
-        };
-        Insert: Record<string, never>;
-        Update: {
-          is_active?: boolean;
-          review_status?: "removed";
-          removed_at?: string;
-          moderation_note?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
-
-type AdminClient = SupabaseClient<ListenBarRemoveTrackDatabase>;
-type RemoveTrackRow = ListenBarRemoveTrackDatabase["public"]["Tables"]["listen_bar_tracks"]["Row"];
-type TrackResult = {
-  data: RemoveTrackRow | null;
-  error: { message: string; details?: string; hint?: string; code?: string } | null;
-};
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "private, no-store" } });
-}
-
-function tokenFromRequest(request: NextRequest): string | null {
-  const auth = request.headers.get("authorization") ?? "";
-  if (!auth.startsWith("Bearer ")) return null;
-  return auth.slice("Bearer ".length).trim() || null;
-}
-
-function isUuid(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function isMissingColumnError(error: unknown): boolean {
-  const text = error && typeof error === "object"
-    ? [
-        (error as { message?: string }).message,
-        (error as { details?: string }).details,
-        (error as { hint?: string }).hint,
-        (error as { code?: string }).code,
-      ].filter(Boolean).join(" ")
-    : String(error ?? "");
-  return /schema cache|column.*does not exist|PGRST204|bar_phase|review_status|removed_at|moderation_note|ai_music_showtime/i.test(text);
-}
-
-function adminClient(): AdminClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
-  if (!supabaseUrl || !serviceKey) throw new Error("Missing Supabase server configuration.");
-  return createClient<ListenBarRemoveTrackDatabase>(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const token = tokenFromRequest(request);
-  if (!token) return jsonError("請先登入後再撤下歌曲。", 401);
-
-  const body = (await request.json().catch(() => null)) as { trackId?: unknown } | null;
-  if (!isUuid(body?.trackId)) return jsonError("Invalid track id.");
-
-  try {
-    const admin = adminClient();
-    const { data: userData, error: userError } = await admin.auth.getUser(token);
-    if (userError || !userData.user || userData.user.is_anonymous) return jsonError("登入狀態已過期，請重新登入。", 401);
-
-    let trackResult = await admin
-      .from("listen_bar_tracks")
-      .select(`id,title,created_by,source,bar_phase,is_active,${AI_MUSIC_SHOWTIME_TRACK_SELECT_FIELDS}`)
-      .eq("id", body.trackId)
-      .maybeSingle() as TrackResult;
-
-    if (trackResult.error && isMissingColumnError(trackResult.error)) {
-      trackResult = await admin
-        .from("listen_bar_tracks")
-        .select("id,title,created_by,source,is_active")
-        .eq("id", body.trackId)
-        .maybeSingle() as TrackResult;
-    }
-
-    const { data: track, error: trackError } = trackResult;
-    if (trackError) return jsonError(trackError.message, 500);
-    if (!track || track.source !== "community") return jsonError("Track not found.", 404);
-    if (track.created_by !== userData.user.id) return jsonError("只能撤下自己的歌曲。", 403);
-    if (!track.is_active) return NextResponse.json({ ok: true, alreadyRemoved: true, track: { id: track.id, title: track.title, barPhase: track.bar_phase ?? "public" } }, { headers: { "Cache-Control": "private, no-store" } });
-
-    const now = new Date().toISOString();
-    let updateResult = await admin
-      .from("listen_bar_tracks")
-      .update({
-        is_active: false,
-        review_status: "removed",
-        removed_at: now,
-        // This internal marker is recognized by the existing database removal
-        // guard. Keep it stable even though the public product name has changed.
-        moderation_note: "Creator removed own Bar Heartbreak track.",
-        updated_at: now,
-      })
-      .eq("id", track.id).eq("created_by", userData.user.id).eq("source", "community").eq("is_active", true)
-      .select("id").maybeSingle();
-
-    if (updateResult.error && isMissingColumnError(updateResult.error)) {
-      updateResult = await admin
-        .from("listen_bar_tracks")
-        .update({
-          is_active: false,
-          updated_at: now,
-        })
-        .eq("id", track.id).eq("created_by", userData.user.id).eq("source", "community").eq("is_active", true)
-        .select("id").maybeSingle();
-    }
-
-    if (updateResult.error) return jsonError(updateResult.error.message, 500);
-    if (!updateResult.data) return jsonError("作品狀態已變更，請重新整理後重試。", 409);
-
-    return NextResponse.json({
-      ok: true,
-      track: {
-        id: track.id,
-        title: track.title,
-        barPhase: track.bar_phase ?? "challenger",
-      },
-    }, { headers: { "Cache-Control": "private, no-store" } });
-  } catch (error) {
-    return jsonError(String((error as { message?: string })?.message ?? error), 500);
+import { NextResponse } from 'next/server';
+import { creatorAuth } from '@/lib/server-creator-auth';
+import { flushDeletedWorkFiles } from '@/lib/server-creator-work-cleanup';
+const headers={'Cache-Control':'private, no-store'};
+const jsonError=(error:string,status:number)=>NextResponse.json({error},{status,headers});
+export async function POST(request:Request) {
+ try {
+  const auth=await creatorAuth(request);
+  if(!auth)return jsonError('請先登入後再刪除作品。',401);
+  const body=await request.json().catch(()=>null) as {trackId?:unknown;permanent?:unknown}|null;
+  if(typeof body?.trackId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.trackId))return jsonError('Invalid work id.',400);
+  // Old open tabs promised recoverable removal. Require the new confirmation.
+  if(body.permanent!==true)return jsonError('刪除方式已更新，請重新整理後再次確認永久刪除。',409);
+  const removed=await auth.admin.rpc('delete_creator_work',{p_track:body.trackId,p_actor:auth.user.id});
+  if(removed.error)return jsonError(removed.error.code==='42501'?'只能刪除自己的作品。':'未能刪除作品，請稍後重試。',removed.error.code==='42501'?403:500);
+  if(removed.data?.ok!==true)return jsonError('未能刪除作品，請稍後重試。',500);
+  let cleanupPending=false;
+  if(removed.data.cleanupJob) {
+   try {cleanupPending=(await flushDeletedWorkFiles(auth.admin,removed.data.cleanupJob)).pending>0;}
+   catch {cleanupPending=true;}
   }
+  return NextResponse.json({ok:true,alreadyDeleted:Boolean(removed.data.alreadyDeleted),cleanupPending},{headers});
+ } catch {return jsonError('未能刪除作品，請稍後重試。',500);}
 }

@@ -39,10 +39,10 @@ test("Explore and Bar no longer exclude historical certified community songs", (
   assert.equal(rankSource.includes("listenBarIsHonorEligible"), false);
 });
 
-test("historical recognition no longer gates explicit creator challenge preferences or soft removal", () => {
+test("historical recognition no longer gates explicit creator challenge preferences or author-confirmed deletion", () => {
   assert.equal(challengeRouteSource.includes("isAiMusicPersistedShowtimeCertified(track)"), false);
   assert.ok(challengeRouteSource.includes('ai_music_challenge_status: body.status'));
-  assert.ok(removeTrackRouteSource.includes('review_status: "removed"'));
+  assert.ok(removeTrackRouteSource.includes("'delete_creator_work'"));
   assert.equal(removeTrackRouteSource.includes('isAiMusicPersistedShowtimeCertified'), false);
 });
 
