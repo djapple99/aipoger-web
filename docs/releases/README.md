@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-26 本人作品永久刪除](2026-10-26-permanent-work-delete.md)
+
 - [2026-10-26 本人刪除被資料庫guard拒絕修復](2026-10-26-creator-delete-guard.md)
 
 - [2026-10-25 本人已發布作品刪除入口修復](2026-10-25-creator-work-delete.md)

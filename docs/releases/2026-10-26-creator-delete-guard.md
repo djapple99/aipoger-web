@@ -1,5 +1,7 @@
 # 本人刪除操作被資料庫guard拒絕修復 — 2026-10-26
 
+後續使用者明確改為永久刪除，原軟下架及歷史保留已被新規則取代，見[永久刪除report](2026-10-26-permanent-work-delete.md)。以下僅保留當輪guard修復的驗證證據。
+
 使用者在「我的作品」按刪除後仍見作品，出現「未能刪除作品，請確認登入後重試」。應用 `8579b7aff2c4e3055a0b33f005ffb0513e1149af`、分支 `codex/public-rule-copy`，Vercel `dpl_GD8r35wYea9VmtJWh7BveXZbXdUq`（`aipoger-web-rnz8-dd5k3coi4-yohungs-projects.vercel.app`）。
 
 ## 實際原因與修復
