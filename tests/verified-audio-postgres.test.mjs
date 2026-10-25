@@ -35,13 +35,16 @@ test('verified MP3 schema guards ownership, old media, direct writes, immutable 
   `);
   const old=(await db.query('select audio_path,audio_sha256,duration_seconds from listen_bar_tracks')).rows;
   await db.exec(migration);
+  await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261025074556_protect_legacy_mp3_references.sql',import.meta.url),'utf8'));
   assert.deepEqual((await db.query('select audio_path,audio_sha256,duration_seconds from listen_bar_tracks')).rows,old);
   await db.exec(`update listen_bar_tracks set title='Edited metadata' where id='${uid(90)}';
    insert into official_gatekeeper_drops(id,audio_path,updated_by,active) values('oldgate','official/old.wav','${uid(1)}',true) on conflict(id) do update set active=excluded.active;
    insert into verified_audio_assets(id,user_id,sha256,expected_size,storage_path,status,duration_seconds,max_kbps,verified_at) values
     ('${uid(10)}','${uid(1)}',repeat('a',64),1000,'one.mp3','verified',90,320,now()),
     ('${uid(11)}','${uid(1)}',repeat('b',64),1000,'two.mp3','pending',null,null,null),
-    ('${uid(12)}','${uid(1)}',repeat('c',64),1000,'unused.mp3','verified',45,128,now());`);
+    ('${uid(12)}','${uid(1)}',repeat('c',64),1000,'unused.mp3','verified',45,128,now()),
+    ('${uid(13)}','${uid(1)}',repeat('d',64),1000,'legacy-reused.mp3','verified',45,128,now());
+   insert into battle_queue(id,user_id,submission_mode,audio_path) values('${uid(94)}','${uid(1)}','legacy','https://aipoger.com/api/audio-assets/${uid(13)}');`);
   await assert.rejects(db.exec(`insert into listen_bar_tracks(id,created_by,audio_path) values('${uid(20)}','${uid(1)}','new.wav')`),/VERIFIED_MP3_REQUIRED/);
   await assert.rejects(db.exec(`insert into listen_bar_tracks(id,created_by,audio_path) values('${uid(20)}','${uid(2)}','https://aipoger.com/api/audio-assets/${uid(10)}')`),/VERIFIED_MP3_REQUIRED/);
   await assert.rejects(db.exec(`insert into listen_bar_tracks(id,created_by,audio_path) values('${uid(20)}','${uid(1)}','https://aipoger.com/api/audio-assets/${uid(11)}')`),/VERIFIED_MP3_REQUIRED/);
@@ -59,6 +62,7 @@ test('verified MP3 schema guards ownership, old media, direct writes, immutable 
   await db.exec(`reset role;update verified_audio_assets set updated_at=now()-interval '2 days';set role service_role;select set_config('request.jwt.claim.role','service_role',false);`);
   assert.equal((await db.query(`select * from claim_audio_asset_cleanup('${uid(10)}','${uid(1)}')`)).rows.length,0);
   assert.equal((await db.query(`select * from claim_audio_asset_cleanup('${uid(12)}','${uid(2)}')`)).rows.length,0);
+  assert.equal((await db.query(`select * from claim_audio_asset_cleanup('${uid(13)}','${uid(1)}')`)).rows.length,0);
   const cleanup=(await db.query('select * from claim_unused_audio_assets()')).rows.map(r=>r.id);assert.deepEqual(cleanup.sort(),[uid(11),uid(12)].sort());
   await db.exec(`reset role`);
   await assert.rejects(db.exec(`insert into listen_bar_tracks(id,created_by,audio_path) values('${uid(22)}','${uid(1)}','https://aipoger.com/api/audio-assets/${uid(12)}')`),/VERIFIED_MP3_REQUIRED/);

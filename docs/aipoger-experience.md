@@ -182,10 +182,12 @@ UI direction:
 
 ### Q Crash
 
+- Drop／Q Crash投稿沿用原表單構圖，來源切換「貼作品連結／MP3」，MP3上傳與驗證中顯示狀態，成功後用同一試播元件；填歌名、作者、歌詞不重建播放器。Drop維持60／90秒／整首及接戰鎖定；Q Crash播放完整歌曲。手機表單頂部避開全站Logo，不新增大型裝飾或空白。
+
 - `Q Crash` is the asynchronous Full Song Battle mode, not a survey or ordinary social poll. Its source and timing rules are defined in `aipoger-product-rules.md`.
 - Keep the same black stage, orange battle energy, small cyan electrical accent, A/B confrontation, and music-first language.
 - Desktop uses two side-by-side work seats with a compact VS signal. Mobile stacks the seats and keeps both play/vote actions easy to reach without horizontal overflow.
-- Each work seat shows the work-specific cover, work/version label, song, creator, genre, AI tool, full-track duration when available, one play action, and one vote action. Q Crash creation accepts a public Suno link or an MP3/WAV upload; a creator profile cover is only a fallback.
+- Each work seat shows the work-specific cover, work/version label, song, creator, genre, AI tool, full-track duration when available, one play action, and one vote action. Q Crash creation accepts supported public work links or verified MP3 (up to320 kbps,30MB); a creator profile cover is only a fallback.
 - Keep the `Q CRASH` title compact so the work comparison starts high in the viewport. Lyrics open as an in-page HUD below the work pair; missing lyrics say `歌詞未提供` rather than leaving a blank panel.
 - Playback uses one fixed bottom A/B player with explicit A/B switches, play/pause, seek, previous/next, volume on desktop, and close. Do not embed a native audio control in each work card.
 - Voting state shows only the mode, deadline, work information, and the listener's private submitted state. A shared bottom rating dock switches between A and B and contains exactly five keys: 押韻、爆點、旋律、情緒、結構. Never show a count, percentage, total audience, feedback total, leader, radar, or visual progress toward a winner before settlement.
@@ -208,7 +210,7 @@ Role:
 UI direction:
 
 - Use `24H Full Song` or `24H Daily Battle` consistently where appropriate.
-- Make it clear the full song is uploaded and listeners can take time.
+- Historical rooms and results remain accessible. New 24H upload entry is retired; its old setup link returns to Battle without changing existing rooms.
 - Keep global active limits visible when they are implemented.
 - Keep actual finished winner records and authorized historical audio in the Battle archive flow; do not present them as Showtime certification or monthly chart placements.
 
@@ -219,7 +221,7 @@ UI direction:
 - 歌曲與評論沿用原ID；公開聽歌不用登入，Heart／留言需登入。NEW保留七日語意；正式Battle及Showtime月榜另依原規則。
 - 投稿搬到Profile自己的作品區；手動曲風与可選音訊建議面板、上傳前21秒片段告知、建議逐一採用／自行選擇、worker未啟用時手選回退均保留。讀metadata不默改曲風。
 - 不呈現Challenger席位、保護時間、生存日數、容量淘汰、房間故事留言、舊移動跑馬燈或大型金色招牌。舊聊天24小時API是歷史相容，不是前台入口。
-- 一般會員連結／音檔共用個人168小時的前三首免費額度，額外成功投稿每首60 Credit，Owner顯示「投稿不限數量」且無數量限制，每曲風五首active上限取消，公開展示三個日曆月不等於刪檔或退額度。物理容量處理待另行設計。
+- 一般會員連結／音檔共用個人168小時的前三首免費額度，額外成功投稿每首60 Credit，Owner顯示「投稿不限數量」且無數量限制，每曲風五首active上限取消，公開展示三個日曆月不等於刪檔或退額度。既有作品容量不自動回收；只清理沒有作品／對戰引用的新MP3私人草稿。
 
 ## AIPOGER Showtime
 
@@ -285,7 +287,7 @@ Rules:
 - 作品表每頁 4 件，提供封面播放、狀態、有效支持人數、評論與編輯；搜尋及狀態篩選保留。桌機數據有獨立欄，手機把支持／評論數收進歌名下既有資訊行，維持 44px 圖示操作，不增設整排工具區。完整歷史原資料管理仍每頁 10 件。
 - 收藏統計含歌曲及 Choice；歌曲列表分頁，Choice 與批次收藏管理從明確入口進原管理介面。收到的評論可打開原作品的既有評論 dialog；最新兩則可見評論放在表下。沒有評論就顯示真實空狀態，不填示意評論。
 - 單首「編輯」只展開該首原編輯表，取消或儲存後關閉；Battle／對戰／勝出／Choice 等原操作集中在「更多紀錄」。原待接戰、批次管理、個人作品表現、頭像與身分修改仍可從這些入口取得。
-- 投稿來源為「貼作品連結／上傳音檔」。2026-10-15起貼連結即自動讀取歌名、創作者顯示名與來源，失敗可「重新讀取」；歌名及作者可展開修改。「預覽作品（選看）」收合，不要求開啟或播放。必選曲風與AI工具保持緊湊並排；YouTube的MV勾選、權利確認及最後「確認投稿」放在同區。
+- 投稿來源為「貼作品連結／上傳音檔」。音檔只選MP3，原位置標示「MP3 · ≤320 kbps · ≤30MB」，保留封面、metadata、手選曲風及選用試播；錯誤使用目前語言，不顯示無效預覽。MV只貼影片連結。2026-10-15起貼連結即自動讀取歌名、創作者顯示名與來源，失敗可「重新讀取」；歌名及作者可展開修改。「預覽作品（選看）」收合，不要求開啟或播放。必選曲風與AI工具保持緊湊並排；YouTube的MV勾選、權利確認及最後「確認投稿」放在同區。
 - 音檔的本機預覽／試播同樣選用，勾選權利聲明且資料完整即可明確送出。封面、歌詞、MV、專輯與介紹等選填資料可展開；既有格式、大小、手選曲風、可選分析及審核規範保留。
 - 預覽讀取與實際可播放是不同狀態，均不能宣稱版權已驗證。預覽不發布、不用額度，換來源重置權利確認並忽略舊請求回傳。頂欄手機常駐44px「投稿」入口；投稿網格與輸入欄可縮至320px，長標題最多兩行，選用預覽與確認按鈕不被水平溢出擠出畫面。
 - 統計載入顯示「—」；讀取失敗有重試。Credit同位置顯示實際餘額，展開看最近50筆本人收支及待追回欠額；沒有資料顯示空狀態。Owner顯示免扣點。短說明列出每日回訪15、有效評分評論10、歌曲／MV送愛心3、盲聽3與額外成功投稿60；超出免費額度時需明確确认扣點，欠額未補足不能花點。

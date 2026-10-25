@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：2026-10-25／`4184af5`／`codex/public-rule-copy`；Vercel `dpl_EtPjkm6Dn22LzoyvvmDsJBc4UeNR` READY並綁定aipoger.com／www。通知進入即展開、成功顯示且可見後沿清單readThrough標記既有本人通知已讀；不限首三則、不要求回覆，新通知仍提醒。API保留auth.getUser及本人／期限篩選，不新增schema、權限或直接批次改客戶資料；GET無副作用，明確PATCH標讀，截止時間正規化／不超過當下。成功事件帶確認未讀數，舊讀取revision失效（含隱藏分頁），失敗保留狀態可重試。818測試787通過／31既有選用DB略過／0失敗，19項通知定向回歸通過；TypeScript、本機webpack與最終雲端build通過，lint0 errors／9既有warnings。真實元件／client／hook隔離瀏覽器驗7→0、新通知1、刷新仍1、重入0及四語320px；正式已登入Chrome確認自動展開、0未讀、通知仍在、刷新持續。沒有新增正式測試通知／評論／Credit。原MV布局、評分、播放及對戰流程繼承前輪。[通知已讀驗收](releases/2026-10-25-notice-read.md)。
+目前應用發布基準：2026-10-25／`0c146c7`／`codex/public-rule-copy`；Vercel `dpl_5Xn2RHQTVXb9NoDiGUjuhAFu6kEF` READY並綁定aipoger.com／www。一般／Drop／Q共用連結或MP3最高320kbps／30MB，MV僅影片連結；實際frame／hash雙重驗證，私人pending→verified去重與已引用檔案保護，舊大型音訊入口410／daily導回Battle。新版私人草稿逾24h每小時清理，舊作品／戰績不回收。兩份本機migration `20261025063109`／`20261025074556`已套用，正式ledger `20261025073854`／`20261025074717`；新table service-only／restrictive Storage policy及權限核對通過。830測試799通過／31既有選用DB略過／0失敗；補強legacy引用PG測試及最末9項runtime通過，TypeScript、本機webpack及雲端build通過，lint0 errors／9既有warnings。正式320kbps上傳／75秒播放中填字不中斷／跨Drop與Q共用1份／取消草稿清空通過，沒有正式新作品或場次。384件作品／165queue／55battle／8archive／829原物件及原核心函式hash相同，15項HTTP通過，無新增Security WARN或runtime error。證據見[MP3／連結統一發布驗收](releases/2026-10-25-mp3-upload-policy.md)。
+
+前輪通知發布基準：2026-10-25／`4184af5`／`codex/public-rule-copy`；Vercel `dpl_EtPjkm6Dn22LzoyvvmDsJBc4UeNR` READY並綁定aipoger.com／www。通知進入即展開、成功顯示且可見後沿清單readThrough標記既有本人通知已讀；不限首三則、不要求回覆，新通知仍提醒。API保留auth.getUser及本人／期限篩選，不新增schema、權限或直接批次改客戶資料；GET無副作用，明確PATCH標讀，截止時間正規化／不超過當下。成功事件帶確認未讀數，舊讀取revision失效（含隱藏分頁），失敗保留狀態可重試。818測試787通過／31既有選用DB略過／0失敗，19項通知定向回歸通過；TypeScript、本機webpack與最終雲端build通過，lint0 errors／9既有warnings。真實元件／client／hook隔離瀏覽器驗7→0、新通知1、刷新仍1、重入0及四語320px；正式已登入Chrome確認自動展開、0未讀、通知仍在、刷新持續。沒有新增正式測試通知／評論／Credit。原MV布局、評分、播放及對戰流程繼承前輪。[通知已讀驗收](releases/2026-10-25-notice-read.md)。
 
 前輪MV發布基準：2026-10-25／`ea9ea8a`／`codex/public-rule-copy`；Vercel `dpl_DmFRys9uJtntpWB4cQn7qUd2ixem` READY並綁定aipoger.com／www。MV採使用者第一張設計：左人氣榜、右四支時間序新作、下方完整清單，手機榜單預設收合；評分與收藏人數分開。`readMvPopularity`服務端共用Explore `rankMusicPool`／Heart去重／盲聽及收藏彙總，不另改公式或公開身分，無資料庫migration／寫入。811測試780通過／31既有選用DB略過／0失敗；TypeScript、webpack本機與雲端build通過，lint0 errors／9既有warnings。敏感環境值不可下載，本機視覺用公開資料快照；真實staged API另驗92件MV／58件可排序作品，全部名次與Explore既有規則一致、原評分及收藏相同；正式原評論前後相同。四語320px、1440px桌機／手機無溢出，實際YouTube播放與原9.1評價確認；9個正式入口200，查核時無error／fatal runtime log。播放、邊聽邊評論、評價、連播與分享沿既有元件／API。驗收見[MV人氣與新作](releases/2026-10-25-mv-popularity-newest.md)。
 
@@ -161,7 +163,7 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 - 2026-10-15：前端輸入來源後500ms debounce自動呼叫preview解析，忽略過期請求；previewToken仍是本人來源解析憑證，不再要求按預覽或confirmedPlayback。submit要求有效本人token、權利確認、現行曲風／名稱，沿用現行原子Credit投稿與本人RLS；每168h三件免費、後續成功件60並確認，Owner不限，沒有每曲風五件限制。原同來源unique及同作者既有YT防重複保留，同ID支援MV／評論。
 - `20261013090019_creator_link_submission.sql` 增加來源provider／mediaID／URL與MV旗標、允許audio_path空、有效來源CHECK與部分unique index；`20261013094836_creator_link_required_fields.sql` 補SQL CHECK nullable三欄必填。兩份均已套用並validated，沒有改舊列、政策、grants或函數。
 - 實際authenticated role的可回滾SQL交易驗證無音檔連結INSERT與quota+1；ROLLBACK後重查仍329列、0個link row、0個測試作品，UI仍0/3。沒有永久測試投稿、評論或Heart；訪站原analytics／presence照常。
-- 投稿預覽與試播選用：音檔使用本機ObjectURL，明確投稿前不upload；YouTube／Suno／Spotify使用可見官方播放器，不要求播放事件或手動試播確認。來源解析失敗可重讀，Spotify長度仍由來源決定。只有YouTube連結納入酒吧混合電台，透過youtubeId而非偽造audioUrl；Suno／Spotify、Choice及盲聽來源資格不變。
+- 投稿預覽與試播選用：一般音檔使用本機ObjectURL，明確投稿前不upload；Drop／Q Crash的MP3試播先驗證並暫存為私人草稿，明確發布前不建作品或場次、不扣投稿額度；YouTube／Suno／Spotify使用可見官方播放器，不要求播放事件或手動試播確認。來源解析失敗可重讀，Spotify長度仍由來源決定。只有YouTube連結納入酒吧混合電台，透過youtubeId而非偽造audioUrl；Suno／Spotify、Choice及盲聽來源資格不變。
 - Owner沿用既有本人主email驗證，不以可編輯metadata email授權；一般帳號沒有後台入口。Credit沿用現行creator_credit_entries及參與ledger，已啟用回訪15、有效評論10、Heart3、盲聽3及額外成功投稿60；不能以殘留APC欄位冒充餘額。
 - 原私人metadata、Choice、batch favorites、Battle與作品表現入口保留在focused dialog；新總覽4件／頁，原完整manager10件／頁。修改metadata不重置年齡／額度／戰績。
 - 回復程式可promote舊READY版本；加法schema留在DB，不DROP來源欄位、不刪舊作品。若已有人提交新連結，舊app可能不展示無音檔列，但資料仍在，需先評估後再回復。
@@ -293,7 +295,7 @@ Check:
 ### Q Crash
 
 - Battle Pool shows one compact `建立 Q Crash` entry while keeping the existing live Drop Battle CTA and challenge pool unchanged.
-- Creating work A offers `Paste Suno Link` or `Upload Audio File` (MP3/WAV), stores a unified full-song Track, captures the rights confirmation, and creates one pending Q Crash card without opening the Drop cropper.
+- Creating work A offers supported public work links or verified MP3 (up to320 kbps,30MB), stores a unified full-song Track, captures the rights confirmation, and creates one pending Q Crash card without opening the Drop cropper.
 - Work A and Work B may each attach their own cover; the selected cover is stored with that queue/work and appears on the matching A/B seat. Suno playback uses the public Mango rights handshake and just-in-time in-memory decryption; the audio is never persisted, copied into Storage, transcoded, or cropped.
 - The creator may place a second own work, leave the card open for a shared invite, or target an existing creator account. A targeted creator receives a readable account notification linked to the pending card.
 - Work B must use a distinct queue entry and the exact same fixed genre. A different creator must own the submitted track; the original creator may intentionally submit a second own track.

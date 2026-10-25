@@ -187,10 +187,11 @@ Public social entry:
 ## 創作者中心與連結投稿
 
 - `/profile` 為個人創作者中心：音樂投稿總數、目前推廣／期滿／下架狀態、私人收藏歌曲與 Choice 總數、其他會員的可見評論人數及則數集中呈現。總覽作品每頁 4 件；完整原作品管理仍每頁 10 件。私人歷史不因三個月公開推廣期結束而抹除，不補過往最高排名。
-- 所有投稿入口進個人的投稿區。接受上傳音檔及 YouTube 影片、Suno 單曲、Spotify 單曲連結；不接受此入口的專輯、歌單或任意網站。連結只保留來源與 metadata，以原平台可見播放器播放，不下載或另存外站影音。來源讀取失敗不自動發布，保留來源輸入供重試；試播不是投稿門檻。
+- 所有投稿入口進個人的投稿區。一般投稿接受 MP3（最高320 kbps、單檔30MB）及 YouTube 影片、Suno 單曲、Spotify 單曲連結；不接受此入口的專輯、歌單或任意網站。連結只保留來源與 metadata，以原平台可見播放器播放，不下載或另存外站影音。來源讀取失敗不自動發布，保留來源輸入供重試；試播不是投稿門檻。
 - 2026-10-15使用者確認：連結與音檔均不強制開預覽或試播。貼連結後自動讀取來源資料，必填資料完整、勾選作品權利聲明及適用的扣點確認後，按「確認投稿」才發布。預覽／試播是選用功能，不消耗投稿額度、不產生公開作品；換來源重置權利確認，不沿用舊來源資料。來源解析與來源綁定仍必須成功，不能把播放器載入或未試播視為版權／完整播放保證。Spotify播放長度由來源決定。
+- 2026-10-25使用者確認：一般投稿、Drop及Q Crash共用MP3檔名、實際MPEG Layer III內容、所有frame碼率（含VBR最高值）及30MB驗證；前端和伺服器雙重檢查，改副檔名不能繞過。先進私人暫存、驗證後供投稿使用，同會員同SHA-256共用一份來源。未發布草稿不提供公開音訊，發表或參戰後依其公開播放授權提供來源。只清理逾24小時且沒有作品／對戰／官方模板引用的新暫存；不掃除原音檔或戰績。
 - 音檔與連結共用個人首件成功起算168小時的前三件免費額度，額外成功作品每件60 Credit；取消每作者每曲風5件active庫存上限，唯一Owner不限投稿數量。刪除不退個人期間額度。保留原 ownership、moderation、正式投票與接戰規則；連結投稿預設僅展示，不自動加入 Battle。
-- YouTube 作品由投稿者勾選是否包含 MV；勾選後在音樂與 MV 面共用同一原作品 ID、愛心和評論，不另填第二筆。重複同作者同來源單曲不新增；既有音檔作品已附相同 YouTube 影片時，從原作品編輯。
+- MV僅接受影片連結，不提供影片實體上傳；YouTube 作品由投稿者勾選是否包含 MV；勾選後在音樂與 MV 面共用同一原作品 ID、愛心和評論，不另填第二筆。重複同作者同來源單曲不新增；既有音檔作品已附相同 YouTube 影片時，從原作品編輯。
 - 連結作品可進探索與同一三個月人氣榜，使用可見外站播放器。傷心酒吧已接受YouTube連結與音檔混合曲風連播；Suno／Spotify仍使用個別可見播放器，現有Choice選曲及盲聽仍要求實際音檔。不能將外站URL填成音檔或藏起YouTube播放。音檔投稿的選用預覽使用一次性的本機音訊控制。
 - 私人統計只查經伺服器驗證的本人資料；支持人数按不同會員去重且排除作者，評論只計其他會員在現行 DB 的可見評論。資料讀取失敗顯示未知與重試，不偽造零分／餘額。舊 Storage-only 留言沒有可驗證的會員 ID，未補成完整歷史評論人數。
 - 唯一 owner 保留既有受驗證的本人身分，平台後台只向 owner 顯示並沿用伺服器授權。不能用顯示名稱或可自行修改的 user metadata email 授權。其他會員只管理自己的資料。
@@ -331,7 +332,7 @@ Comment moderation:
 Current behavior:
 
 - 2026-10-25確認：新 Drop Battle 由發起者選每首60秒、90秒或完整單曲，接戰者沿用；片段模式各自選起點，開始後不可改。整首模式仍屬即時同場對戰，不恢復已隱藏的24H模式。合輯／串燒不作單曲參戰。
-- 新Drop／Q Crash均改為公開Suno、YouTube或本人Aipoger公開單曲連結；只保存來源、封面、片段起點與長度，音源由既有來源播放，不新增或裁切保存大型音檔。新建Drop沒有30秒選項，預設60秒；90秒與整首另選。同場模式、來源與片段由服務端鎖定，隨機配對也須同模式；不可把Q Crash佇列配入Drop。已存在的短片段、音檔與戰績保留；接舊卡沿用舊45秒播放機制，片段不足則依原長度。
+- 新Drop／Q Crash均接受公開Suno、YouTube、本人Aipoger公開單曲連結，或MP3（最高320 kbps、單檔30MB）。連結沿原平台播放，不下載或轉存；MP3走共同驗證流程，保存一份來源檔及播放起點／長度，不產生WAV裁切副本。新建Drop沒有30秒選項，預設60秒；90秒與整首另選。同場模式、來源與片段由服務端鎖定，隨機配對也須同模式；不可把Q Crash佇列配入Drop。已存在的短片段、音檔與戰績保留；接舊卡沿用舊45秒播放機制，片段不足則依原長度。
 - Legacy file-backed Drop Battle complete-song publication still requires the winning creator's explicit upload-time consent and an official result. Retiring Showtime certification grants no new full-song rights: without that consent, only the authorized Drop clip may be exposed. Complete audio must not be publicly playable by default or republished as a community song automatically.
 - For legacy file-backed battles, when complete-song publishing is enabled, the Battle Room still uses only the Drop clip; `Full Song` is an authorized post-result playback state, not a battle playback rule or certification.
 - For legacy file-backed battles, the complete-song decision is made during the original upload and is immutable for client-side edits. The upload form does not require a YouTube link yet; it only records whether the creator agrees to release the full work after an official win.
@@ -375,10 +376,10 @@ Current behavior:
 - Live or public-voting cards should provide an `邀請觀戰投票` share action.
 
 
-### 對戰連結投稿與播放合約（2026-10-25確認）
+### 對戰連結／MP3投稿與播放合約（2026-10-25確認）
 
 - 伺服器驗證來源、會員與公開資格並簽署預覽，優先讀取來源長度；YouTube雲端頁面沒有時長時，由可見官方嵌入播放器讀取，標記embedded_player並在實際播放時再核對（差異超過2秒停止並提示）。這個回退不是伺服器獨立證明時長；API僅在已驗證YouTube缺時長時接受有限正值，不允許覆蓋已取得的伺服器長度或來源URL／參賽帳號／接戰模式。完整模式保存各首長度，兩首不必一樣長；片段須足夠60／90秒且不超出來源尾端。
-- 歌名／作者／歌詞可填寫，來源封面可沿用或上傳獨立圖片；原Profile封面仍可回退。歌曲音檔上傳入口及舊upload-hook API退役（410），不影響既有素材讀取。
+- 歌名／作者／歌詞可填寫，來源封面可沿用或上傳獨立圖片；原Profile封面仍可回退。新版表單有「貼作品連結／MP3」兩種來源。舊upload-hook／signed-url、24H新建API與後台舊音訊簽發入口退役（410）；舊mode=daily導回Battle首頁，舊場次及素材讀取保留。
 - 新佇列由service-only RPC交易建立，會員由API驗證；同request重試不重建，同角色限額、本人刻意比較兩個版本、指定邀請與投票資格保留。接戰鎖定目標並再查公開狀態；已匹配來源不可改寫。
 - Battle保存不可變的A／B來源與播放區段快照；即時播放、晚到者進度、失效判斷、Cron結算及分享連結都沿相同長度。YouTube使用可見官方播放器，沒有下載或抽音。瀏覽器阻擋自動播放時須點擊開聲，晚進場依原共享時鐘續播。
 - 正式成果卡／對戰記錄可重播新連結作品；只有已完成且達原正式觀眾門檻的封存紀錄才提供新媒體讀取。私人既有音檔於讀取時簽發URL，DB快照不保存短效簽章。舊音檔、原投票與戰績不搬移、不重算、不刪除。
@@ -389,8 +390,8 @@ Current behavior:
 - `Q Crash` is the asynchronous Full Song Battle mode. Existing live Drop Battle remains unchanged.
 - The public promise is: `兩首完整歌曲，不用等人到齊，讓大家在自己的時間決定哪首歌勝出。`
 - Every Q Crash has exactly two work seats, A and B. The same creator may intentionally compare two own versions, or a second creator may accept the shared/targeted invitation and lock their own work into seat B.
-- Q Crash does not crop audio. New works are complete tracks supplied through public HTTPS Suno, YouTube, or the creator’s own public Aipoger single links. Existing uploaded MP3/WAV sources remain compatible; new audio-file entry is retired. Q Crash does not require matching genres: each work keeps its own fixed genre tag for display, search, and later analysis, while voting starts only after two distinct queue/work entries are locked.
-- Q Crash stores one unified Track contract: `source_type` supports `suno`, `youtube`, `work`, and historical `upload`; `source_url` stores the source link or historical private Storage key, and `title`, `creator`, `cover_url`, and optional `duration_seconds` describe the work. A Suno source is resolved at runtime through the public page's media metadata and Suno's anonymous playback-rights handshake; the Q Crash same-origin player decrypts the encrypted stream just in time in memory when needed. AIPOGER never persists, stores in Storage, transcodes, or crops the Suno audio. If the public media source or playback-rights handshake cannot be resolved, the work is unavailable for playback and must not silently send the listener to Suno. Uploaded audio stays as the original full file.
+- Q Crash does not crop audio. New works are complete tracks supplied through public HTTPS Suno, YouTube, or the creator’s own public Aipoger single links. New uploads accept verified MP3 up to 320 kbps and 30MB; historical MP3/WAV/AIFF sources remain compatible. Q Crash does not require matching genres: each work keeps its own fixed genre tag for display, search, and later analysis, while voting starts only after two distinct queue/work entries are locked.
+- Q Crash stores one unified Track contract: `source_type` supports `suno`, `youtube`, `work`, and `upload`; `source_url` stores the source link, a verified MP3 asset URL, or a historical private Storage key, and `title`, `creator`, `cover_url`, and optional `duration_seconds` describe the work. A Suno source is resolved at runtime through the public page's media metadata and Suno's anonymous playback-rights handshake; the Q Crash same-origin player decrypts the encrypted stream just in time in memory when needed. AIPOGER never persists, stores in Storage, transcodes, or crops the Suno audio. If the public media source or playback-rights handshake cannot be resolved, the work is unavailable for playback and must not silently send the listener to Suno. Uploaded audio stays as the original full file.
 - Every Q Crash submitter must confirm `I confirm that I created this track or have permission from the rights holder.` before the server records the work.
 - Each work may attach its own JPG, PNG, WebP, or GIF cover during the Q Crash upload flow. The cover belongs to that submitted queue/work, is copied to the matching battle side, and must not be inferred only from the creator's current profile cover; if no work cover is supplied, the profile cover remains the fallback.
 - Same-title works display explicit `版本 A` / `版本 B` labels. Results are work-first: winner storage uses the winning queue/work identifier, and the creator is read from that work.
@@ -431,7 +432,7 @@ Official Gatekeeper Drops:
 - Only owner/admin accounts can upload, update, enable, or disable official Gatekeeper Drop audio, cover art, and lyrics.
 - Owner/admin does not set a start time for official Gatekeeper Drops. The official song stays there as a standing gate.
 - Owner/admin must choose the official Gatekeeper Drop genre from the same standard genre menu used by Battle upload. Do not use free-text genre entry for these cards.
-- Official Gatekeeper Drop audio accepts standard AIPOGER audio formats with a 100MB single-file limit. The owner/admin upload flow must use the same 60-second Drop cropper used by normal Drop Battle.
+- New Official Gatekeeper Drop audio uses the same verified MP3 policy: up to320 kbps,30MB and60 seconds. Export the final MP3 before upload; the admin flow no longer creates a WAV crop. Existing templates and covers remain unchanged.
 - Official Gatekeeper Drop cover art accepts JPG, PNG, and GIF with a 10MB single-file limit. Lyrics are optional and stored with the official template.
 - Production must have `supabase/20260618_official_gatekeeper_drops.sql` and `supabase/20260619_official_gatekeeper_media.sql` applied before audio, cover art, and lyrics can all be saved.
 - Public cards should say `歡迎任何人來挑戰 AIPOGER 官方關卡`, show the actual song name, `GATE` number, and genre/type badge, and avoid wording like `官方守門戰：傷心酒吧`.
@@ -494,7 +495,7 @@ Current rules:
 - Confirmed 2026-09-20, taxonomy released; audio suggestion worker activation pending: add `Children's Music 兒歌`, `Latin / Reggae 拉丁雷鬼` (Latin, Reggae and Reggaeton together), and `Cinematic 電影配樂` after the original 11 values. Preserve existing `/l/1` through `/l/11` links; new shares are `/l/12` through `/l/14`. Existing songs and frozen chart entries are not reclassified.
 - On the Profile community submission form, selecting an audio file requests optional genre suggestions using up to 21 seconds from different parts of the actual audio. Show up to three current canonical genres. The uploader alone chooses the final genre: only an explicit accept click fills it, and the menu remains editable. Embedded metadata must not silently select a genre. New files cancel/discard stale analysis; analysis never changes a manually selected genre, grants eligibility or consumes submission quota. Declining, silence, undecodable audio, timeout, unavailable service or uncertain output must leave manual submission usable. Never display model similarity as accuracy or probability. Excerpts are temporary and not publicly served or retained in the catalog.
 - New submissions must include a fixed music genre. Do not silently default missing genre values to `Original 自我風格`.
-- New Bar Heartbreak audio submissions accept MP3, M4A, AAC, or OGG only, with a 30MB single-file limit. Do not accept new WAV or AIFF submissions in the public or admin Bar Heartbreak upload surfaces.
+- New general/Profile and admin audio submissions accept MP3 only, up to320 kbps and30MB (31,457,280 bytes). WAV, AIFF, M4A, AAC, OGG, FLAC and physical video files are not accepted as new audio submissions. MV uses links only; existing media and work records remain available.
 - Bar Heartbreak is the continuous radio inside Explore; creators submit from Profile, with owner curation after publication. Publication does not require owner/judge review. The submitting creator confirms playback in the preview before confirming submission.
 - There is no per-genre or total library capacity. Genre controls show actual publicly playable track counts, never capacity denominators.
 - New eligible submissions enter public airplay immediately. Challenger admission, seat limits, 36-hour protection, survival days and automatic capacity elimination are retired.
