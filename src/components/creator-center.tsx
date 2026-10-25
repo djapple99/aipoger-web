@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Coins,
   Heart,
@@ -9,6 +10,7 @@ import {
   Music2,
   Play,
   Pencil,
+  Trash2,
   X,
 } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
@@ -26,7 +28,6 @@ import type { CreatorSummary, CreatorWork } from "@/lib/creator-center";
 const CreatorLinkUpload = dynamic(() => import("@/components/creator-link-upload"));
 const ProfileMusicUpload = dynamic(() => import("@/components/profile-music-upload"));
 const ExternalMusicPlayer = dynamic(() => import("@/components/external-music-player"));
-import dynamic from "next/dynamic";
 const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 const AccountNotifications = dynamic(() => import("@/components/account-notifications"));
 import DeferredSection from "@/components/deferred-section";
@@ -132,6 +133,13 @@ export function CreatorCenterLayout({
     [dialog, setDialog] = useState<string | null>(null),
     [comment, setComment] = useState<CreatorWork | null>(null),
     [external, setExternal] = useState<CreatorWork | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState("");
+  const [removeSuccess, setRemoveSuccess] = useState("");
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const removeBusy = useRef(false);
+  const currentUser = useRef(props.userId); currentUser.current = props.userId;
+  useEffect(() => { setRemovedIds([]); setRemoveError(""); setRemoveSuccess(""); }, [props.userId]);
   useEffect(() => { if (new URLSearchParams(window.location.search).get("kind") === "album") setKind("album"); }, []);
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -158,11 +166,11 @@ export function CreatorCenterLayout({
     if (dialog === "edit" && !props.editingWorkId) setDialog(null);
   }, [dialog, props.editingWorkId]);
   const count = data?.works.length;
-  const active = data?.works.filter((w) => w.status === "public").length;
+  const active = data?.works.filter((w) => w.status === "public" && !removedIds.includes(w.id)).length;
   const ended = data?.works.filter((w) => w.status === "ended").length;
   const list = useMemo(
     () =>
-      data?.works.filter(
+      data?.works.map(w => removedIds.includes(w.id) ? { ...w, active: false, status: "hidden" as const } : w).filter(
         (w) =>
           (status === "all" || w.status === status) &&
           `${w.title} ${w.artist} ${w.genre}`
@@ -170,7 +178,7 @@ export function CreatorCenterLayout({
             .toLowerCase()
             .includes(query.normalize("NFKC").trim().toLowerCase()),
       ) ?? [],
-    [data, status, query],
+    [data, status, query, removedIds],
   );
   const displayed = tab === "favorites" ? props.favorites : list;
   const pageSize = tab === "favorites" ? 10 : 4;
@@ -206,6 +214,39 @@ export function CreatorCenterLayout({
   const close = () => {
     setDialog(null);
     setExternal(null);
+  };
+  const removeWork = async (work: CreatorWork) => {
+    if (removeBusy.current || !props.userId || !work.active) return;
+    const confirmed = window.confirm(tx(
+      `確定刪除「${work.title}」？作品將退出公開展示與排行榜，原留言、評分及戰績保留為歷史紀錄。已使用的投稿額度及 Credit 不退還。`,
+      `Delete “${work.title}”? It will leave public pages and charts. Comments, ratings and battle history will be kept. Used submission allowance and Credit are not refunded.`,
+      `「${work.title}」を削除しますか？公開ページとランキングから取り下げます。コメント・評価・対戦履歴は保持され、使用済みの投稿枠とCreditは戻りません。`,
+      `“${work.title}”을 삭제할까요? 공개 페이지와 순위에서 제외됩니다. 댓글, 평점, 대전 기록은 보관되며 사용한 제출 한도와 Credit은 반환되지 않습니다.`,
+    ));
+    if (!confirmed) return;
+    const userId = props.userId;
+    removeBusy.current = true; setRemovingId(work.id); setRemoveError(""); setRemoveSuccess("");
+    try {
+      const { data: auth } = await supabase.auth.getSession();
+      if (auth.session?.user.id !== userId) throw new Error("AUTH_REQUIRED");
+      const response = await fetch("/api/listen-bar/remove-track", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.session.access_token}` },
+        body: JSON.stringify({ trackId: work.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) throw new Error("REMOVE_FAILED");
+      if (currentUser.current !== userId) return;
+      setRemovedIds(ids => [...new Set([...ids, work.id])]);
+      const player = getMusicPlayerState();
+      const playing = player.session?.queue[player.session.index];
+      if (playing?.heartTrackId === work.id || playing?.id === work.id || playing?.id === `bar:${work.id}`) musicPlayer?.close();
+      if (external?.id === work.id) setExternal(null);
+      if (comment?.id === work.id) setComment(null);
+      setRemoveSuccess(tx("作品已刪除，歷史紀錄可在「已下架」查看。", "Work deleted. Its history remains under Hidden.", "作品を削除しました。履歴は「非公開」で確認できます。", "작품이 삭제되었습니다. 기록은 ‘비공개’에서 확인할 수 있습니다."));
+      onRefresh();
+    } catch {
+      if (currentUser.current === userId) setRemoveError(tx("未能刪除作品，請確認登入後重試。", "Could not delete the work. Check your sign-in and retry.", "削除できませんでした。ログインを確認して再試行してください。", "삭제하지 못했습니다. 로그인 상태를 확인하고 다시 시도하세요."));
+    } finally { removeBusy.current = false; setRemovingId(null); }
   };
   const showLegacy = (kind: string, id?: string) => {
     props.onLegacy(kind);
@@ -470,6 +511,8 @@ export function CreatorCenterLayout({
                   <span>{tx("評論", "Comments")}</span>
                   <span>{tx("操作", "Actions")}</span>
                 </div>
+                {removeError ? <p role="alert" className={styles.error}>{removeError}</p> : null}
+                {removeSuccess ? <p role="status" className={styles.hint}>{removeSuccess}</p> : null}
                 {rows.map((w) => (
                   <article key={w.id} className={styles.workRow}>
                     <div className={styles.workInfo}>
@@ -518,10 +561,21 @@ export function CreatorCenterLayout({
                       <button
                         title={tx("編輯", "Edit")}
                         aria-label={tx(`編輯 ${w.title}`, `Edit ${w.title}`)}
-                        disabled={!w.active}
+                        disabled={!w.active || removingId !== null}
                         onClick={() => showLegacy("listenBar", w.id)}
                       >
                         <Pencil />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.removeWork}
+                        title={tx("刪除作品", "Delete work", "作品を削除", "작품 삭제")}
+                        aria-label={tx(`刪除 ${w.title}`, `Delete ${w.title}`, `${w.title}を削除`, `${w.title} 삭제`)}
+                        disabled={!w.active || removingId !== null}
+                        aria-busy={removingId === w.id}
+                        onClick={() => void removeWork(w)}
+                      >
+                        <Trash2 />
                       </button>
                     </div>
                   </article>

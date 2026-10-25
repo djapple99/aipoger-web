@@ -42,7 +42,7 @@ type TrackResult = {
 };
 
 function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
+  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "private, no-store" } });
 }
 
 function tokenFromRequest(request: NextRequest): string | null {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
   try {
     const admin = adminClient();
     const { data: userData, error: userError } = await admin.auth.getUser(token);
-    if (userError || !userData.user) return jsonError("登入狀態已過期，請重新登入。", 401);
+    if (userError || !userData.user || userData.user.is_anonymous) return jsonError("登入狀態已過期，請重新登入。", 401);
 
     let trackResult = await admin
       .from("listen_bar_tracks")
@@ -104,8 +104,9 @@ export async function POST(request: NextRequest) {
 
     const { data: track, error: trackError } = trackResult;
     if (trackError) return jsonError(trackError.message, 500);
-    if (!track || track.source !== "community" || !track.is_active) return jsonError("Track not found.", 404);
+    if (!track || track.source !== "community") return jsonError("Track not found.", 404);
     if (track.created_by !== userData.user.id) return jsonError("只能撤下自己的歌曲。", 403);
+    if (!track.is_active) return NextResponse.json({ ok: true, alreadyRemoved: true, track: { id: track.id, title: track.title, barPhase: track.bar_phase ?? "public" } }, { headers: { "Cache-Control": "private, no-store" } });
 
     const now = new Date().toISOString();
     let updateResult = await admin
@@ -114,10 +115,11 @@ export async function POST(request: NextRequest) {
         is_active: false,
         review_status: "removed",
         removed_at: now,
-        moderation_note: "Creator removed own Bar Heartbreak track.",
+        moderation_note: "Creator removed own work.",
         updated_at: now,
       })
-      .eq("id", track.id);
+      .eq("id", track.id).eq("created_by", userData.user.id).eq("source", "community").eq("is_active", true)
+      .select("id").maybeSingle();
 
     if (updateResult.error && isMissingColumnError(updateResult.error)) {
       updateResult = await admin
@@ -126,10 +128,12 @@ export async function POST(request: NextRequest) {
           is_active: false,
           updated_at: now,
         })
-        .eq("id", track.id);
+        .eq("id", track.id).eq("created_by", userData.user.id).eq("source", "community").eq("is_active", true)
+        .select("id").maybeSingle();
     }
 
     if (updateResult.error) return jsonError(updateResult.error.message, 500);
+    if (!updateResult.data) return jsonError("作品狀態已變更，請重新整理後重試。", 409);
 
     return NextResponse.json({
       ok: true,
@@ -138,7 +142,7 @@ export async function POST(request: NextRequest) {
         title: track.title,
         barPhase: track.bar_phase ?? "challenger",
       },
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return jsonError(String((error as { message?: string })?.message ?? error), 500);
   }
