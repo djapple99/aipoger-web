@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const count = Number(archive.data?.result_payload?.audienceCount ?? archive.data?.total_votes ?? 0);
     if (!result.data || !archive.data || count < 3 || !["finished", "completed", "q_crash_finished"].includes(result.data?.status || "")) return json({ error: "NOT_PUBLIC" }, 404);
     const resolve = async (p: { type: string; url: string; start: number; seconds: number } | null) => {
-      if (!p || p.type !== "upload") return p;
+      if (!p || p.type !== "upload" || /^https:\/\//i.test(p.url)) return p;
       const signed = await admin.storage.from("battle-audio").createSignedUrl(p.url, 3600);
       return signed.error || !signed.data?.signedUrl ? null : { ...p, url: signed.data.signedUrl };
     };

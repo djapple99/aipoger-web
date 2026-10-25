@@ -1,3 +1,5 @@
+import {audioAssetId} from "@/lib/audio-asset-ref";
+import {readOwnedAudio,verifiedAudioResult} from "@/lib/server-audio-uploads";
 import { NextResponse } from "next/server";
 import { creatorAuth } from "@/lib/server-creator-auth";
 import { readAllHomePages } from "@/lib/home-discovery";
@@ -110,6 +112,8 @@ export async function GET(request: Request) {
         : /^https:\/\//.test(p)
           ? p
           : admin.storage.from(bucket).getPublicUrl(p).data.publicUrl;
+    const privateAudio = new Map<string,string>();
+    await Promise.all(tracks.map(async t => { const id=audioAssetId(t.audio_path);if(!id)return;try{const asset=await readOwnedAudio(admin,id,user.id);privateAudio.set(t.id,(await verifiedAudioResult(admin,asset)).audioUrl);}catch{/* Keep other owned works available. */}}));
     const works = tracks.map((t) => ({
       id: t.id,
       workKind: t.work_kind,
@@ -120,7 +124,7 @@ export async function GET(request: Request) {
       genre: t.genre,
       createdAt: t.created_at,
       coverUrl: url("listen-bar-covers", t.cover_path) || AIPOGER_BRAND_LOGO,
-      audioUrl: url("listen-bar-audio", t.audio_path),
+      audioUrl: privateAudio.get(t.id) ?? url("listen-bar-audio", t.audio_path),
       external: externalMusicFromRow(t),
       isMusicVideo:
         t.is_music_video ||

@@ -69,7 +69,8 @@ test("battle stage keeps a dramatic desktop VS while hiding it on mobile", () =>
 test("mobile creator entry headers clear the fixed home logo", () => {
   assert.ok(profileSource.includes("pb-40 pt-24"));
   assert.ok(profileSource.includes("sm:pb-28 sm:pt-10"));
-  assert.ok(battleSetupSource.includes("px-6 pb-6 pt-24"));
+  assert.ok(battleSetupSource.includes('BattleLinkSubmission mode="drop"'));
+  assert.ok(fs.readFileSync("src/components/battle-link-submission.tsx", "utf8").includes("pb-20 pt-24 xl:pt-6"));
 });
 
 test("battle desktop CTA stays inside the pool header", () => {

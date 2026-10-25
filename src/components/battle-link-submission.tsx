@@ -1,4 +1,6 @@
 "use client";
+import { uploadVerifiedMp3, discardAudioDraft } from "@/lib/audio-upload-client";
+import { MP3_ACCEPT, MP3_UPLOAD_LABEL, mp3UploadError } from "@/lib/mp3-upload-policy";
 import Image from "next/image";
 import { IMAGE_UPLOAD_ACCEPT, isAllowedImageUploadFile, imageContentType } from "@/lib/image-upload-policy";
 import { qCrashDisplayLang } from "@/lib/q-crash-rules";
@@ -39,7 +41,9 @@ export default function BattleLinkSubmission({ mode }: { mode: "drop" | "q_crash
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const coverPath = useRef<string | null>(null);
   const [previewActive, setPreviewActive] = useState(false);
-  const [url, setUrl] = useState(""); const [preview, setPreview] = useState<Preview | null>(null);
+  const [url, setUrl] = useState("");
+  const uploadedDraft=useRef<string|null>(null);
+  const [sourceTab,setSourceTab] = useState<"link"|"mp3">("link"); const [preview, setPreview] = useState<Preview | null>(null);
   const [title, setTitle] = useState(""); const [creator, setCreator] = useState(""); const [genre, setGenre] = useState("");
   const [lyrics, setLyrics] = useState(""); const [aiTool, setAiTool] = useState("Suno");
   const [playbackMode, setPlaybackMode] = useState<DropPlaybackMode>("60"); const [start, setStart] = useState(0);
@@ -104,6 +108,21 @@ export default function BattleLinkSubmission({ mode }: { mode: "drop" | "q_crash
     } catch (e) { if (sequence === readSequence.current) showError((e as Error).message); }
     finally { if (sequence === readSequence.current) setReading(false); }
   };
+  const readMp3 = async (file:File|null) => {
+    if (!file) return;
+    const sequence=++readSequence.current;setReading(true);setError("");setPreview(null);setPreviewActive(false);setRights(false);
+    try {
+      await authHeaders();
+      const asset=await uploadVerifiedMp3(file);
+      if(sequence!==readSequence.current){void discardAudioDraft(asset.assetId);return;}
+      uploadedDraft.current=asset.assetId;
+      const response=await fetch("/api/battle-links",{method:"POST",headers:await authHeaders(),body:JSON.stringify({action:"preview",url:asset.path})});
+      const payload=await response.json();if(!response.ok)throw new Error(payload.error);
+      if(sequence!==readSequence.current)return;
+      setPreview(payload.preview);setTitle(file.name.replace(/\.mp3$/i,""));setStart(0);
+    } catch(error) {if(sequence===readSequence.current)setError(mp3UploadError(error instanceof Error?error.message:"AUDIO_UPLOAD_FAILED",lang));}
+    finally {if(sequence===readSequence.current)setReading(false);}
+  };
   const clip = preview ? battleClip(q ? "full" : playbackMode, preview.duration, start) : null;
   const submit = async () => {
     if (!preview || !rights || !clip || !contextReady) return;
@@ -131,15 +150,18 @@ export default function BattleLinkSubmission({ mode }: { mode: "drop" | "q_crash
   };
   const input = "mt-2 min-h-12 w-full min-w-0 rounded-xl border border-white/15 bg-black/70 px-3 py-3 text-base text-white focus:border-orange-400 focus:outline-none";
   const panel = "min-w-0 rounded-[1.75rem] border border-white/12 bg-black/65 p-5 md:p-7";
-  return <main className={`min-h-screen bg-[#070809] px-4 pb-20 pt-6 text-white ${q ? "[background-image:radial-gradient(ellipse_at_top,rgba(34,211,238,.1),transparent_60%)]" : "[background-image:radial-gradient(ellipse_at_top,rgba(249,115,22,.12),transparent_60%)]"}`}>
+  return <main className={`min-h-screen bg-[#070809] px-4 pb-20 pt-24 xl:pt-6 text-white ${q ? "[background-image:radial-gradient(ellipse_at_top,rgba(34,211,238,.1),transparent_60%)]" : "[background-image:radial-gradient(ellipse_at_top,rgba(249,115,22,.12),transparent_60%)]"}`}>
     <div className="mx-auto max-w-5xl">
       <Link href={`/battle?lang=${lang}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-zinc-400"><ArrowLeft size={17} />{v("返回鬥場", "Back to Battle", "Battleに戻る", "Battle로 돌아가기")}</Link>
-      <div className="mb-7 mt-4 flex items-start justify-between gap-4"><div><p className={q ? "text-xs tracking-[.25em] text-cyan-300" : "text-xs tracking-[.25em] text-orange-300"}>AIPOGER · {q ? "Q CRASH" : "DROP BATTLE"}</p><h1 className="mt-2 text-3xl font-black md:text-4xl">{q ? join ? v("加入作品 B", "Add Work B") : v("兩首歌，讓聽眾決定", "Two tracks. Let listeners decide.") : targetId ? v("接受挑戰", "Accept the challenge", "挑戦を受ける", "도전 수락") : v("發起 Drop Battle", "Start a Drop Battle", "Drop Battleを始める", "Drop Battle 시작")}</h1><p className="mt-3 text-sm leading-6 text-zinc-400">{v("貼上作品連結，在這裡播放、比較與投票。", "Paste a work link. Listen, compare, and vote here.", "作品リンクを貼って、ここで聴き比べて投票。", "작품 링크를 붙여 넣고 여기서 듣고 비교하고 투표하세요.")}</p></div><Swords className={q ? "shrink-0 text-cyan-400" : "shrink-0 text-orange-400"} size={32} /></div>
+      <div className="mb-7 mt-4 flex items-start justify-between gap-4"><div><p className={q ? "text-xs tracking-[.25em] text-cyan-300" : "text-xs tracking-[.25em] text-orange-300"}>AIPOGER · {q ? "Q CRASH" : "DROP BATTLE"}</p><h1 className="mt-2 text-3xl font-black md:text-4xl">{q ? join ? v("加入作品 B", "Add Work B") : v("兩首歌，讓聽眾決定", "Two tracks. Let listeners decide.") : targetId ? v("接受挑戰", "Accept the challenge", "挑戦を受ける", "도전 수락") : v("發起 Drop Battle", "Start a Drop Battle", "Drop Battleを始める", "Drop Battle 시작")}</h1><p className="mt-3 text-sm leading-6 text-zinc-400">{v("貼上作品連結或上傳 MP3，在這裡播放、比較與投票。", "Paste a work link or upload an MP3. Listen, compare, and vote here.", "作品リンクかMP3で、ここで聴き比べて投票。", "작품 링크나 MP3로 듣고 비교하고 투표하세요.")}</p></div><Swords className={q ? "shrink-0 text-cyan-400" : "shrink-0 text-orange-400"} size={32} /></div>
       <div className="grid items-start gap-5 md:grid-cols-2">
         <section className={panel}>
           <fieldset disabled={busy || Boolean(requestId)} className="min-w-0 space-y-5 disabled:opacity-70">
+            <div role="tablist" aria-label={v("投稿來源","Submission source","投稿元","제출 방식")} className="flex gap-3">{(["link","mp3"] as const).map(kind=><button role="tab" aria-selected={sourceTab===kind} key={kind} type="button" onClick={()=>{if(uploadedDraft.current){void discardAudioDraft(uploadedDraft.current);uploadedDraft.current=null;}readSequence.current++;setSourceTab(kind);setPreview(null);setReading(false);setRights(false);setPreviewActive(false);}} className="min-h-11 rounded-lg border border-white/25 px-4">{kind==="link"?v("貼作品連結","Work link","作品リンク","작품 링크"):"MP3"}</button>)}</div>
+            {sourceTab==="link" ? <>
             <label className="block text-sm font-bold"><span className="flex items-center gap-2"><Link2 size={17} />{v("作品連結", "Work link", "作品リンク", "작품 링크")}</span><input type="url" value={url} onChange={e => { readSequence.current++; setUrl(e.target.value); setPreview(null); setRights(false); setReading(false); setCoverFile(null); coverPath.current = null; }} placeholder="Suno / YouTube / Aipoger" className={input} /><span className="mt-2 block text-xs leading-5 text-zinc-500">{v("Suno、YouTube，或你自己在 Aipoger 投稿的公開單曲。", "Suno, YouTube, or your own public Aipoger single.", "Suno、YouTube、または自分の公開Aipoger楽曲。", "Suno, YouTube 또는 Aipoger에 올린 내 공개 곡.")}</span></label>
             <button type="button" disabled={reading || !url.trim()} onClick={() => void readLink()} className="min-h-11 w-full rounded-xl border border-orange-300/45 px-4 py-3 font-bold text-orange-200 disabled:opacity-40">{reading ? v("讀取中…", "Reading…", "読み込み中…", "불러오는 중…") : v("讀取作品", "Read work", "作品を読み込む", "작품 불러오기")}</button>
+            </> : <label className="block text-sm font-bold">{v("上傳 MP3","Upload MP3","MP3をアップロード","MP3 업로드")}<input type="file" accept={MP3_ACCEPT} disabled={reading} onChange={event=>{void readMp3(event.target.files?.[0]??null);event.target.value="";}} className={input}/><span className="mt-2 block text-xs text-zinc-400">{MP3_UPLOAD_LABEL}{reading?` · ${v("上傳與驗證中…","Uploading and verifying…","アップロード・確認中…","업로드 및 검증 중…")}`:""}</span></label>}
             {preview && <><label className="block text-sm">{v("歌名", "Track title", "曲名", "곡 제목")}<input value={title} onChange={e => setTitle(e.target.value)} maxLength={160} className={input} /></label><label className="block text-sm">{v("創作者／舞台名", "Creator / stage name", "クリエイター名", "창작자 이름")}<input value={creator} onChange={e => setCreator(e.target.value)} maxLength={80} className={input} /></label></>}
             <label className="block text-sm">{v("曲風", "Genre", "ジャンル", "장르")}<select value={genre} disabled={Boolean(target)} onChange={e => setGenre(e.target.value)} className={input}><option value="">{v("選擇曲風", "Choose genre", "ジャンルを選択", "장르 선택")}</option>{MUSIC_GENRE_OPTIONS.map(g => <option key={g.value} value={g.value}>{t(g.labelKey)}</option>)}</select></label>
             {preview?.cover && <Image src={preview.cover} alt="" width={128} height={128} unoptimized className="h-28 w-28 rounded-xl object-cover" />}

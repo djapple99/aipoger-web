@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { OFFICIAL_GATEKEEPER_DROP_IDS } from "@/lib/official-gatekeeper-drops";
-import {
-  AUDIO_UPLOAD_MAX_BYTES_100MB,
-  AUDIO_UPLOAD_MAX_LABEL_100MB,
-} from "@/lib/audio-upload-policy";
 
 const COVER_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 const COVER_UPLOAD_MAX_LABEL = "10MB";
@@ -68,9 +64,7 @@ export async function POST(request: NextRequest) {
   const assetType = body?.assetType === "cover" ? "cover" : "audio";
   const fileName = body?.fileName ?? (assetType === "cover" ? "cover.jpg" : "drop.mp3");
 
-  if (assetType === "audio" && typeof body?.fileSize === "number" && body.fileSize > AUDIO_UPLOAD_MAX_BYTES_100MB) {
-    return jsonError(`官方守門 Drop 音檔上限是 ${AUDIO_UPLOAD_MAX_LABEL_100MB}。`, 413);
-  }
+  if (assetType === "audio") return jsonError("音檔請改用已驗證 MP3 上傳流程（最高320 kbps、30MB）。",410);
   if (assetType === "cover") {
     if (!isAllowedCoverFileName(fileName)) return jsonError(`封面格式不支援。請使用 ${COVER_UPLOAD_FORMAT_LABEL}。`, 400);
     if (typeof body?.fileSize === "number" && body.fileSize > COVER_UPLOAD_MAX_BYTES) {

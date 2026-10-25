@@ -1,3 +1,5 @@
+import { audioAssetId, audioAssetUrl } from "./audio-asset-ref";
+import { readOwnedAudio, verifiedAudioResult } from "./server-audio-uploads";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveLinkPreview } from "@/lib/server-external-music";
 import { creatorAdmin } from "@/lib/server-creator-auth";
@@ -5,7 +7,7 @@ import { readPublicWorkDetail } from "@/lib/server-home-discovery";
 import { publicWorkIdFromLink, type BattleLinkPlayback } from "@/lib/battle-link-rules";
 import { resolveQCrashSunoMediaSource } from "@/lib/q-crash-suno-media";
 
-export type BattleLinkPreview = { audioUrl?: string; title: string; creator: string; cover: string; duration: number; sourceType: "suno" | "youtube" | "work"; sourceUrl: string; workId: string | null; playback: BattleLinkPlayback; token: string };
+export type BattleLinkPreview = { audioUrl?: string; title: string; creator: string; cover: string; duration: number; sourceType: "suno" | "youtube" | "work" | "upload"; sourceUrl: string; workId: string | null; playback: BattleLinkPlayback; token: string };
 const secret = () => process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? "";
 export function signBattlePreview(value: Omit<BattleLinkPreview, "token">, userId: string) {
   if (!secret()) throw new Error("Missing signing key");
@@ -37,6 +39,12 @@ async function sourceDuration(url: string, type: "youtube" | "suno") {
   return duration;
 }
 export async function resolveBattleLink(raw: unknown, userId: string): Promise<BattleLinkPreview> {
+  const uploadedId = audioAssetId(raw);
+  if (uploadedId) {
+    const admin = creatorAdmin(), asset = await readOwnedAudio(admin, uploadedId, userId), media = await verifiedAudioResult(admin,asset);
+    const value: Omit<BattleLinkPreview,"token"> = { audioUrl:media.audioUrl,title:"",creator:"",cover:"",duration:Number(asset.duration_seconds),sourceType:"upload",sourceUrl:audioAssetUrl(asset.id),workId:null,playback:{type:"upload",url:audioAssetUrl(asset.id),start:0,seconds:Number(asset.duration_seconds)} };
+    return {...value,token:signBattlePreview(value,userId)};
+  }
   const workId = publicWorkIdFromLink(raw);
   let resolved: Omit<BattleLinkPreview, "token">;
   if (workId) {
@@ -50,12 +58,16 @@ export async function resolveBattleLink(raw: unknown, userId: string): Promise<B
       const p = await resolveBattleLink(external.url, userId);
       resolved = { ...p, sourceType: "work", sourceUrl: `https://aipoger.com/works/${workId}`, workId, title: detail.work.title, creator: detail.work.artist, cover: detail.work.coverUrl };
     } else {
-      const duration = Number(row.duration_seconds);
-      if (!(duration > 0) || !row.audio_path || /^https?:/i.test(row.audio_path)) throw new Error("SOURCE_DURATION_UNAVAILABLE");
-      const signed = await admin.storage.from("battle-audio").createSignedUrl(row.audio_path, 3600);
-      if (signed.error || !signed.data?.signedUrl) throw new Error("SOURCE_UNAVAILABLE");
-      const url = row.audio_path;
-      resolved = { audioUrl: signed.data.signedUrl, title: detail.work.title, creator: detail.work.artist, cover: detail.work.coverUrl, duration, sourceType: "work", sourceUrl: `https://aipoger.com/works/${workId}`, workId, playback: { type: "upload", url, start: 0, seconds: duration } };
+      const uploaded = audioAssetId(row.audio_path);
+      if (uploaded) {
+        const p = await resolveBattleLink(row.audio_path,userId);
+        resolved = {...p,title:detail.work.title,creator:detail.work.artist,cover:detail.work.coverUrl,sourceType:"work",sourceUrl:`https://aipoger.com/works/${workId}`,workId};
+      } else {
+        const duration = Number(row.duration_seconds);
+        if (!(duration > 0) || !row.audio_path || /^https?:/i.test(row.audio_path)) throw new Error("SOURCE_DURATION_UNAVAILABLE");
+        const url = admin.storage.from("listen-bar-audio").getPublicUrl(row.audio_path).data.publicUrl;
+        resolved = { audioUrl:url,title:detail.work.title,creator:detail.work.artist,cover:detail.work.coverUrl,duration,sourceType:"work",sourceUrl:`https://aipoger.com/works/${workId}`,workId,playback:{type:"upload",url,start:0,seconds:duration} };
+      }
     }
   } else {
     const p = await resolveLinkPreview(raw, userId);

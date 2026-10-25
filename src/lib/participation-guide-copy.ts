@@ -302,5 +302,7 @@ import { albumCopy } from "./album-copy";
 export function participationGuideCopy(surface: GuideSurface, lang: string) {
   const locale = lang === "en" || lang === "ja" || lang === "ko" ? lang : "zh";
   const c = COPY[locale];
-  return { ...c[surface], sections: [...c[surface].sections, ...(surface === "explore" || surface === "mv" ? [{ title: albumCopy(locale).rulesTitle, body: albumCopy(locale).rules }] : [])], trigger: c.trigger, close: c.close, creditTitle: c.creditTitle, creditBody: creditCopy(locale).rules, note: c.note };
+  const uploadNote = {zh:"支援連結或 MP3（最高320 kbps、單檔30MB）；MV只貼連結。",en:"Use a link or an MP3 up to 320 kbps and 30MB. MVs use links only.",ja:"リンクかMP3（320 kbps・30MB以下）で投稿。MVはリンクのみです。",ko:"링크 또는 최대 320 kbps, 30MB의 MP3로 제출하세요. MV는 링크만 받습니다."}[locale];
+  const sections = c[surface].sections.map((section,index)=>({...section,body:section.body+((surface==="explore"&&index===0)||(surface==="battle"&&index===2)||(surface==="mv"&&index===0)?` ${uploadNote}`:"")}));
+  return { ...c[surface], sections: [...sections, ...(surface === "explore" || surface === "mv" ? [{ title: albumCopy(locale).rulesTitle, body: albumCopy(locale).rules }] : [])], trigger: c.trigger, close: c.close, creditTitle: c.creditTitle, creditBody: creditCopy(locale).rules, note: c.note };
 }

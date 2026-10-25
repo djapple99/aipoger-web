@@ -8,6 +8,7 @@ import {
 } from "@/lib/q-crash-rules";
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
 import { isValidStorageObjectKey } from "@/lib/storage-path";
+import { audioAssetId } from "@/lib/audio-asset-ref";
 import { resolveQCrashSunoMediaSource } from "@/lib/q-crash-suno-media";
 
 type RouteProps = { params: Promise<{ id: string }> };
@@ -114,11 +115,11 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   if (!founderQueue) return jsonError("作品 A 已無法讀取。", 404);
   if (!challengerQueue || challengerQueue.user_id !== user.id) return jsonError("作品 B 的歌曲不存在。", 404);
   for (const queue of [founderQueue, challengerQueue]) {
-    if (queue.source_type === "youtube" || queue.source_type === "work") {
+    if (queue.source_type === "youtube" || queue.source_type === "work" || audioAssetId(queue.source_url)) {
       try { await resolveBattleLink(queue.source_url, queue.user_id); } catch { return jsonError("作品連結目前無法公開播放。", 422); }
     }
   }
-  if (challengerQueue.submission_mode === "drop") return jsonError("請使用 Q Crash 的連結投稿。", 409);
+  if (challengerQueue.submission_mode === "drop") return jsonError("請使用 Q Crash 的投稿入口。", 409);
   if (founderQueue.id === challengerQueue.id) return jsonError("作品 A、B 必須使用兩首不同的歌曲。");
   const challengerSourceType = qCrashSourceType(challengerQueue.source_type) || (challengerQueue.audio_path ? "upload" : null);
   const challengerSourceUrl = challengerQueue.source_url?.trim() || (challengerSourceType === "upload" ? challengerQueue.audio_path : null);
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
   if (challengerSourceType === "suno" && !challengerSunoPlaybackUrl) {
     return jsonError("作品 B 的 Suno 連結目前沒有可用的公開播放來源，請確認歌曲仍可公開播放。", 422);
   }
-  if (challengerSourceType === "upload" && (!challengerQueue.audio_path || !isValidStorageObjectKey(challengerQueue.audio_path) || challengerSourceUrl !== challengerQueue.audio_path)) {
+  if (challengerSourceType === "upload" && !audioAssetId(challengerSourceUrl) && (!challengerQueue.audio_path || !isValidStorageObjectKey(challengerQueue.audio_path) || challengerSourceUrl !== challengerQueue.audio_path)) {
     return jsonError("作品 B 的上傳檔案資料不完整，請重新提交。", 422);
   }
   if (challengerQueue.match_group_id || !["searching", "waiting_challenge"].includes(challengerQueue.status)) {

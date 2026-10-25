@@ -11,6 +11,7 @@ import {
 import { ACTIVE_DROP_QUEUE_STATUSES, dropBattleRoleLockMessage } from "@/lib/battle-pool-rules";
 import { qCrashCatalogResponse } from "@/lib/server-q-crash-catalog";
 import { isValidStorageObjectKey } from "@/lib/storage-path";
+import { audioAssetId } from "@/lib/audio-asset-ref";
 import { resolveQCrashSunoMediaSource } from "@/lib/q-crash-suno-media";
 
 type QueueRow = {
@@ -89,10 +90,10 @@ export async function POST(request: NextRequest) {
     .maybeSingle<QueueRow>();
   if (queueError) return jsonError(queueError.message, 500);
   if (!queue?.id || queue.user_id !== user.id) return jsonError("作品 A 的歌曲不存在。", 404);
-  if (queue.submission_mode === "drop") return jsonError("請使用 Q Crash 的連結投稿。", 409);
+  if (queue.submission_mode === "drop") return jsonError("請使用 Q Crash 的投稿入口。", 409);
   const sourceType = qCrashSourceType(queue.source_type);
   const sourceUrl = queue.source_url?.trim() || null;
-  if (sourceType === "youtube" || sourceType === "work") {
+  if (sourceType === "youtube" || sourceType === "work" || audioAssetId(sourceUrl)) {
     try { await resolveBattleLink(sourceUrl, user.id); } catch { return jsonError("作品連結目前無法公開播放。", 422); }
   }
   if (!sourceType) return jsonError("歌曲來源資料不完整，請重新提交。", 422);
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
   if (sourceType === "suno" && !(await resolveQCrashSunoMediaSource(sourceUrl))) {
     return jsonError("這個 Suno 連結目前沒有可用的公開播放來源，請確認歌曲仍可公開播放。", 422);
   }
-  if (sourceType === "upload" && (!queue.audio_path || !isValidStorageObjectKey(queue.audio_path) || sourceUrl !== queue.audio_path)) {
+  if (sourceType === "upload" && !audioAssetId(sourceUrl) && (!queue.audio_path || !isValidStorageObjectKey(queue.audio_path) || sourceUrl !== queue.audio_path)) {
     return jsonError("上傳歌曲的來源檔案資料不完整，請重新提交。", 422);
   }
   if (queue.match_group_id || !["searching", "waiting_challenge"].includes(queue.status)) {

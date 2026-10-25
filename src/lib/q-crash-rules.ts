@@ -1,3 +1,4 @@
+import { MP3_ACCEPT, isMp3Upload } from "./mp3-upload-policy.ts";
 import { pickDropBattleWinnerForRules } from "./ai-music-challenge-rules.ts";
 
 export const Q_CRASH_BATTLE_TYPE = "q_crash";
@@ -6,8 +7,7 @@ export const Q_CRASH_INVITE_HOURS = 24;
 export const Q_CRASH_DURATION_PRESETS = [30, 120, 720, 1440] as const;
 export const Q_CRASH_MIN_DURATION_MINUTES = 30;
 export const Q_CRASH_MAX_DURATION_MINUTES = 3 * 24 * 60;
-export const Q_CRASH_AUDIO_UPLOAD_ACCEPT =
-  "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/wave,audio/vnd.wave,.mp3,.wav,.wave";
+export const Q_CRASH_AUDIO_UPLOAD_ACCEPT = MP3_ACCEPT;
 export const Q_CRASH_FEEDBACK_KEYS = ["rhyme", "impact", "melody", "emotion", "structure"] as const;
 export const Q_CRASH_COMMENT_MAX_LENGTH = 120;
 
@@ -77,19 +77,7 @@ export function isValidQCrashSunoUrl(value: unknown): value is string {
   return normalizeQCrashSunoUrl(value) !== null;
 }
 
-export function isValidQCrashAudioFile(file: Pick<File, "name" | "type">): boolean {
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  const isAllowedExtension = extension === "mp3" || extension === "wav" || extension === "wave";
-  const isAllowedMime = [
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/wave",
-    "audio/vnd.wave",
-  ].includes(file.type);
-  return isAllowedExtension || isAllowedMime;
-}
+export const isValidQCrashAudioFile = isMp3Upload;
 
 export function isQCrashOfficialAudienceCount(value: unknown): boolean {
   const count = Number(value);

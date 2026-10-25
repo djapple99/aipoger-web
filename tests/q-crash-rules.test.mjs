@@ -38,12 +38,12 @@ test("Q Crash accepts fixed windows and custom durations up to three days", () =
   assert.equal(qCrashDurationMinutes(90.5), null);
 });
 
-test("Q Crash accepts full-song Suno links and MP3/WAV uploads", () => {
+test("Q Crash accepts full-song Suno links and MP3 uploads, rejecting WAV and OGG", () => {
   assert.equal(isValidQCrashSunoUrl("https://suno.com/song/example"), true);
   assert.equal(isValidQCrashSunoUrl("http://suno.com/song/example"), false);
   assert.equal(isValidQCrashSunoUrl("https://example.com/song/example"), false);
   assert.equal(isValidQCrashAudioFile({ name: "song.mp3", type: "audio/mpeg" }), true);
-  assert.equal(isValidQCrashAudioFile({ name: "song.wav", type: "audio/wav" }), true);
+  assert.equal(isValidQCrashAudioFile({ name: "song.wav", type: "audio/wav" }), false);
   assert.equal(isValidQCrashAudioFile({ name: "song.ogg", type: "audio/ogg" }), false);
 });
 

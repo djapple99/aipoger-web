@@ -31,8 +31,8 @@ test('battle link SQL: immutable modes, matching, retries, old media, roles and 
       grant usage,select on all sequences in schema public to service_role;`);
     await db.exec(migration);
     await db.exec(`grant all on all tables in schema public to service_role; set role service_role; select set_config('request.jwt.claim.role','service_role',false);`);
-    const create = async (actor,id,mode='60',targetId=null,duration=180,start=10,battleMode='drop',joinCardId=null) => {
-      const entry = { mode:battleMode,dropMode:battleMode==='drop'?mode:null,targetId,joinCardId,title:`work ${id}`,creator:`artist ${actor}`,genre:'rock',sourceType:'youtube',sourceUrl:'https://www.youtube.com/watch?v=5n-CNfo63Ng',duration,playback:{type:'youtube',url:'https://www.youtube.com/watch?v=5n-CNfo63Ng',start:mode==='full'||battleMode==='q_crash'?0:start,seconds:mode==='full'||battleMode==='q_crash'?duration:mode==='legacy45'?45:Number(mode)}};
+    const create = async (actor,id,mode='60',targetId=null,duration=180,start=10,battleMode='drop',joinCardId=null,audioId=null) => {
+      const entry = { mode:battleMode,dropMode:battleMode==='drop'?mode:null,targetId,joinCardId,title:`work ${id}`,creator:`artist ${actor}`,genre:'rock',sourceType:audioId?'upload':'youtube',sourceUrl:audioId?`https://aipoger.com/api/audio-assets/${audioId}`:'https://www.youtube.com/watch?v=5n-CNfo63Ng',duration,playback:{type:audioId?'upload':'youtube',url:audioId?`https://aipoger.com/api/audio-assets/${audioId}`:'https://www.youtube.com/watch?v=5n-CNfo63Ng',start:mode==='full'||battleMode==='q_crash'?0:start,seconds:mode==='full'||battleMode==='q_crash'?duration:mode==='legacy45'?45:Number(mode)}};
       return db.query('select create_battle_link_entry($1,$2,$3) as id',[uid(actor),uid(id),JSON.stringify(entry)]);
     };
     await create(1,1); await create(1,1); // same ID never inserts twice
@@ -71,5 +71,31 @@ test('battle link SQL: immutable modes, matching, retries, old media, roles and 
     await db.exec(`reset role; insert into q_crash_cards values('${uid(88)}','${uid(8)}','${uid(8)}','q_crash_pending_invite',null,now()+interval '1 hour'); set role service_role; select set_config('request.jwt.claim.role','service_role',false);`);
     await create(8,9,'full',null,220,0,'q_crash',uid(88)); // own second version
     assert.equal((await db.query(`select count(*)::int n from battle_queue where user_id='${uid(8)}'`)).rows[0].n,2);
+    // Run the real link RPC + playback snapshot with the new verified MP3 schema too.
+    await db.exec(`reset role;
+      create schema storage;
+      create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+      create table storage.objects(id uuid primary key,bucket_id text,name text,metadata jsonb);
+      create function storage.extension(text) returns text language sql as $$select reverse(split_part(reverse($1),'.',1))$$;
+      alter table listen_bar_tracks add column created_by uuid,add column audio_path text,add column audio_sha256 text,add column duration_seconds integer;
+      create table official_gatekeeper_drops(id text primary key,audio_path text,updated_by uuid,active boolean);
+      insert into auth.users values('${uid(11)}'),('${uid(12)}'),('${uid(13)}'),('${uid(14)}');`);
+    await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261025063109_verified_mp3_submissions.sql',import.meta.url),'utf8'));
+    for(const [actor,seconds] of [[11,130],[12,180],[13,200],[14,220]])await db.query(`insert into verified_audio_assets(id,user_id,sha256,expected_size,storage_path,status,duration_seconds,max_kbps,verified_at) values($1,$2,$3,1000,$4,'verified',$5,320,now())`,[uid(actor+100),uid(actor),String(actor).repeat(32),actor+'.mp3',seconds]);
+    await db.exec(`set role service_role;select set_config('request.jwt.claim.role','service_role',false);`);
+    await create(11,11,'90',null,130,10,'drop',null,uid(111));
+    await create(12,12,'90',uid(11),180,20,'drop',null,uid(112));
+    await create(13,13,'full',null,200,0,'q_crash',null,uid(113));
+    await db.exec(`reset role;insert into q_crash_cards values('${uid(89)}','${uid(13)}','${uid(13)}','q_crash_pending_invite',null,now()+interval '1 hour');set role service_role;select set_config('request.jwt.claim.role','service_role',false);`);
+    await create(14,14,'full',null,220,0,'q_crash',uid(89),uid(114));
+    const mp3Q=(await db.query(`insert into battles(queue_a_id,queue_b_id,fighter_a_user_id,fighter_b_user_id,fighter_a_name,fighter_b_name,song_a_name,song_b_name,genre,battle_type,status) values('${uid(13)}','${uid(14)}','${uid(13)}','${uid(14)}','A','B','one','two','rock','q_crash','q_crash_voting') returning playback_a,playback_b`)).rows[0];
+    assert.equal(mp3Q.playback_a.url,`https://aipoger.com/api/audio-assets/${uid(113)}`);assert.equal(mp3Q.playback_a.seconds,200);assert.equal(mp3Q.playback_b.seconds,220);
+    assert.equal((await db.query(`select verified_audio_id from battle_queue where id='${uid(14)}'`)).rows[0].verified_audio_id,uid(114));
+    await db.exec(`reset role;insert into user_profiles(id) values('${uid(11)}'),('${uid(12)}');set role authenticated;select set_config('request.jwt.claim.role','authenticated',false);select set_config('request.jwt.claim.sub','${uid(12)}',false);`);
+    await db.query('select attempt_matchmaking($1,$2)',[uid(12),uid(11)]);
+    await db.exec('reset role');
+    const mp3Drop=(await db.query(`select playback_a,playback_b from battles where queue_a_id='${uid(12)}'`)).rows[0];
+    assert.equal(mp3Drop.playback_a.seconds,90);assert.equal(mp3Drop.playback_b.seconds,90);assert.equal(mp3Drop.playback_a.start,20);
+
   } finally { await db.close(); }
 });

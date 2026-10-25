@@ -1,5 +1,7 @@
 "use client";
+import {audioAssetId} from "@/lib/audio-asset-ref";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { inspectMp3File, mp3UploadError } from "@/lib/mp3-upload-policy";
 import { musicPlayer, getMusicPlayerState } from "@/lib/music-player-store";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -139,18 +141,20 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     const selection = ++publicAudioSelectionRef.current;
     if (!isAllowedListenBarAudioFile(file)) {
       setPublicAudioFile(null);
-      setPublicUploadError(isZh ? "請使用 MP3、M4A、AAC 或 OGG 音檔。" : "Use MP3, M4A, AAC, or OGG audio.");
+      setPublicUploadError(isZh ? "請使用 MP3（最高 320 kbps、30MB） 音檔。" : "Use MP3 (up to 320 kbps, 30MB) audio.");
       return;
     }
     if (file.size > LISTEN_BAR_AUDIO_UPLOAD_MAX_BYTES) {
       setPublicAudioFile(null);
       setPublicUploadError(
         isZh
-          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧新投稿上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，請改用 MP3 / M4A / AAC / OGG 壓縮格式。`
-          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. New Bar Heartbreak submissions are capped at ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; use MP3, M4A, AAC, or OGG.`,
+          ? `音檔太大：${listenBarAudioSizeLabel(file)}。傷心酒吧新投稿上限是 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，請改用 MP3 · ≤320 kbps 壓縮格式。`
+          : `Audio file too large: ${listenBarAudioSizeLabel(file)}. New Bar Heartbreak submissions are capped at ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}; use MP3 (up to 320 kbps, 30MB).`,
       );
       return;
     }
+    try { await inspectMp3File(file); } catch (error) { if (selection === publicAudioSelectionRef.current) { setPublicAudioFile(null); setPublicUploadError(mp3UploadError(error instanceof Error ? error.message : 'INVALID_MP3',lang)); } return; }
+    if (selection !== publicAudioSelectionRef.current) return;
     setPublicAudioFile(file);
 
     const metadata = await parseAudioMetadata(file).catch(() => null);
@@ -210,7 +214,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
   const uploadPublicAudioAsset = async (file: File) => {
     if (!userId) throw new Error(isZh ? "請先登入再投稿。" : "Sign in before submitting.");
     const path = `${userId}/community/${Date.now()}-${crypto.randomUUID()}-${safeFileName(file.name)}`;
-    await uploadListenBarAudioFile(
+    const verifiedPath = await uploadListenBarAudioFile(
       LISTEN_BAR_AUDIO_BUCKET,
       path,
       file,
@@ -219,7 +223,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
         setPublicUploadMessage(isZh ? `音檔上傳中 ${percent}%` : `Uploading audio ${percent}%`);
       },
     );
-    return path;
+    return verifiedPath;
   };
 
   const cleanupPublicUploadAssets = async (paths: { audioPath: string | null; coverPath: string | null }) => {
@@ -244,7 +248,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
     }
 
     const cleanupTasks: Promise<unknown>[] = [];
-    if (paths.audioPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_AUDIO_BUCKET).remove([paths.audioPath]));
+    if (paths.audioPath && !audioAssetId(paths.audioPath)) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_AUDIO_BUCKET).remove([paths.audioPath]));
     if (paths.coverPath) cleanupTasks.push(supabase.storage.from(LISTEN_BAR_COVER_BUCKET).remove([paths.coverPath]));
     const results = await Promise.allSettled(cleanupTasks);
     results.forEach((result) => {
@@ -410,6 +414,7 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
             ? isZh
               ? `音檔被雲端儲存限制擋下。請確認檔案低於 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}，若仍失敗請稍後再試。`
               : `The audio was blocked by cloud storage limits. Keep it under ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL} and try again.`
+          : /^(MP3_|INVALID_MP3|AUDIO_)/.test(String((submitError as {message?:string})?.message ?? "")) ? mp3UploadError(String((submitError as {message?:string}).message),lang)
           : isZh
             ? `投稿失敗：${String((submitError as { message?: string })?.message ?? submitError)}。`
             : `Submission failed: ${String((submitError as { message?: string })?.message ?? submitError)}.`,
@@ -447,10 +452,10 @@ export default function ProfileMusicUpload({ userId, creatorDefaultName, onSubmi
                       <span className="mt-1 block truncate text-lg font-black leading-tight text-white">
                         {publicAudioFile?.name ?? barText(
                           lang,
-                          `音檔 MP3 / M4A / AAC / OGG，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
-                          `MP3 / M4A / AAC / OGG, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
-                          `MP3 / M4A / AAC / OGG、最大 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
-                          `MP3 / M4A / AAC / OGG, 최대 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `音檔 MP3 · ≤320 kbps，上限 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 · ≤320 kbps, max ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 · ≤320 kbps、最大 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
+                          `MP3 · ≤320 kbps, 최대 ${LISTEN_BAR_AUDIO_UPLOAD_MAX_LABEL}`,
                         )}
                       </span>
                       <span className="mt-1 block text-xs text-zinc-400">
