@@ -16,7 +16,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  let cursor=0,tree,dirty=true; const states=[],effects=[],memos=[],starts=[]; let toggles=0,fail=unavailable;
  const react={
   useState(initial){const i=cursor++; if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},
-  useEffect(fn,deps){const i=cursor++;if(!effects[i])effects[i]={deps,cleanup:fn()};},
+  useEffect(fn,deps){const i=cursor++;if(!effects[i]||deps?.some((d,n)=>!Object.is(d,effects[i].deps?.[n]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()};}},
   useCallback(fn,deps){const i=cursor++;return (memos[i]??={fn,deps}).fn;},
  };
  const player={playing:true,session:null}; const window=new EventTarget();const document=new EventTarget();document.hidden=false;
@@ -40,7 +40,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}
  async function flush(){for(let i=0;i<5;i++){await new Promise(setImmediate);if(dirty)render();}}
  render(); await flush(); t.after(()=>effects.forEach(e=>e?.cleanup?.()));
- return {nodes:()=>nodes(tree),text:()=>text(tree),starts,toggles:()=>toggles,flush,setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
+ return {nodes:()=>nodes(tree),text:()=>text(tree),starts,toggles:()=>toggles,flush,setAvailable(){fail=false;},async refresh(next){payload=next;window.dispatchEvent(new Event('aipoger:music-heart'));await flush();},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
 }
 for(const lang of ['zh','en','ja','ko']) test(`homepage preserves real routes and localized discovery (${lang})`,async t=>{
  const ui=await mount(t,lang);const copy=homeCopy(lang);const hrefs=ui.nodes().filter(x=>x.type==='link').map(x=>x.props.href);
@@ -61,4 +61,27 @@ test('unavailable discovery offers retry without fictional music or support; ret
 test('empty discovery keeps the listening entrances and does not label a community winner',async t=>{
  const ui=await mount(t,'zh',{featureKind:'empty',featured:[],singles:[]});assert.ok(ui.text().includes(homeCopy('zh').empty));assert.equal(ui.text().includes(homeCopy('zh').community),false);
  assert.ok(ui.nodes().some(x=>x.type==='link'&&x.props.href==='/listen-bar?lang=zh'));
+});
+
+test('link-only songs open the existing player and review dialog instead of an empty audio queue',async t=>{
+ const externalMedia={provider:'suno',mediaId:'f8c26428-aa5e-43eb-a223-8315e07e8f69',url:'https://suno.com/song/f8c26428-aa5e-43eb-a223-8315e07e8f69'};
+ const song={...work,id:'link-song',title:'Fresh linked song',videoId:null,audioUrl:'',externalMedia};
+ const ui=await mount(t,'zh',{featureKind:'new',featured:[work],singles:[song]});
+ await ui.button('播放 · Fresh linked song').onClick();await ui.flush();
+ assert.equal(ui.starts.length,0);assert.equal(ui.toggles(),1);
+ const feedback=ui.nodes().find(n=>n.type==='feedback');
+ assert.equal(feedback.props.work.id,'link-song');assert.deepEqual(feedback.props.externalMedia,externalMedia);
+});
+
+test('a discovery refresh cannot replace a playing MV or an open review',async t=>{
+ const ui=await mount(t);
+ ui.button('觀看 MV').onClick();await ui.flush();
+ const before=ui.nodes().find(n=>n.type==='iframe').props.src;
+ ui.button('評論與支持').onClick();await ui.flush();
+ const replacement={...work,id:'new-mv',title:'New arrival',videoId:'abcdefghijk'};
+ await ui.refresh({rotationKey:'next',featureKind:'new',featured:[replacement],singles:[]});
+ assert.equal(ui.nodes().find(n=>n.type==='iframe').props.src,before);
+ assert.equal(ui.nodes().find(n=>n.type==='feedback').props.work.id,work.id);
+ ui.button('收起影片').onClick();await ui.flush();
+ assert.ok(ui.text().includes('New arrival'));
 });

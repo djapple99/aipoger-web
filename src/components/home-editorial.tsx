@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import type { HomeDiscovery, HomeWork } from "@/lib/home-discovery";
+import type { ExternalMusic } from "@/lib/external-music";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import dynamic from "next/dynamic";
 const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
@@ -26,15 +27,17 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
   const [loading, setLoading] = useState(!initialData);
   const [failed, setFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const [playingWork, setPlayingWork] = useState<HomeWork | null>(null);
   const [playError, setPlayError] = useState(false);
-  const [feedbackWork, setFeedbackWork] = useState<HomeWork | null>(null);
+  const [feedback, setFeedback] = useState<{ work: HomeWork; externalMedia?: ExternalMusic } | null>(null);
   const player = useMusicPlayer();
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
   const workHref = (work: HomeWork) => withLang(`/works/${encodeURIComponent(work.id)}`);
-  const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
+  const selected = playingWork ?? data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
-  const videoOpen = Boolean(selected?.videoId && playingVideo === selected.videoId);
+  const videoOpen = Boolean(playingWork?.videoId);
+
+  useEffect(() => { setSelectedId(null); }, [data?.rotationKey]);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -62,17 +65,22 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
   const watch = () => {
     if (!selected?.videoId) return;
     if (player.playing) musicPlayer?.toggle();
-    setPlayingVideo(selected.videoId);
+    setPlayingWork(selected);
   };
   const moveFeatured = (direction: number) => {
     if (!data?.featured.length) return;
-    setPlayingVideo(null);
+    setPlayingWork(null);
     setSelectedId(data.featured[(selectedIndex + direction + data.featured.length) % data.featured.length].id);
   };
   const playSingle = async (work: HomeWork) => {
-    setPlayingVideo(null); setPlayError(false);
+    setPlayingWork(null); setPlayError(false);
+    if (!work.audioUrl && work.externalMedia) {
+      if (player.playing) musicPlayer?.toggle();
+      setFeedback({ work, externalMedia: work.externalMedia });
+      return;
+    }
     if (player.session?.queue[player.session.index]?.id === `bar:${work.id}`) { musicPlayer?.toggle(); return; }
-    const queue = (data?.singles ?? []).map(song => ({ id: `bar:${song.id}`, heartTrackId: song.id,
+    const queue = (data?.singles ?? []).filter(song => song.audioUrl).map(song => ({ id: `bar:${song.id}`, heartTrackId: song.id,
       title: song.title, artist: song.artist, audioUrl: song.audioUrl, coverUrl: song.coverUrl || AIPOGER_BRAND_LOGO,
       lyrics: song.lyrics, genre: song.genre }));
     const success = await musicPlayer?.start(queue, queue.findIndex(song => song.heartTrackId === work.id), copy.explore,
@@ -98,7 +106,7 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
               {videoOpen ? <>
                 <iframe src={`https://www.youtube-nocookie.com/embed/${selected.videoId}?autoplay=1&rel=0`}
                   title={selected.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-                <button className={styles.closeVideo} onClick={() => setPlayingVideo(null)} aria-label={copy.closeVideo}><X size={19} /></button>
+                <button className={styles.closeVideo} onClick={() => setPlayingWork(null)} aria-label={copy.closeVideo}><X size={19} /></button>
               </> : <button className={styles.poster} onClick={watch} aria-label={`${copy.watch} · ${selected.title}`}>
                 <WorkImage work={selected} video priority />
                 <span className={styles.posterPlay}><Play size={27} fill="currentColor" /></span>
@@ -106,27 +114,26 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
               </button>}
             </div>
             <div className={styles.workInfo}>
-              <p className={styles.workLabel}>{data?.featureKind === "community" ? copy.community : copy.newWork}</p>
+              <p className={styles.workLabel}>{selected.discoveryReason === "community" || (!selected.discoveryReason && data?.featureKind === "community") ? copy.community : selected.discoveryReason === "discovery" ? copy.rotatingWork : copy.newWork}</p>
               <h2 title={selected.title}><Link prefetch={false} href={workHref(selected)}>{selected.title}</Link></h2>
               <p className={styles.artist}>{selected.artist}</p>
-              {data?.featureKind === "community" ? <div className={styles.support}>
+              {selected.supporterCount > 0 ? <div className={styles.support}>
                 <Heart size={18} /> <span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
-                {data.featured.length > 1 ? <span className={styles.tieLabel}>{copy.tied}</span> : null}
               </div> : <p className={styles.supportBuilding}>{copy.noSupport}</p>}
               <div className={styles.quote}>
                 <p>{selected.comment ? copy.comments : copy.creatorSays}</p>
                 <blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
                 {selected.comment ? <cite>{selected.comment.name}</cite> : null}
               </div>
-              <button className={styles.primary} onClick={videoOpen ? () => setPlayingVideo(null) : watch}>
+              <button className={styles.primary} onClick={videoOpen ? () => setPlayingWork(null) : watch}>
                 {videoOpen ? <X size={21} /> : <Play size={21} fill="currentColor" />}{videoOpen ? copy.closeVideo : copy.watch}
               </button>
               <div className={styles.workLinks}>
-                <button onClick={() => setFeedbackWork(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
+                <button onClick={() => setFeedback({ work: selected })}>{copy.discuss}<ArrowRight size={17} /></button>
                 <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a>
               </div>
               {(data?.featured.length ?? 0) > 1 ? <div className={styles.featureControls}>
-                <span>{selectedIndex + 1} / {data!.featured.length}</span>
+                <span>{Math.max(0, selectedIndex) + 1} / {data!.featured.length}</span>
                 <button onClick={() => moveFeatured(-1)} aria-label={copy.previous}><ChevronLeft size={20} /></button>
                 <button onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight size={20} /></button>
               </div> : null}
@@ -181,6 +188,6 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
         </div>
       </footer>
     </main>
-    {feedbackWork ? <HomeWorkFeedback key={feedbackWork.id} work={feedbackWork} onClose={() => setFeedbackWork(null)} onChange={() => void load()} /> : null}
+    {feedback ? <HomeWorkFeedback key={feedback.work.id} work={feedback.work} externalMedia={feedback.externalMedia} onClose={() => setFeedback(null)} onChange={() => void load()} /> : null}
   </div>;
 }

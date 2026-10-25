@@ -1,4 +1,4 @@
-import { externalMusicFromRow } from "./external-music.ts";
+import { externalMusicFromRow, type ExternalMusic } from "./external-music.ts";
 import { isPublicMusicWork } from "./listen-bar-airplay.ts";
 import { isCurrentMusicGenre } from "./music-genres.ts";
 import { isInMusicPool } from "./music-pool.ts";
@@ -10,10 +10,13 @@ export type HomeWork = {
   youtubeUrl: string | null; supporterCount: number; publishedAt: string;
   comment?: { name: string; text: string };
   ratingAverage?: number | null; ratingCount?: number; ratingTotal?: number;
+  externalMedia?: ExternalMusic;
+  discoveryReason?: "new" | "community" | "discovery";
 };
 export type HomeDiscovery = {
   week: { startDate: string; endDate: string };
   featured: HomeWork[]; featureKind: "community" | "new" | "empty"; singles: HomeWork[];
+  rotationKey?: string;
 };
 export type HomeTrackRow = {
   work_kind?: "single" | "album";
@@ -88,22 +91,84 @@ export function buildPublicHomeWorks(rows: HomeTrackRow[], hearts: HomeHeartRow[
     const videoId = external ? (row.is_music_video && external.provider === "youtube" ? external.mediaId : homeYouTubeId(row.youtube_url)) : homeYouTubeId(row.youtube_url);
     return [{ id: row.id, ...(row.work_kind === "album" ? { workKind: "album" as const } : {}), title: row.title, artist: row.artist, genre: row.genre ?? "",
       description: row.description?.trim() ?? "", coverUrl: mediaUrl("listen-bar-covers", row.cover_path),
-      audioUrl, lyrics: row.lyrics ?? "", videoId,
+      audioUrl, ...(external ? { externalMedia: external } : {}), lyrics: row.lyrics ?? "", videoId,
       youtubeUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : null,
       supporterCount: counts.get(row.id) ?? 0, publishedAt: row.created_at ?? "" }];
   }).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
   return works;
 }
 
+/** Weekly support remains a count, independent of the homepage's rotating exposure. */
+export function weeklyMvPicks(works: HomeWork[]) {
+  const mvs = works.filter(work => work.videoId);
+  const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
+  const featured = topSupport > 0 ? mvs.filter(work => work.supporterCount === topSupport) : mvs.slice(0, 1);
+  return { featured, featureKind: topSupport > 0 ? "community" as const : featured.length ? "new" as const : "empty" as const };
+}
+
+const HOME_ROTATION_MS = 4 * 3_600_000;
+const HOME_RECENT_MS = 30 * DAY;
+
 export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): HomeDiscovery {
   const week = taipeiHomeWeek(now);
   const works = buildPublicHomeWorks(rows, hearts, mediaUrl, now).filter(work => work.workKind !== "album");
+  const slot = Math.floor((now.getTime() + 8 * 3_600_000) / HOME_ROTATION_MS);
+  const rotate = (items: HomeWork[]) => {
+    const offset = items.length ? slot % items.length : 0;
+    return [...items.slice(offset), ...items.slice(0, offset)];
+  };
+  const recent = (items: HomeWork[]) => items.filter(work => {
+    const age = now.getTime() - Date.parse(work.publishedAt);
+    return age >= 0 && age < HOME_RECENT_MS;
+  });
+  // Identity is used only for exposure diversity; member IDs never leave the server.
+  const authors = new Map(rows.map(row => [row.id, row.created_by?.trim() || row.artist.normalize("NFKC").trim().toLocaleLowerCase()]));
+  const rotationCandidates = (items: HomeWork[]) => {
+    const byCreator = new Map<string, HomeWork[]>();
+    for (const work of items) {
+      const creator = authors.get(work.id) ?? work.id;
+      const group = byCreator.get(creator) ?? [];
+      group.push(work); byCreator.set(creator, group);
+    }
+    // Rotate creators first: a large batch from one author cannot stall everyone else.
+    const representatives = [...byCreator.values()].map(group => group[slot % group.length]);
+    return [...rotate(representatives), ...rotate(items)];
+  };
+  const addDiverse = (selected: HomeWork[], candidates: HomeWork[], limit: number) => {
+    for (const diverseOnly of [true, false]) for (const work of candidates) {
+      if (selected.length >= limit) return;
+      if (selected.some(item => item.id === work.id)) continue;
+      if (diverseOnly && selected.some(item => authors.get(item.id) === authors.get(work.id))) continue;
+      selected.push(work);
+    }
+  };
   const mvs = works.filter(work => work.videoId);
-  const topSupport = Math.max(0, ...mvs.map(work => work.supporterCount));
-  // A tie is shared exposure, never a fabricated sole winner or personal endorsement.
-  const featured = topSupport > 0 ? mvs.filter(work => work.supporterCount === topSupport) : mvs.slice(0, 1);
-  return { week, featured, featureKind: topSupport > 0 ? "community" : featured.length ? "new" : "empty", singles: excludeFeaturedWorks(works, featured).filter(work => work.audioUrl && isInMusicPool(work.publishedAt, now.getTime())).slice(0, 3) };
+  const recentMvs = recent(mvs);
+  const mvPool = recentMvs.length ? recentMvs : mvs;
+  const featured: HomeWork[] = [];
+  // A new upload leads immediately for four hours, then joins the regular rotation.
+  const newest = mvPool[0];
+  const age = newest ? now.getTime() - Date.parse(newest.publishedAt) : Infinity;
+  const lead = age >= 0 && age < HOME_ROTATION_MS ? newest : rotationCandidates(mvPool)[0];
+  if (lead) featured.push(lead);
+  if (newest && newest.id !== lead?.id) addDiverse(featured, [newest], 2);
+  addDiverse(featured, rotationCandidates(mvPool), 3);
+  const freshIds = new Set(recentMvs.map(work => work.id));
+  const labelled: HomeWork[] = featured.map(work => ({ ...work, discoveryReason: freshIds.has(work.id) ? "new" as const : "discovery" as const }));
+  const weekly = weeklyMvPicks(works);
+  if (weekly.featureKind === "community") {
+    const community: HomeWork[] = [...labelled];
+    addDiverse(community, rotationCandidates(weekly.featured), labelled.length + 1);
+    for (const work of community.slice(labelled.length)) labelled.push({ ...work, discoveryReason: "community" });
+  }
+  const candidates = excludeFeaturedWorks(works, labelled)
+    .filter(work => (work.audioUrl || work.externalMedia) && isInMusicPool(work.publishedAt, now.getTime()));
+  const singles: HomeWork[] = candidates.slice(0, 1);
+  const recentSingles = recent(candidates);
+  addDiverse(singles, rotationCandidates(recentSingles.length ? recentSingles : candidates), 3);
+  return { week, rotationKey: String(slot), featured: labelled,
+    featureKind: labelled.some(work => work.discoveryReason === "community") ? "community" : labelled.length ? "new" : "empty", singles };
 }
 
 type PageResult<T> = { data: T[] | null; error: { message: string } | null };

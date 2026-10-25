@@ -1,4 +1,4 @@
-import { buildHomeDiscovery, buildPublicHomeWorks, type HomeDiscovery, type HomeHeartRow, type HomeTrackRow, type HomeWork } from "./home-discovery.ts";
+import { buildPublicHomeWorks, taipeiHomeWeek, weeklyMvPicks, type HomeDiscovery, type HomeHeartRow, type HomeTrackRow, type HomeWork } from "./home-discovery.ts";
 
 export type MvChannel = HomeWork & { channelUrl: string };
 export type MvWork = HomeWork & { favoriteCount?: number | null };
@@ -19,10 +19,10 @@ export function mvChannelUrl(value: string | null | undefined) {
 
 export function buildMvDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   mediaUrl: (bucket: string, path: string | null | undefined) => string, now = new Date()): MvDiscovery {
-  const home = buildHomeDiscovery(rows, hearts, mediaUrl, now);
   const works = buildPublicHomeWorks(rows, hearts, mediaUrl, now);
+  const home = weeklyMvPicks(works.filter(work => work.workKind !== "album"));
   const channelById = new Map(rows.map(row => [row.id, mvChannelUrl(row.youtube_url)]));
-  return { week: home.week, featured: home.featured, featureKind: home.featureKind,
+  return { week: taipeiHomeWeek(now), featured: home.featured, featureKind: home.featureKind,
     // Preserve work IDs: separate submissions may legitimately share one video.
     works: works.filter(work => work.videoId),
     channels: works.flatMap(work => !work.videoId && channelById.get(work.id)

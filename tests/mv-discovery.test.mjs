@@ -23,7 +23,8 @@ test('hidden, removed, pending, inactive and demo uploads do not reappear as vid
 test('MV and homepage share the same weekly distinct supporters, ties and new-work fallback',()=>{
  const rows=[row('a'),row('b')];const hearts=[{track_id:'a',user_id:'listener',reaction:'heart',vote_date:'2026-10-12'},{track_id:'a',user_id:'listener',reaction:'heart',vote_date:'2026-10-13'},{track_id:'b',user_id:'author-b',reaction:'heart',vote_date:'2026-10-13'}];
  const home=buildHomeDiscovery(rows,hearts,media,now);const mv=buildMvDiscovery(rows,hearts,media,now);
- assert.deepEqual(mv.featured,home.featured);assert.deepEqual(mv.week,home.week);assert.equal(mv.works.find(x=>x.id==='a').supporterCount,1);
+ assert.deepEqual(mv.featured.map(w=>w.id),['a']);assert.deepEqual(mv.week,home.week);assert.equal(mv.works.find(x=>x.id==='a').supporterCount,1);
+ assert.equal(home.featured.find(x=>x.id==='a').supporterCount,1);
 });
 test('search normalizes text, combines artist and title terms, filters genres and sorts support without changing source',()=>{
  const mv=buildMvDiscovery([row('a',{title:'ＴＡＮＧＯ',artist:'Ren Walker'}),row('b',{title:'Tango',artist:'Other',genre:'EDM 百大電音',created_at:'2026-10-13T01:00:00Z'})],[{track_id:'a',user_id:'listener',reaction:'heart',vote_date:'2026-10-13'}],media,now);

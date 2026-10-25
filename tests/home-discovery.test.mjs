@@ -18,21 +18,21 @@ test('homepage support counts distinct non-author members within the displayed w
  assert.deepEqual([...counts], [['a',2],['b',0]]);
 });
 
-test('only eligible MV works compete; all top ties are shown without formal ranks or voter identities', () => {
+test('only eligible MV works receive exposure without formal ranks or voter identities', () => {
  const rows=[row('a'),row('b'),row('audio',{youtube_url:null}),row('hidden',{hidden_at:'2026-10-12'}),row('official',{is_featured_official:true}),row('pending',{review_status:'pending'}),row('retired',{ai_music_showtime_public_removed_at:'2026-10-12'})];
  const hearts=[heart('a','one'),heart('b','two'),heart('audio','three'),heart('audio','four'),heart('hidden','five')];
  const result=buildHomeDiscovery(rows,hearts,media,now);
- assert.equal(result.featureKind,'community');
- assert.deepEqual(result.featured.map(w=>[w.id,w.supporterCount]),[['a',1],['b',1]]);
+ assert.equal(result.featureKind,'new');
+ assert.deepEqual(result.featured.map(w=>[w.id,w.supporterCount]).sort(),[['a',1],['b',1]]);
  assert.deepEqual(result.singles.map(w=>w.id),['audio']);
  for(const work of [...result.featured,...result.singles]) {
   assert.equal('created_by' in work,false); assert.equal('user_id' in work,false); assert.equal('rank' in work,false);
  }
 });
 
-test('zero current support shows the latest real MV as a new release, never a fabricated winner', () => {
+test('zero current support still exposes the latest MV without fabricating a winner', () => {
  const result=buildHomeDiscovery([row('old'),row('new',{created_at:'2026-10-13T00:00:00Z'})],[],media,now);
- assert.equal(result.featureKind,'new'); assert.deepEqual(result.featured.map(w=>w.id),['new']); assert.equal(result.featured[0].supporterCount,0);
+ assert.equal(result.featureKind,'new'); assert.ok(result.featured.some(w=>w.id==='new')); assert.ok(result.featured.every(w=>w.supporterCount===0));
 });
 
 test('no valid MV preserves music discovery; no playable works produces an honest empty state', () => {
@@ -55,14 +55,15 @@ test('homepage reads every page rather than silently truncating support', async 
  await assert.rejects(readAllHomePages(async()=>({data:null,error:null})),/Missing discovery/);
 });
 
-test('homepage fills three discovery slots after excluding every featured work, including ties', () => {
- const rows=[row('a'),row('b'),row('c'),row('d'),row('e')];
+test('homepage fills three discovery slots after excluding every rotating featured work', () => {
+ const rows=[row('a'),row('b'),row('c'),row('d'),row('e'),row('f'),row('g'),row('h')];
  const result=buildHomeDiscovery(rows,[heart('a','one'),heart('b','two')],media,now);
- assert.deepEqual(result.featured.map(w=>w.id),['a','b']);
- assert.deepEqual(result.singles.map(w=>w.id),['c','d','e']);
+ assert.equal(result.singles.length,3);
+ assert.ok(result.singles.every(w=>!result.featured.some(featured=>featured.id===w.id)));
+ assert.equal(new Set(result.singles.map(w=>w.id)).size,3);
  const fallback=buildHomeDiscovery(rows,[],media,now);
- assert.deepEqual(fallback.featured.map(w=>w.id),['a']);
- assert.deepEqual(fallback.singles.map(w=>w.id),['b','c','d']);
+ assert.equal(fallback.singles.length,3);
+ assert.ok(fallback.singles.every(w=>!fallback.featured.some(featured=>featured.id===w.id)));
  const scarce=buildHomeDiscovery([row('only')],[],media,now);
  assert.deepEqual(scarce.singles,[]);
 });
