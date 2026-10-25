@@ -103,6 +103,15 @@ Vercel `dpl_CqDWx7SYkY1t2ktMpjMxqpZfy8xN` READY並promote至aipoger.com，MV頁�
 
 文件整理：2026-10-15；產品實作基準：2026-10-15。主文件 4／6。先看架構與發布流程，再按改動選讀下方回歸章節；驗收清單不創造產品規則。
 
+## 首頁新作輪替與連結投稿曝光（2026-10-25）
+
+應用 `544736f`，分支 `codex/public-rule-copy`；Vercel `dpl_DYaF89v334r7SmmgnqXeqJepc7Bz`（`aipoger-web-rnz8-74cs19vg0-yohungs-projects.vercel.app`）READY，已promote至正式站。首頁原本只取本週最高支持MV、單曲又限audioUrl，導致新連結作品沒有曝光；改為近30天新作／創作者分散與每四小時輪替，最多三支新作＋一支週支持，單曲一首最新＋兩首輪替。
+
+- MP3與已支援外站連結均可入選；連結使用既有官方播放器及評論同窗，MP3保留共用音訊。播放中MV與開啟中的評論以原作品快照保留，刷新不重建播放器。首頁首屏作品直接包含於SSR HTML。
+- 新增六項選曲邊界測試及兩項UI runtime回歸；838項測試802通過／36選用略過／0失敗，TypeScript通過、lint 0 errors／9既有warnings，本機webpack與正式雲端build通過。本機node_modules是跨工作樹symlink，Turbopack root拒絕此既有配置，使用webpack完成本機build；雲端實體node_modules的原build正常。
+- 正式環境staged API確認97支MV／60件人氣排序及原影片／投稿時間／評分／週支持不變，首頁4支MV與3首單曲去重，3首連結單曲正確帶來源；SSR包含實際歌名與新版標題。無DB migration、正式內容寫入或計分／Credit變更。
+- 真實畫面與發布後檢查見[本次report](releases/2026-10-25-home-rotation.md)。
+
 ## 分類服務：分類已發布，worker 尚待啟用
 
 - 2026-09-20：Web `e08687e`／`codex/genre-suggestions` 已 push；Vercel `dpl_CfrCok6hkdHSv3AGjK7RzNP56zdt` READY 並已 alias 至 aipoger.com。三個新分類及 15 個播放頻道已正式生效。
