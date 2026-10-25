@@ -5,7 +5,7 @@ import { loadTs } from './helpers/choice-runtime.mjs';
 async function mount(t, {search='',hidden=false,failRead=false,newArrival=false,initialRows}={}) {
   const win=new EventTarget(),doc=new EventTarget();win.location={hash:'',search};doc.visibilityState=hidden?'hidden':'visible';
   const calls=[];let fail=false,readFailure=failRead;
-  const through='2026-10-25T06:00:00.000Z';
+  let through='2026-10-25T06:00:00.000Z';
   let rows=initialRows??Array.from({length:7},(_,i)=>({id:'notice-'+(i+1),title:'Comment '+(i+1),body:'Full review '+(i+1),type:'listen_bar_track_comment',read_at:null,kept_at:null,created_at:'2026-10-15T10:00:00.000Z',expires_at:'2099-01-01T00:00:00.000Z',metadata:{href:'/mv?track='+i}}));
   const ui=await mountMv(t,'src/components/account-notifications.tsx',{userId:'owner'},{
     'next/link':{default:'a'},'lucide-react':Object.fromEntries(['Bell','ChevronDown','ChevronLeft','ChevronRight','ArrowUpRight','Check','Bookmark','Trash2','MoreVertical','ListFilter'].map(k=>[k,k])),
@@ -35,7 +35,7 @@ async function mount(t, {search='',hidden=false,failRead=false,newArrival=false,
   },{window:win,document:doc});
   ui.refs.find(r=>r?.current===null).current={scrollIntoView(){},querySelector:()=>null};
   const click=async label=>{ui.nodes().find(n=>n.type==='button'&&n.props['aria-label']===label).props.onClick();await ui.flush()};
-  return {ui,calls,win,doc,get rows(){return rows},set fail(v){fail=v},set failRead(v){readFailure=v},click,async toggle(){ui.nodes().find(n=>n.props?.['aria-controls']==='notification-list').props.onClick();await ui.flush()},async expand(id){ui.nodes().find(n=>n.props?.['aria-controls']==='notice-'+id).props.onClick();await ui.flush()}};
+  return {ui,calls,win,doc,get rows(){return rows},set readThrough(v){through=v},set fail(v){fail=v},set failRead(v){readFailure=v},click,async toggle(){ui.nodes().find(n=>n.props?.['aria-controls']==='notification-list').props.onClick();await ui.flush()},async expand(id){ui.nodes().find(n=>n.props?.['aria-controls']==='notice-'+id).props.onClick();await ui.flush()}};
 }
 test('entering Creator Center opens three summaries and acknowledges the full existing inbox without handling each notice',async t=>{
  const x=await mount(t);assert.equal(x.ui.nodes().filter(n=>n.type==='article').length,3);assert.doesNotMatch(x.ui.text(),/Full review/);
@@ -57,7 +57,7 @@ test('failed inbox acknowledgement retains unread state and offers a persistent 
 test('background visits do not acknowledge; visibility and inbox reopen do, with new arrivals after the snapshot still unread',async t=>{
  const x=await mount(t,{hidden:true,newArrival:true});assert.equal(x.calls.filter(c=>c.action==='read_inbox').length,0);assert.equal(x.rows.filter(r=>!r.read_at).length,7);
  x.doc.visibilityState='visible';x.doc.dispatchEvent(new Event('visibilitychange'));await x.ui.flush();assert.deepEqual(x.rows.filter(r=>!r.read_at).map(r=>r.id),['later']);
- await x.toggle();const before=x.calls.length;x.win.dispatchEvent(new Event('aipoger:open-notifications'));await x.ui.flush();assert.ok(x.calls.length>before);assert.match(x.ui.text(),/Comment 1/);
+ x.readThrough='2026-10-25T06:00:02.000Z';const before=x.calls.length;x.win.dispatchEvent(new Event('aipoger:open-notifications'));await x.ui.flush();assert.ok(x.calls.length>before);assert.equal(x.rows.filter(r=>!r.read_at).length,0,'bell reopens an already-visible inbox and acknowledges the new snapshot');assert.match(x.ui.text(),/Comment 1/);
 });
 test('cross-page notification query opens and acknowledges without a separate bell or detail click',async t=>{
  const x=await mount(t,{search:'?lang=zh&tab=notifications'});assert.match(x.ui.text(),/Comment 1/);assert.equal(x.rows.filter(r=>!r.read_at).length,0);

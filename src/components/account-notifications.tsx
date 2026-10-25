@@ -15,6 +15,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
   const tx = (zh: string, en: string, ja: string, ko: string) => creatorText(lang, zh, en, ja, ko);
   const count = useAccountNotices(userId, "inbox");
   const [open, setOpen] = useState(true);
+  const [inboxVisit, setInboxVisit] = useState(0);
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<AccountNotification[]>([]);
@@ -36,6 +37,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
     live.current = true;
     const openInbox = () => {
       setOpen(true);
+      setInboxVisit(value => value + 1);
       section.current?.scrollIntoView({ block: "start" });
     };
     const reveal = () => { if (window.location.hash === "#notifications" || new URLSearchParams(window.location.search).get("tab") === "notifications") openInbox(); };
@@ -100,7 +102,7 @@ export default function AccountNotifications({ userId }: { userId: string }) {
     const visible = () => { if (document.visibilityState === "visible") void load(); };
     document.addEventListener("visibilitychange", visible);
     return () => { requestRevision.current++; document.removeEventListener("visibilitychange", visible); };
-  }, [open, load]);
+  }, [open, load, inboxVisit]);
 
   const act = useCallback(async (id: string, action: AccountNoticeAction) => {
     if (pending.current.has(id)) return;
