@@ -35,8 +35,8 @@ const COPY = {
           "body": "歌曲與 MV 共用原作品、愛心、評論及 1–10 分評價，最多一位小數。每人每作品一個分數，送出後不能修改；文字評論可修改一次，不能自行刪除。作者可以留言，但不能自評。"
         },
         {
-          "title": "本週支持與平均分",
-          "body": "精選 MV 看台灣週一週期內不同非作者會員的愛心支持，同票可切換。平均評分與評分人數另外顯示；留言則數不直接變成支持票。"
+          "title": "新作與人氣分開看",
+          "body": "最新上架依投稿時間排列，不因沒有評分而往後排。MV 人氣榜沿用探索人氣規則，只收錄符合資格的 MV；歌曲和 MV 共用原作品，不重複計分。平均分、評分人數與實際收藏人數分開顯示，留言數不直接當支持票。"
         }
       ]
     },
@@ -109,8 +109,8 @@ const COPY = {
           "body": "Music and MV share the original work, Hearts, comments and 1–10 rating, with one decimal place. Your score is final after submission. Comment text can be edited once and cannot be deleted by its author. Authors can comment, but cannot rate themselves."
         },
         {
-          "title": "Weekly support and average ratings",
-          "body": "Featured MVs use distinct non-author Heart supporters during the Taiwan Monday week. Tied works can be switched. Average ratings and rater counts are separate; comment counts do not become votes."
+          "title": "New releases and popularity",
+          "body": "New arrivals are ordered by submission time, independently of ratings. The MV chart uses Explore popularity rules for eligible MVs. Music and MV share the original work and are never counted twice. Average rating, rater count and actual saves are shown separately; comments are not votes."
         }
       ]
     },
@@ -183,8 +183,8 @@ const COPY = {
           "body": "音楽とMVは作品ID・Heart・コメント・1〜10点評価を共有。小数1桁まで。点数は送信後に変更できません。コメント文は1回だけ編集でき、投稿者による削除はできません。作者はコメントできますが自己評価はできません。"
         },
         {
-          "title": "今週の応援と平均点",
-          "body": "注目MVは台湾の月曜週内の異なる非作者Heart支持者数で選び、同票は切替可能。平均点と評価人数は別に表示し、コメント件数は票になりません。"
+          "title": "新着と人気は別々に",
+          "body": "新着MVは投稿順で、評価の有無に左右されません。MVランキングはExploreと同じ人気ルールで対象作品を集計します。楽曲とMVは同じ作品として二重に加算しません。平均評価・評価人数・実際の保存人数を個別に表示し、コメント数は票数に含めません。"
         }
       ]
     },
@@ -257,8 +257,8 @@ const COPY = {
           "body": "음악과 MV는 작품·Heart·댓글·1–10점 평가를 공유하며 소수 한 자리까지 가능합니다. 점수는 제출 후 변경할 수 없습니다. 댓글 내용은 한 번 수정할 수 있으며 작성자가 삭제할 수 없습니다. 작가는 댓글만 가능하며 자기 평가는 불가합니다."
         },
         {
-          "title": "이번 주 지지와 평균 점수",
-          "body": "대표 MV는 대만 월요일 주간의 서로 다른 비작가 Heart 지지자 수로 고르고 동률 작품은 전환할 수 있습니다. 평균 점수·평가자 수는 별도이며 댓글 수는 표가 아닙니다."
+          "title": "신작과 인기를 따로",
+          "body": "신작은 평점과 관계없이 등록 순서대로 보여 줍니다. MV 차트는 탐색의 인기 규칙을 적격 MV에 적용합니다. 음악과 MV는 같은 원본 작품으로 중복 집계하지 않아요. 평균 점수, 평가자 수, 실제 저장 수를 따로 표시하며 댓글 수는 표가 아닙니다."
         }
       ]
     },

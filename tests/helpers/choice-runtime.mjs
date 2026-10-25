@@ -54,6 +54,7 @@ export function mockAdmin(seed = {}) {
         select: () => query,
         eq: (key, value) => { filters.push((row) => row[key] === value); return query; },
         neq: (key, value) => { filters.push((row) => row[key] !== value); return query; },
+        lte: (key, value) => { filters.push((row) => row[key] <= value); return query; },
         is: (key, value) => { filters.push((row) => (row[key] ?? null) === value); return query; },
         in: (key, values) => { filters.push((row) => values.includes(row[key])); return query; },
         order: (key, options = {}) => { sorts.push({ key, ascending: options.ascending !== false }); return query; },

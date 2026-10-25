@@ -1,11 +1,12 @@
 import type { Lang } from "./locale";
 
 const zh = {
+  intro: "新作先看，人氣一起追。", ranking: "MV 人氣榜", rankingNote: "依人氣排序 · 評分與收藏分開顯示", rankingEmpty: "目前還沒有符合的上榜 MV。", rankingError: "人氣榜暫時無法讀取。", newest: "最新上架", newestNote: "依上架時間排列，新作搶先看。", catalogTitle: "全部 MV", popular: "人氣排序", collections: "{count} 人收藏", collectionsUnavailable: "收藏人數暫不可用", viewAll: "查看全部 MV", expandChart: "展開人氣榜", collapseChart: "收合人氣榜",
   rateSongQuestion: "這首歌，你給幾分？", scoreHint: "可填一位小數，例如 8.7", scoreError: "請填 1–10 分，最多一位小數。",
   continuous: "連播 MV", continuousActive: "連播中", previousMv: "上一支", nextMv: "下一支", queueEnded: "已播完這份清單", continuePlaying: "點一下繼續播放", videoError: "這支影片無法播放，可切換下一支。", rateQuestion: "這支 MV，你給幾分？", thoughts: "留下你的感受", sendReview: "送出評價", reviewSaved: "評價已送出", ownWork: "你可以留言討論自己的作品；分數留給觀眾。", unrated: "尚未評分", points: "分", raters: "人評分", ratingNote: "評分送出後無法修改，文字評論可修改一次。", playPause: "播放 / 暫停", stopContinuous: "停止連播", ratingError: "評分暫時無法讀取，請重試。", queueNote: "依目前篩選與排序連播",
-  metaTitle: "AIPOGER 愛播歌｜值得一看的 MV", metaDescription: "集中探索 AI 創作者已投稿的 MV，觀看 YouTube 影片，分享評論與愛心支持，尋找本週社群精選。",
+  metaTitle: "AIPOGER 愛播歌｜值得一看的 MV", metaDescription: "探索最新上架 MV 與 MV 人氣榜，觀看創作者影片、收藏、評論與評分。新作依上架時間展示，評分與收藏人數分開顯示。",
   openWork: "打開 MV", scrollComments: "往下看評論", share: "分享 MV", copied: "連結已複製", shared: "已分享", manualCopy: "請手動複製網址", shareLink: "MV 分享連結", sharedUnavailable: "這支 MV 目前無法公開觀看。可以看看其他作品。",
-  title: "值得一看的 MV", more: "更多 MV", all: "全部曲風", rated: "評分優先", latest: "最新投稿", support: "本週支持",
+  title: "值得一看的 MV", more: "更多 MV", all: "全部曲風", rated: "評分優先", latest: "最新上架", support: "本週支持",
   search: "搜尋作品或創作者", clear: "清除搜尋", count: "支 MV", noResults: "還沒有符合的 MV。", reset: "重設篩選",
   shownAbove: "符合的作品已在上方精選展示。", viewFeatured: "查看上方精選",
   readComments: "觀看 MV 與評論", heartReadError: "支持狀態暫時無法讀取，請重試。", heartWriteError: "未能送出愛心，請再試一次。",
@@ -16,9 +17,10 @@ type MvCopy = { [K in keyof typeof zh]: string };
 const copies: Record<Lang, MvCopy> = {
   zh,
   en: {
+    intro: "Fresh videos. Community favorites.", ranking: "MV popularity", rankingNote: "Ranked by popularity · Ratings and saves shown separately", rankingEmpty: "No matching MVs on the chart yet.", rankingError: "The popularity chart is temporarily unavailable.", newest: "New arrivals", newestNote: "Newest first, with room for every new release.", catalogTitle: "All MVs", popular: "Popularity", collections: "{count} saved", collectionsUnavailable: "Saves unavailable", viewAll: "View all MVs", expandChart: "Show chart", collapseChart: "Hide chart",
     rateSongQuestion: "How would you rate this track?", scoreHint: "One decimal allowed, e.g. 8.7", scoreError: "Enter 1–10, with at most one decimal.",
     continuous: "Play MVs continuously", continuousActive: "Continuous play", previousMv: "Previous MV", nextMv: "Next MV", queueEnded: "End of this playlist", continuePlaying: "Tap to continue playing", videoError: "This video cannot play. Try the next MV.", rateQuestion: "How would you rate this MV?", thoughts: "Share your thoughts", sendReview: "Submit review", reviewSaved: "Review saved", ownWork: "Discuss your own work; let the audience rate it.", unrated: "Not rated yet", points: "/ 10", raters: "raters", ratingNote: "Scores are final. Comment text can be edited once.", playPause: "Play / pause", stopContinuous: "Stop continuous play", ratingError: "Ratings are unavailable. Please retry.", queueNote: "Plays the current filters and sort order",
-    metaTitle: "AIPOGER | MVs Worth Watching", metaDescription: "Explore MVs submitted by AI creators, watch their YouTube videos, share comments and support, and discover this week's community picks.",
+    metaTitle: "AIPOGER | MVs Worth Watching", metaDescription: "Discover new MVs and the MV popularity chart. Watch, save, discuss and rate creator videos, with new releases shown separately from popularity.",
     openWork: "Open MV", scrollComments: "See comments below", share: "Share MV", copied: "Link copied", shared: "Shared", manualCopy: "Copy the link manually", shareLink: "MV share link", sharedUnavailable: "This MV is currently unavailable. Explore other works below.",
     title: "MVs worth watching", more: "More MVs", all: "All genres", rated: "Top rated", latest: "Latest", support: "Weekly support",
     search: "Search works or creators", clear: "Clear search", count: "MVs", noResults: "No MVs match yet.", reset: "Reset filters",
@@ -28,9 +30,10 @@ const copies: Record<Lang, MvCopy> = {
     yourMv: "Bring your MV into the spotlight", submitNote: "Add a YouTube video link to your own music submission to appear here.", myWorks: "Manage my works",
   },
   ja: {
+    intro: "新しいMVも、みんなの人気作も。", ranking: "MV人気ランキング", rankingNote: "人気順 · 評価と保存人数は個別に表示", rankingEmpty: "条件に合うランクイン作品はまだありません。", rankingError: "人気ランキングを読み込めません。", newest: "新着MV", newestNote: "公開が新しい順に、新作との出会いを。", catalogTitle: "すべてのMV", popular: "人気順", collections: "{count}人が保存", collectionsUnavailable: "保存人数を取得できません", viewAll: "すべてのMVを見る", expandChart: "ランキングを開く", collapseChart: "ランキングを閉じる",
     rateSongQuestion: "この曲、何点をつける？", scoreHint: "小数第1位まで入力できます（例：8.7）", scoreError: "1〜10点を小数第1位まで入力してください。",
     continuous: "MVを連続再生", continuousActive: "連続再生中", previousMv: "前のMV", nextMv: "次のMV", queueEnded: "リストの再生が終了しました", continuePlaying: "タップして再生を続ける", videoError: "この動画は再生できません。次のMVをお試しください。", rateQuestion: "このMV、何点をつける？", thoughts: "感想を聞かせてください", sendReview: "評価を送信", reviewSaved: "評価を送信しました", ownWork: "自分の作品にはコメントできます。採点は視聴者に任せましょう。", unrated: "まだ評価がありません", points: "点", raters: "人が評価", ratingNote: "送信後の点数は変更できません。コメントは一度だけ編集できます。", playPause: "再生 / 一時停止", stopContinuous: "連続再生を停止", ratingError: "評価を読み込めません。もう一度お試しください。", queueNote: "現在の絞り込みと並び順で再生",
-    metaTitle: "AIPOGER｜観てほしい MV", metaDescription: "AIクリエイターが投稿したMVを探し、YouTube動画を観てコメントや応援を届けよう。今週のコミュニティ推薦作品にも出会えます。",
+    metaTitle: "AIPOGER｜観てほしい MV", metaDescription: "新着MVとMV人気ランキングから作品を発見。動画を観て、保存・コメント・評価を届けよう。新着と人気、評価と保存人数をそれぞれ表示します。",
     openWork: "MVを開く", scrollComments: "下のコメントを見る", share: "MVを共有", copied: "リンクをコピーしました", shared: "共有しました", manualCopy: "リンクを手動でコピー", shareLink: "MV共有リンク", sharedUnavailable: "このMVは現在公開されていません。他の作品をお楽しみください。",
     title: "観てほしい MV", more: "もっと MV を探す", all: "すべてのジャンル", rated: "評価順", latest: "新しい投稿", support: "今週の応援",
     search: "作品やクリエイターを検索", clear: "検索をクリア", count: "本の MV", noResults: "条件に合う MV はまだありません。", reset: "絞り込みをリセット",
@@ -40,9 +43,10 @@ const copies: Record<Lang, MvCopy> = {
     yourMv: "あなたの MV を届けよう", submitNote: "自分の音楽作品に YouTube 動画リンクを追加すると、ここにも表示されます。", myWorks: "自分の作品を管理",
   },
   ko: {
+    intro: "새로운 MV와 커뮤니티 인기작을 만나보세요.", ranking: "MV 인기 차트", rankingNote: "인기순 · 평점과 저장 수를 따로 표시", rankingEmpty: "조건에 맞는 차트 MV가 아직 없어요.", rankingError: "인기 차트를 불러올 수 없어요.", newest: "새로 올라온 MV", newestNote: "등록한 순서대로 새 작품을 만나보세요.", catalogTitle: "모든 MV", popular: "인기순", collections: "{count}명 저장", collectionsUnavailable: "저장 수 확인 불가", viewAll: "모든 MV 보기", expandChart: "차트 펼치기", collapseChart: "차트 접기",
     rateSongQuestion: "이 곡에 몇 점을 주시겠어요?", scoreHint: "소수점 한 자리까지 입력 (예: 8.7)", scoreError: "1–10점, 소수점 한 자리까지 입력해 주세요.",
     continuous: "MV 연속 재생", continuousActive: "연속 재생 중", previousMv: "이전 MV", nextMv: "다음 MV", queueEnded: "재생 목록이 끝났어요", continuePlaying: "탭하여 재생 계속하기", videoError: "이 영상을 재생할 수 없어요. 다음 MV를 시도해 주세요.", rateQuestion: "이 MV에 몇 점을 주시겠어요?", thoughts: "감상을 남겨 주세요", sendReview: "평가 보내기", reviewSaved: "평가를 저장했어요", ownWork: "내 작품에는 댓글을 남길 수 있어요. 평가는 관객에게 맡겨 주세요.", unrated: "아직 평가가 없어요", points: "점", raters: "명 평가", ratingNote: "제출한 점수는 변경할 수 없으며 댓글은 한 번 수정할 수 있어요.", playPause: "재생 / 일시 정지", stopContinuous: "연속 재생 중지", ratingError: "평가를 불러올 수 없어요. 다시 시도해 주세요.", queueNote: "현재 필터와 정렬 순서대로 재생",
-    metaTitle: "AIPOGER | 볼 만한 MV", metaDescription: "AI 크리에이터가 제출한 MV를 탐색하고 YouTube 영상을 감상하며 댓글과 응원을 나누세요. 이번 주 커뮤니티 추천작도 만나보세요.",
+    metaTitle: "AIPOGER | 볼 만한 MV", metaDescription: "신규 MV와 MV 인기 차트를 둘러보세요. 크리에이터의 영상을 보고 저장, 댓글, 평가를 남기세요. 신작과 인기, 평점과 저장 수를 따로 표시합니다.",
     openWork: "MV 열기", scrollComments: "아래 댓글 보기", share: "MV 공유", copied: "링크 복사 완료", shared: "공유 완료", manualCopy: "링크를 직접 복사하세요", shareLink: "MV 공유 링크", sharedUnavailable: "이 MV는 현재 공개되지 않아요. 다른 작품을 둘러보세요.",
     title: "볼 만한 MV", more: "더 많은 MV", all: "모든 장르", rated: "평점순", latest: "최신 제출작", support: "이번 주 응원",
     search: "작품 또는 크리에이터 검색", clear: "검색 지우기", count: "개의 MV", noResults: "조건에 맞는 MV가 아직 없어요.", reset: "필터 초기화",

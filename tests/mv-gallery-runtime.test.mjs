@@ -6,6 +6,7 @@ import test from 'node:test';
 import ts from 'typescript';
 import { homeCopy } from '../src/lib/home-copy.ts';
 import {mvCopy} from '../src/lib/mv-copy.ts';
+import {isNewlyPublishedMusic} from "../src/lib/music-newness.ts";
 import {filterMvWorks} from '../src/lib/mv-discovery.ts';
 const source=readFileSync(new URL('../src/components/mv-gallery.tsx',import.meta.url),'utf8');
 const headerSource=readFileSync(new URL('../src/components/editorial-header.tsx',import.meta.url),'utf8');
@@ -31,7 +32,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
   'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},'next/navigation':{useRouter:()=>({push:url=>navigations.push(url)})},
   'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','MessageCircleMore','Pause','Play','Radio','Search','X'].map(x=>[x,x])),
   '@/lib/use-mv-hearts':{useMvHearts:()=>support},
-  '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/mv-copy':{mvCopy},'@/lib/mv-discovery':{filterMvWorks},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
+  '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/mv-copy':{mvCopy},'@/lib/mv-discovery':{filterMvWorks},'@/lib/music-newness':{isNewlyPublishedMusic},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
   '@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle:()=>toggles++,start:async(...args)=>{starts.push(args);return true;}}},
   '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}},
   '@/components/share-button':{__esModule:true,default:'share-button'},'@/components/home-work-feedback':{__esModule:true,default:'feedback'},'@/components/lang-toggle':{__esModule:true,default:'lang-toggle'},'./home-editorial.module.css':{__esModule:true,default:{}},'./mv-gallery.module.css':{__esModule:true,default:{}},
@@ -47,7 +48,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}
  async function flush(){for(let i=0;i<5;i++){await new Promise(setImmediate);if(dirty)render();}}
  render(); await flush(); t.after(()=>effects.forEach(e=>e?.cleanup?.()));
- return {player,support,navigations,nodes:()=>nodes(tree),text:()=>text(tree),starts,toggles:()=>toggles,flush,rerender:render,async refresh(event){window.dispatchEvent(new Event(event));await flush();},setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
+ return {player,support,navigations,nodes:()=>nodes(tree),catalogCards:()=>nodes(nodes(tree).find(x=>x.props?.id==='mv-catalog')).filter(x=>x.type==='article'),newestCards:()=>nodes(nodes(tree).find(x=>x.props?.['aria-labelledby']==='mv-newest-title')).filter(x=>x.type==='article'),text:()=>text(tree),starts,toggles:()=>toggles,flush,rerender:render,async refresh(event){window.dispatchEvent(new Event(event));await flush();},setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
 }
 
 for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and preserves original work links (${lang})`,async t=>{
@@ -57,7 +58,7 @@ for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and 
  assert.equal(ui.nodes().some(x=>x.type==='iframe'),false);
 });
 test('MV cover play opens the unified original-work review with explicit autoplay',async t=>{
- const ui=await mount(t);ui.button('觀看 MV').onClick();await ui.flush();assert.equal(ui.toggles(),1);
+ const ui=await mount(t);ui.button('觀看 MV · Real Song').onClick();await ui.flush();assert.equal(ui.toggles(),1);
  const dialog=ui.nodes().find(x=>x.type==='feedback');assert.equal(dialog.props.autoPlay,true);assert.equal(dialog.props.showVideo,true);
  dialog.props.onClose();await ui.flush();assert.equal(ui.nodes().some(x=>x.type==='feedback'),false);
 });
@@ -70,7 +71,7 @@ test('gallery covers and comments use one review view, preserving the original I
 test('search finds older works beyond the initial 12 cards; reset and load-more expose all items',async t=>{
  const works=Array.from({length:25},(_,i)=>({...work,id:`work-${i}`,title:`Song ${i}`,artist:'Actual Artist',publishedAt:String(100-i)}));
  const ui=await mount(t,'zh',{featureKind:'community',featured:[work],works,channels:[]});
- const cards=()=>ui.nodes().filter(x=>x.type==='article').length;assert.equal(cards(),12);
+ const cards=()=>ui.catalogCards().length;assert.equal(cards(),12);
  ui.button('載入更多12 / 25').onClick();await ui.flush();assert.equal(cards(),24);
  ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'Song 24'}});await ui.flush();assert.equal(cards(),1);assert.ok(ui.text().includes('Song 24'));
  ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'no such work'}});await ui.flush();assert.ok(ui.text().includes(mvCopy('zh').noResults));
@@ -86,13 +87,13 @@ test('MV cards keep every featured work in search, sorting and pagination indepe
  const others=Array.from({length:14},(_,i)=>({...work,id:`other-${i}`,title:`Other ${i}`}));
  const payload={featureKind:'community',featured:[work,tie],works:[work,tie,...others],channels:[]};
  const ui=await mount(t,'zh',payload);
- const cardIds=()=>ui.nodes().filter(x=>x.type==='article').map(x=>x.props.children.find(c=>c?.type==='button').props['aria-label']);
+ const cardIds=()=>ui.catalogCards().map(x=>x.props.children.find(c=>c?.type==='button').props['aria-label']);
  assert.equal(cardIds().length,12);
- ui.button('本週支持').onClick();await ui.flush();
+
  ui.button('載入更多12 / 16').onClick();await ui.flush();assert.equal(cardIds().length,16);
  assert.ok(cardIds().includes('觀看 MV · Real Song'));assert.ok(cardIds().includes('觀看 MV · Tied Work'));
  assert.equal(payload.works.length,16);
- const before=cardIds();ui.button('下一支 MV').onClick();await ui.flush();assert.ok(ui.nodes().some(x=>x.type==='h2'&&text(x)==='Tied Work'));assert.deepEqual(cardIds(),before);
+ const before=cardIds();assert.deepEqual(cardIds(),before);
  ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'Real Song'}});await ui.flush();
  assert.deepEqual(cardIds(),['觀看 MV · Real Song']);assert.equal(ui.text().includes(mvCopy('zh').shownAbove),false);assert.equal(ui.text().includes(mvCopy('zh').noResults),false);
  ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:''}});await ui.flush();assert.equal(cardIds().length,12);
@@ -102,20 +103,20 @@ test('review and heart refresh preserve a new MV card and its latest-order posit
  const newWork={...work,id:'new-work',title:'New Song',publishedAt:'2026-10-22',supporterCount:0,ratingCount:0};
  const payload={featureKind:'community',featured:[work],works:[work,newWork],channels:[]};
  const ui=await mount(t,'zh',payload);
- ui.button('最新投稿').onClick();await ui.flush();
- const cards=()=>ui.nodes().filter(x=>x.type==='article');
+ ui.button('最新上架').onClick();await ui.flush();
+ const cards=()=>ui.catalogCards();
  const order=()=>cards().map(x=>x.props.children[0].props['aria-label']);
  assert.deepEqual(order(),['觀看 MV · New Song','觀看 MV · Real Song']);
  Object.assign(newWork,{supporterCount:2,ratingAverage:9.2,ratingCount:1,ratingTotal:9.2});payload.featured.push(newWork);
  for(const event of ['aipoger:mv-rating','aipoger:music-heart']){
   await ui.refresh(event);assert.deepEqual(order(),['觀看 MV · New Song','觀看 MV · Real Song']);
-  assert.ok(text(cards()[0]).includes('9.2 分｜1 人評分'));
+  assert.ok(text(cards()[0]).includes('9.2 / 10 · 1 人評分'));
  }
 });
 
 test('MV cards have separate heart and comment actions in the title row; direct support never opens comments',async t=>{
  const ui=await mount(t);
- const card=ui.nodes().find(x=>x.type==='article');
+ const card=ui.catalogCards()[0];
  const row=card.props.children[1];assert.equal(row.type,'div');
  const actions=nodes(row).filter(x=>x.type==='button'&&!x.props['aria-label']?.startsWith(mvCopy('zh').openWork));assert.equal(actions.length,2);
  assert.ok(nodes(row).some(x=>x.type==='h3'));assert.equal(card.props.children[2].type,'p');
@@ -134,7 +135,7 @@ test('MV guest support preserves the MV login return path and never claims succe
 
 test('MV shares target the exact original work with language, including the featured work',async t=>{
  const ui=await mount(t,'ko');
- const shares=ui.nodes().filter(x=>x.type?.name==='MvShare');assert.equal(shares.length,3);
+ const shares=ui.nodes().filter(x=>x.type?.name==='MvShare');assert.equal(shares.length,4);
  for(const node of shares){const button=node.type(node.props);assert.equal(button.type,'share-button');assert.equal(button.props.url,`/works/${node.props.work.id}?lang=ko`);assert.equal(button.props.iconOnly,true);assert.equal(button.props.sharedLabel,mvCopy('ko').shared);}
  assert.equal(ui.support.called.length,0);
 });
@@ -173,22 +174,44 @@ test('closing a pending review clears the deferred END before a new continuous s
  dialog().onClose();await ui.flush();ui.button(mvCopy('zh').continuous).onClick();await ui.flush();assert.equal(dialog().work.id,'a');
 });
 
-test('default rated order promotes a reviewed MV without hiding it; reset and continuous play use the same order',async t=>{
+test('new unreviewed MVs keep newest exposure after another work is rated; catalog reset and queue start newest',async t=>{
  const reviewed={...work,id:'reviewed',title:'Reviewed',publishedAt:'2026-10-20',ratingCount:1,ratingAverage:8};
- const fresh={...work,id:'fresh',title:'Fresh',publishedAt:'2026-10-22',ratingCount:0};
+ const fresh={...work,id:'fresh',title:'Fresh',publishedAt:'2026-10-22',ratingCount:0,favoriteCount:0};
  const pending={...work,id:'pending',title:'Pending',publishedAt:'2026-10-21',ratingCount:0};
- const payload={featureKind:'community',featured:[reviewed],works:[fresh,reviewed,pending],channels:[]};
+ const payload={featureKind:'community',featured:[reviewed],works:[fresh,reviewed,pending],channels:[],rankedIds:['reviewed']};
  const ui=await mount(t,'zh',payload);
- const order=()=>ui.nodes().filter(x=>x.type==='article').map(x=>x.props.children[0].props['aria-label']);
- assert.equal(ui.button('評分優先')['aria-pressed'],true);
- assert.deepEqual(order(),['觀看 MV · Reviewed','觀看 MV · Fresh','觀看 MV · Pending']);
- Object.assign(pending,{ratingCount:1,ratingAverage:9.2});payload.featured.push(pending);
- await ui.refresh('aipoger:mv-rating');
- assert.deepEqual(order(),['觀看 MV · Pending','觀看 MV · Reviewed','觀看 MV · Fresh']);
- ui.button('最新投稿').onClick();await ui.flush();assert.deepEqual(order(),['觀看 MV · Fresh','觀看 MV · Pending','觀看 MV · Reviewed']);
- ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'no result'}});await ui.flush();
- ui.button('重設篩選').onClick();await ui.flush();assert.equal(ui.button('評分優先')['aria-pressed'],true);
+ const order=()=>ui.catalogCards().map(x=>x.props['data-work-id']);
+ const newest=()=>ui.newestCards().map(x=>x.props['data-work-id']);
+ assert.equal(ui.button('最新上架')['aria-pressed'],true);assert.deepEqual(order(),['fresh','pending','reviewed']);assert.deepEqual(newest(),order());
+ Object.assign(pending,{ratingCount:1,ratingAverage:9.2});payload.rankedIds=['pending','reviewed'];
+ await ui.refresh('aipoger:mv-rating');assert.deepEqual(newest(),['fresh','pending','reviewed']);
+ ui.button('人氣排序').onClick();await ui.flush();assert.deepEqual(order(),['pending','reviewed','fresh']);assert.deepEqual(newest(),['fresh','pending','reviewed']);
+ ui.nodes().find(x=>x.type==='input').props.onChange({target:{value:'no result'}});await ui.flush();ui.button('重設篩選').onClick();await ui.flush();assert.equal(ui.button('最新上架')['aria-pressed'],true);
  ui.button(mvCopy('zh').continuous).onClick();await ui.flush();
- const dialog=()=>ui.nodes().find(x=>x.type==='feedback').props;
- assert.equal(dialog().work.id,'pending');dialog().onVideoEnded();await ui.flush();assert.equal(dialog().work.id,'reviewed');dialog().onVideoEnded();await ui.flush();assert.equal(dialog().work.id,'fresh');
+ const dialog=()=>ui.nodes().find(x=>x.type==='feedback').props;assert.equal(dialog().work.id,'fresh');dialog().onVideoEnded();await ui.flush();assert.equal(dialog().work.id,'pending');
+});
+test('chart uses provided Explore rank and distinct saves, with mobile expansion and no invented score',async t=>{
+ const popular={...work,id:'popular',title:'Popular',ratingCount:2,ratingAverage:8.4,favoriteCount:3};
+ const high={...work,id:'high',title:'High',ratingCount:1,ratingAverage:10,favoriteCount:null};
+ const ui=await mount(t,'zh',{featured:[],featureKind:'empty',works:[high,popular],channels:[],rankedIds:['popular','high']});
+ const rows=()=>nodes(ui.nodes().find(x=>x.props?.id==='mv-chart-rows')).filter(x=>x.type==='li');
+ assert.deepEqual(rows().map(x=>x.props['data-work-id']),['popular','high']);assert.ok(text(rows()[0]).includes('8.4 / 10 · 2 人評分'));assert.ok(text(rows()[0]).includes('3 人收藏'));assert.ok(text(rows()[1]).includes(mvCopy('zh').collectionsUnavailable));
+ assert.equal(ui.button('展開人氣榜')['aria-expanded'],false);ui.button('展開人氣榜').onClick();await ui.flush();assert.equal(ui.button('收合人氣榜')['aria-expanded'],true);
+});
+test('unavailable ranking leaves newest works usable and disables popularity sorting',async t=>{
+ const ui=await mount(t,'zh',{featured:[],featureKind:'empty',works:[work],channels:[],rankedIds:null});
+ assert.ok(ui.text().includes(mvCopy('zh').rankingError));assert.equal(ui.button('人氣排序').disabled,true);assert.equal(ui.newestCards().length,1);
+ ui.button('觀看 MV · Real Song').onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,work.id);
+});
+
+test('a failed rank refresh switches an active popularity view and queue back to newest',async t=>{
+ const fresh={...work,id:'fresh',title:'Fresh',publishedAt:'2026-10-25'};
+ const popular={...work,id:'popular',title:'Popular',publishedAt:'2026-10-20'};
+ const payload={featured:[],featureKind:'empty',works:[popular,fresh],channels:[],rankedIds:['popular','fresh']};
+ const ui=await mount(t,'zh',payload);ui.button('人氣排序').onClick();await ui.flush();
+ assert.equal(ui.catalogCards()[0].props['data-work-id'],'popular');
+ payload.rankedIds=null;await ui.refresh('aipoger:mv-rating');
+ assert.equal(ui.button('最新上架')['aria-pressed'],true);assert.equal(ui.button('人氣排序')['aria-pressed'],false);
+ assert.equal(ui.catalogCards()[0].props['data-work-id'],'fresh');
+ ui.button(mvCopy('zh').continuous).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'fresh');
 });

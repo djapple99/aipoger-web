@@ -8,6 +8,7 @@ import { isInDiscoveryMusicPool } from "./music-pool";
 import type { ListenBarTrackRow } from "./listen-bar";
 import { mvRatingSummaries } from "./server-mv-reviews";
 import { buildMvDiscovery } from "./mv-discovery";
+import { readMvPopularity } from "./server-mv-popularity";
 
 const readDiscoverySource = cache(async () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -62,8 +63,8 @@ export async function readMvDiscovery() {
   const [source, summaries] = await Promise.all([readDiscoverySource(), mvRatingSummaries()]);
   const result = buildMvDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
   for (const work of [...result.works, ...result.featured]) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 });
-  await addFeaturedComments(result, source);
-  return result;
+  const rankedIds = await readMvPopularity(source.admin, result.works, source.rows, source.now);
+  return { ...result, rankedIds, generatedAt: source.now.toISOString() };
 }
 
 export async function readMusicReviewWork(trackId: string) {

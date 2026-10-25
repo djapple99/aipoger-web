@@ -104,3 +104,110 @@
 .queueControls button:disabled { opacity: .35; }
 @media (min-width: 1001px) { .catalogHeading { flex-wrap: wrap; gap: 20px; } }
 @media (max-width: 700px) { .filterRow { gap: 8px; flex-wrap: wrap; } .filterRow select { max-width: 110px; } .continuousButton { font-size: 12px; padding: 9px 8px; } .filterRow p { font-size: 11px; } }
+
+/* MV discovery shares Explore's chart + fresh-work composition. */
+.pageIntro { padding-top: 26px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+.pageIntro > div:first-child { flex: 0 1 auto; margin: 0; }
+.pageIntro h1 { white-space: nowrap; }
+.controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; min-width: 0; padding-bottom: 4px; }
+.controls .search { margin-left: 0; width: 290px; min-height: 46px; }
+.controls select { background: #101010; color: #ddd; border: 1px solid #ffffff26; border-radius: 4px; padding: 12px; min-height: 46px; max-width: 150px; font-size: 14px; }
+.controls .continuousButton { min-height: 46px; }
+.controls > details { font-size: 12px; }
+.discoveryStage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr); gap: 28px; align-items: start; }
+.chart { border-right: 1px solid #ffffff26; padding-right: 26px; min-width: 0; }
+.sectionHeading { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.sectionHeading h2 { margin: 0; font-size: 32px; font-weight: 750; letter-spacing: -.02em; line-height: 1.25; }
+.sectionNote { color: #b4b4bc; font-size: 13px; line-height: 1.6; margin: 7px 0 17px; }
+.chartRows { max-height: 666px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #555 transparent; overscroll-behavior: contain; }
+.chartRows ol { padding: 0; margin: 0; list-style: none; }
+.chartRows li { display: grid; grid-template-columns: 27px 66px minmax(0, 1fr) 44px; align-items: center; gap: 10px; min-height: 88px; padding: 11px 2px 11px 0; border-bottom: 1px solid #ffffff24; }
+.rank { color: #999; font-size: 23px; font-variant-numeric: tabular-nums; font-weight: 650; }
+.chartRows li:nth-child(-n+3) .rank { color: #ff7518; }
+.rankPoster { display: block; width: 66px; aspect-ratio: 16/9; padding: 0; border: 0; position: relative; background: #111; overflow: hidden; }
+.rankPoster img { width: 100%; height: 100%; object-fit: cover; }
+.rankPoster > svg { position: absolute; bottom: 3px; left: 3px; color: white; filter: drop-shadow(0 1px 3px black); }
+.rankInfo { min-width: 0; }
+.rankTitle { display: block; text-align: left; color: #eee; font-size: 14px; line-height: 1.45; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 100%; padding: 0; background: transparent; border: 0; min-height: 24px; }
+.rankInfo > p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b2b2b9; font-size: 12px; margin: 1px 0 3px; }
+.rankStats { display: flex; flex-wrap: wrap; gap: 2px 8px; color: #aaa; font-size: 12px; line-height: 1.4; }
+.rankStats > span:first-child { color: #ffb47f; }
+.chart .cardHeart { width: 44px; height: 44px; min-width: 44px; padding: 2px; }
+.chartStatus { font-size: 14px; color: #aaa; line-height: 1.7; margin: 22px 0; }
+.chartStatus p { margin: 0 0 8px; }
+.chartStatus button { color: #ff9a45; border: 1px solid #ff751850; background: transparent; padding: 8px 14px; min-height: 44px; }
+.chartToggle { display: none; }
+.newest { min-width: 0; }
+.newestGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px 20px; }
+.newBadge { position: absolute; top: 10px; left: 10px; padding: 5px 8px; border-radius: 3px; background: #ff7518; color: #070707; font-size: 12px; font-weight: 750; }
+.newestGrid .cardPoster { aspect-ratio: 16/9; }
+.cardTitleRow { margin-top: 10px; gap: 8px; align-items: flex-start; }
+.cardTitleRow h3 { min-width: 0; font-size: 18px; line-height: 1.4; font-weight: 700; margin: 0; }
+.cardActions { gap: 4px; flex-shrink: 0; }
+.cardActions button { min-width: 44px; min-height: 44px; }
+.cardActions svg { width: 26px; height: 26px; }
+.cardArtist { margin: 3px 0 0; color: #b4b4bc; font-size: 14px; line-height: 1.5; }
+.cardStats { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #aaa; }
+.cardStats > span:first-child { color: #ffb47f; }
+.catalog { margin-top: 25px; padding-top: 20px; }
+.catalogHeading { gap: 26px; margin-bottom: 20px; }
+.catalogCount { margin: 0 0 0 auto; color: #999; font-size: 13px; white-space: nowrap; }
+.viewAll { display: inline-flex; align-items: center; gap: 7px; color: #ff9a45; margin-left: auto; font-size: 14px; min-height: 44px; background: transparent; border: 0; }
+.sorts button { min-height: 44px; }
+.sorts button:disabled { opacity: .4; cursor: not-allowed; }
+@media (min-width: 1001px) {
+  .pageIntro { padding-top: 28px; }
+  .controls { max-width: 640px; }
+  .controls > details { flex-basis: 100%; margin-left: auto; }
+}
+@media (max-width: 1200px) and (min-width: 701px) {
+  .pageIntro { flex-wrap: wrap; align-items: center; }
+  .controls { width: 100%; justify-content: flex-start; }
+  .discoveryStage { grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr); gap: 20px; }
+  .chart { padding-right: 18px; }
+  .chartRows li { grid-template-columns: 23px 52px minmax(0, 1fr) 32px; gap: 7px; }
+  .rankPoster { width: 52px; }
+  .cardTitleRow { flex-wrap: wrap; }
+  .cardTitleRow h3 { width: 100%; }
+}
+@media (max-width: 700px) {
+  .pageIntro { padding-top: 20px; display: block; margin-bottom: 20px; }
+  .pageIntro h1 { white-space: normal; }
+  .controls { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .controls .search { width: 100%; grid-column: 1 / -1; }
+  .controls select { width: 100%; max-width: none; }
+  .controls > details { grid-column: 1 / -1; justify-self: end; }
+  .discoveryStage { display: flex; flex-direction: column; gap: 22px; }
+  .chart { width: 100%; border-right: 0; padding-right: 0; border-top: 1px solid #ffffff26; border-bottom: 1px solid #ffffff26; padding-top: 13px; }
+  .sectionHeading h2 { font-size: 26px; }
+  .chartToggle { display: block; background: transparent; color: #ff9a45; border: 0; min-height: 44px; padding: 4px 0 4px 12px; font-size: 13px; }
+  .chartRows { display: none; max-height: 500px; }
+  .chartExpanded .chartRows { display: block; }
+  .chart .sectionNote { margin-bottom: 12px; font-size: 12px; }
+  .chartRows li { grid-template-columns: 24px 64px minmax(0, 1fr) 44px; gap: 9px; }
+  .rankPoster { width: 64px; }
+  .newest { width: 100%; }
+  .newestGrid { grid-template-columns: minmax(0, 1fr); gap: 25px; }
+  .sectionNote { font-size: 13px; }
+  .cardTitleRow h3 { font-size: 19px; }
+  .cardActions { gap: 4px; }
+  .cardActions button { min-width: 44px; min-height: 44px; }
+  .cardArtist { font-size: 14px; }
+  .cardStats { font-size: 13px; }
+  .catalogCount { margin-left: 0; }
+  .catalogHeading { gap: 12px 18px; }
+  .catalogHeading h2 { font-size: 26px; }
+  .sorts { gap: 18px; }
+  .viewAll { font-size: 12px; }
+}
+@media (min-width: 701px) {
+  .pageIntro { padding-top: 18px; margin-bottom: 20px; }
+  .sectionNote { margin: 5px 0 12px; }
+  .chartRows { max-height: 620px; }
+  .newestGrid { row-gap: 20px; }
+  .newest .cardTitleRow { margin-top: 6px; }
+  .newest .cardTitleRow h3 { -webkit-line-clamp: 1; }
+  .newest .cardArtist { margin-top: 2px; line-height: 1.35; }
+  .newest .cardStats { margin-top: 2px; line-height: 1.4; }
+  .catalog { margin-top: 20px; padding-top: 15px; }
+}

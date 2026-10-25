@@ -1,8 +1,9 @@
 import { buildHomeDiscovery, buildPublicHomeWorks, type HomeDiscovery, type HomeHeartRow, type HomeTrackRow, type HomeWork } from "./home-discovery.ts";
 
 export type MvChannel = HomeWork & { channelUrl: string };
-export type MvDiscovery = Omit<HomeDiscovery, "singles"> & { works: HomeWork[]; channels: MvChannel[] };
-export type MvSort = "rated" | "latest" | "support";
+export type MvWork = HomeWork & { favoriteCount?: number | null };
+export type MvDiscovery = Omit<HomeDiscovery, "singles"> & { works: MvWork[]; channels: MvChannel[]; rankedIds?: string[] | null; generatedAt?: string };
+export type MvSort = "rated" | "latest" | "support" | "popular";
 
 export function mvChannelUrl(value: string | null | undefined) {
   if (!value || value.length > 300) return null;
@@ -29,13 +30,15 @@ export function buildMvDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   };
 }
 
-export function filterMvWorks<T extends HomeWork>(works: T[], query: string, genre: string, sort: MvSort): T[] {
+export function filterMvWorks<T extends HomeWork>(works: T[], query: string, genre: string, sort: MvSort, rankedIds?: readonly string[] | null): T[] {
   const terms = query.normalize("NFKC").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   // Match the public score on the cover; unrated works follow by publish date.
   const rating = (work: HomeWork) => work.workKind !== "album" && (work.ratingCount ?? 0) > 0 && Number.isFinite(work.ratingAverage)
     && (work.ratingAverage ?? 0) > 0 ? Number(work.ratingAverage!.toFixed(1)) : 0;
+  const ranks = new Map((rankedIds ?? []).map((id, index) => [id, index]));
+  const popularity = (a: HomeWork, b: HomeWork) => (ranks.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (ranks.get(b.id) ?? Number.MAX_SAFE_INTEGER);
   return works.filter(work => (!genre || work.genre === genre) && terms.every(term =>
     `${work.title} ${work.artist}`.normalize("NFKC").toLocaleLowerCase().includes(term)))
-    .sort((a, b) => (sort === "rated" ? rating(b) - rating(a) : sort === "support" ? b.supporterCount - a.supporterCount : 0)
+    .sort((a, b) => (sort === "popular" ? popularity(a, b) : sort === "rated" ? rating(b) - rating(a) : sort === "support" ? b.supporterCount - a.supporterCount : 0)
       || b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
 }

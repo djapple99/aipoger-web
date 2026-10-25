@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, Heart, MessageCircleMore, Play, Search, X } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
 import WorkImage from "@/components/work-image";
+import { isNewlyPublishedMusic } from "@/lib/music-newness";
 import { albumCopy } from "@/lib/album-copy";
 import dynamic from "next/dynamic";
 const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
@@ -14,7 +15,7 @@ import ShareButton from "@/components/share-button";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
 import { mvCopy } from "@/lib/mv-copy";
-import { filterMvWorks, type MvDiscovery, type MvSort } from "@/lib/mv-discovery";
+import { filterMvWorks, type MvDiscovery, type MvSort, type MvWork } from "@/lib/mv-discovery";
 import type { HomeWork } from "@/lib/home-discovery";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
@@ -34,7 +35,6 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
   const { lang, t } = useI18n(); const copy = homeCopy(lang); const mv = mvCopy(lang);
   const [data, setData] = useState<MvDiscovery | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData); const [failed, setFailed] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewAutoPlay, setViewAutoPlay] = useState(false);
   const [queue, setQueue] = useState<HomeWork[] | null>(null);
   const [queueEnded, setQueueEnded] = useState(false);
@@ -45,17 +45,18 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
   const [sharedUnavailable, setSharedUnavailable] = useState(false);
   const sharedTrack = useRef<string | null>(null);
   const [query, setQuery] = useState(""); const [genre, setGenre] = useState("");
-  const [sort, setSort] = useState<MvSort>("rated"); const [limit, setLimit] = useState(12);
+  const [sort, setSort] = useState<MvSort>("latest"); const [limit, setLimit] = useState(12);
   const player = useMusicPlayer();
   const router = useRouter();
   const support = useMvHearts((data?.works ?? []).map(work => work.id));
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
-  const selected = data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
-  const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
-  // The MV catalogue is complete: support or a review must not remove a card
-  // when that work also becomes a featured candidate above.
-  const works = filterMvWorks(data?.works ?? [], query, genre, sort);
-  const channels = filterMvWorks(data?.channels ?? [], query, genre, sort);
+  const [chartExpanded, setChartExpanded] = useState(false);
+  const effectiveSort = sort === "popular" && data?.rankedIds == null ? "latest" : sort;
+  const works = filterMvWorks(data?.works ?? [], query, genre, effectiveSort, data?.rankedIds);
+  const newest = filterMvWorks(data?.works ?? [], query, genre, "latest").slice(0, 4);
+  const rankById = new Map((data?.rankedIds ?? []).map((id, index) => [id, index + 1]));
+  const chart = filterMvWorks(data?.works ?? [], query, genre, "popular", data?.rankedIds).filter(work => rankById.has(work.id)).slice(0, 50);
+  const channels = filterMvWorks(data?.channels ?? [], query, genre, "latest");
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const response = await fetch("/api/mv/discovery", { signal, cache: "no-store" });
@@ -95,12 +96,8 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
     setQueue(null); setPendingEnd(false); setQueueEnded(false); setReviewBusy(false); setViewAutoPlay(play); setFeedbackWork(work);
   };
   const watch = (work: HomeWork) => { if (work.videoId) openFeedback(work, true); };
-  const moveFeatured = (direction: number) => {
-    if (!data?.featured.length) return;
-    setSelectedId(data.featured[(selectedIndex + direction + data.featured.length) % data.featured.length].id);
-  };
   const startQueue = () => {
-    const playlist = filterMvWorks(data?.works ?? [], query, genre, sort);
+    const playlist = filterMvWorks(data?.works ?? [], query, genre, effectiveSort, data?.rankedIds);
     if (!playlist.length) return;
     if (player.playing) musicPlayer?.toggle();
     lastAdvance.current = null; setPendingEnd(false); setQueue(playlist); setQueueEnded(false); setViewAutoPlay(true); setFeedbackWork(playlist[0]);
@@ -126,80 +123,74 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
   const sendHeart = async (work: HomeWork) => {
     if (await support.toggle(work.id) === "login") router.push(`/auth?lang=${lang}&next=${encodeURIComponent(`/mv?lang=${lang}`)}`);
   };
-  const reset = () => { setQuery(""); setGenre(""); setSort("rated"); setLimit(12); };
+  const reset = () => { setQuery(""); setGenre(""); setSort("latest"); setLimit(12); };
+  const ratingText = (work: MvWork) => work.workKind === "album" ? albumCopy(lang).label
+    : work.ratingCount && Number.isFinite(work.ratingAverage) ? `${work.ratingAverage!.toFixed(1)} / 10 · ${work.ratingCount} ${mv.raters}` : mv.unrated;
+  const collectionText = (work: MvWork) => typeof work.favoriteCount === "number"
+    ? mv.collections.replace("{count}", String(work.favoriteCount)) : mv.collectionsUnavailable;
+  const heartButton = (work: MvWork) => <button className={styles.cardHeart} onClick={() => void sendHeart(work)}
+    aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
+    title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])}
+    aria-busy={support.busyId === work.id} disabled={!support.ready || support.busyId !== null || support.error === "read"}>
+    <Heart size={28} strokeWidth={1.9} fill={support.hearts[work.id] ? "currentColor" : "none"} />
+  </button>;
+  const renderCard = (work: MvWork, priority = false) => <article key={work.id} className={styles.card} data-work-id={work.id}>
+    <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}>
+      <WorkImage work={work} video priority={priority} />
+      {isNewlyPublishedMusic(work.publishedAt, new Date(data?.generatedAt ?? Date.now())) ? <span className={styles.newBadge}>NEW</span> : null}
+      <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span>
+    </button>
+    <div className={styles.cardTitleRow}><h3 title={work.title}><Link prefetch={false} href={`/works/${encodeURIComponent(work.id)}?lang=${lang}`}>{work.title}</Link></h3>
+      <div className={styles.cardActions}>{heartButton(work)}<button className={styles.cardComments} onClick={() => openFeedback(work)} title={mv.readComments} aria-label={`${mv.readComments} · ${work.title}`}><MessageCircleMore size={28} strokeWidth={1.9} /></button><MvShare work={work} className={styles.cardShare} /></div>
+    </div><p className={styles.cardArtist}>{work.artist}</p><p className={styles.cardStats}><span>{ratingText(work)}</span><span>{collectionText(work)}</span></p>
+  </article>;
   return <div className={base.page}>
     <EditorialHeader active="mv" />
-    <main className={base.main}>
+    <main className={`${base.main} ${styles.main}`}>
       {sharedUnavailable ? <p role="status" className={styles.supportError}>{mv.sharedUnavailable}</p> : null}
-      <section id="featured-mv" className={base.featured} aria-labelledby="mv-page-title">
-        <div className={`${base.sectionIntro} ${styles.intro}`}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{copy.intro}</p><div className="mt-3 flex justify-end"><ParticipationGuide surface="mv" lang={lang} /></div></div>
-        {loading && !data ? <div className={base.status} role="status">{copy.loading}</div>
-          : failed && !data ? <div className={base.status} role="alert"><p>{copy.error}</p><button onClick={() => { setLoading(true); void load(); }}>{copy.retry}<ArrowRight size={18} /></button></div>
-          : selected ? <div className={`${base.hero} ${styles.hero}`}>
-            <div className={`${base.video} ${styles.heroVideo}`}>
-              <button className={base.poster} onClick={() => watch(selected)} aria-label={`${copy.watch} · ${selected.title}`}>
-                <WorkImage key={selected.id} work={selected} video priority /><span className={base.posterPlay}><Play size={27} fill="currentColor" /></span><span className={base.videoSource}>{copy.source}</span>
-                <span className={styles.ratingBadge}>{selected.workKind === "album" ? albumCopy(lang).label : selected.ratingCount ? `${selected.ratingAverage?.toFixed(1)} ${mv.points}｜${selected.ratingCount} ${mv.raters}` : mv.unrated}</span>
-              </button>
-            </div>
-            <div className={base.workInfo}><p className={base.workLabel}>{data?.featureKind === "community" ? copy.community : copy.newWork}</p>
-              <h2 title={selected.title}><Link prefetch={false} href={`/works/${encodeURIComponent(selected.id)}?lang=${lang}`}>{selected.title}</Link></h2><p className={base.artist}>{selected.artist}</p>
-              {data?.featureKind === "community" ? <div className={base.support}><Heart size={18} /><span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
-                {data.featured.length > 1 ? <span className={base.tieLabel}>{copy.tied}</span> : null}</div> : <p className={base.supportBuilding}>{copy.noSupport}</p>}
-              <div className={base.quote}><p>{selected.comment ? copy.comments : copy.creatorSays}</p><blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
-                {selected.comment ? <cite>{selected.comment.name}</cite> : null}</div>
-              <button className={base.primary} onClick={() => watch(selected)}><Play size={21} fill="currentColor" />{copy.watch}</button>
-              <div className={`${base.workLinks} ${styles.heroActions}`}><button onClick={() => openFeedback(selected)}>{copy.discuss}<ArrowRight size={17} /></button>
-                <MvShare work={selected} />
-                <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a></div>
-              {(data?.featured.length ?? 0) > 1 ? <div className={base.featureControls}><span>{selectedIndex + 1} / {data!.featured.length}</span>
-                <button onClick={() => moveFeatured(-1)} aria-label={copy.previous}><ChevronLeft size={20} /></button><button onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight size={20} /></button></div> : null}
-            </div>
-          </div> : <div className={base.empty}><h2>{copy.empty}</h2><p>{copy.emptyBody}</p><Link href={withLang("/listen-bar#play-request")}>{copy.submit}<ArrowRight size={19} /></Link></div>}
-        {failed && data ? <div className={base.refreshError} role="status">{copy.error}<button onClick={() => void load()}>{copy.retry}</button></div> : null}
+      <section id="featured-mv" className={styles.pageIntro} aria-labelledby="mv-page-title">
+        <div className={base.sectionIntro}><p className={base.eyebrow}>MUSIC VIDEO</p><h1 id="mv-page-title">{mv.title}</h1><p className={base.intro}>{mv.intro}</p></div>
+        <div className={styles.controls}>
+          <label className={styles.search}><Search size={18} /><input type="search" aria-label={mv.search} placeholder={mv.search} value={query} onChange={event => { setQuery(event.target.value); setLimit(12); }} />{query ? <button onClick={() => { setQuery(""); setLimit(12); }} aria-label={mv.clear}><X size={16} /></button> : null}</label>
+          <select aria-label={mv.all} value={genre} onChange={event => { setGenre(event.target.value); setLimit(12); }}><option value="">{mv.all}</option>{MUSIC_GENRE_OPTIONS.filter(option => data?.works.some(work => work.genre === option.value) || data?.channels.some(work => work.genre === option.value)).map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}</select>
+          <button className={styles.continuousButton} type="button" onClick={startQueue} disabled={!works.length} title={mv.queueNote}><Play size={17} fill="currentColor" />{mv.continuous}</button>
+          <ParticipationGuide surface="mv" lang={lang} />
+        </div>
       </section>
+      {loading && !data ? <div className={base.status} role="status">{copy.loading}</div>
+        : failed && !data ? <div className={base.status} role="alert"><p>{copy.error}</p><button onClick={() => { setLoading(true); void load(); }}>{copy.retry}<ArrowRight size={18} /></button></div> : null}
+      {failed && data ? <div className={base.refreshError} role="status">{copy.error}<button onClick={() => void load()}>{copy.retry}</button></div> : null}
+      {support.error ? <div role="alert" className={styles.supportError}>{support.error === "read" ? mv.heartReadError : mv.heartWriteError}{support.error === "read" ? <button onClick={() => void support.reload()}>{copy.retry}</button> : null}</div> : null}
       {data ? <>
-        <section className={styles.catalog} aria-labelledby="mv-catalog-title">
-          <div className={styles.catalogHeading}><h2 id="mv-catalog-title">{mv.more}</h2>
-            <div className={styles.sorts} aria-label={mv.more}>{(["rated", "latest", "support"] as const).map(value => <button key={value} aria-pressed={sort === value} onClick={() => { setSort(value); setLimit(12); }}>{mv[value]}</button>)}</div>
-<div className={styles.filterRow}><select aria-label={mv.all} value={genre} onChange={event => { setGenre(event.target.value); setLimit(12); }}>
-            <option value="">{mv.all}</option>{MUSIC_GENRE_OPTIONS.filter(option => data.works.some(work => work.genre === option.value) || data.channels.some(work => work.genre === option.value)).map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}</select>
-            <p role="status">{works.length} {mv.count}</p><button className={styles.continuousButton} type="button" onClick={startQueue} disabled={!filterMvWorks(data.works, query, genre, sort).length} title={mv.queueNote}><Play size={17} fill="currentColor" />{mv.continuous}</button></div>
-            <label className={styles.search}><Search size={18} /><input type="search" aria-label={mv.search} placeholder={mv.search} value={query} onChange={event => { setQuery(event.target.value); setLimit(12); }} />
-              {query ? <button onClick={() => { setQuery(""); setLimit(12); }} aria-label={mv.clear}><X size={16} /></button> : null}</label>
-          </div>
-          {support.error ? <div role="alert" className={styles.supportError}>{support.error === "read" ? mv.heartReadError : mv.heartWriteError}
-            {support.error === "read" ? <button onClick={() => void support.reload()}>{copy.retry}</button> : null}</div> : null}
-          <div className={styles.grid}>{works.slice(0, limit).map(work => <article key={work.id} className={styles.card}>
-            <button className={styles.cardPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video />
-              <span className={styles.ratingBadge}>{work.workKind === "album" ? albumCopy(lang).label : work.ratingCount ? `${work.ratingAverage?.toFixed(1)} ${mv.points}｜${work.ratingCount} ${mv.raters}` : mv.unrated}</span>
-              <span className={styles.cardPlay}><Play size={20} fill="currentColor" /></span><span className={base.videoSource}>YouTube</span></button>
-            <div className={styles.cardTitleRow}>
-              <h3 title={work.title}><Link prefetch={false} href={`/works/${encodeURIComponent(work.id)}?lang=${lang}`}>{work.title}</Link></h3>
-              <div className={styles.cardActions}>
-                <button className={styles.cardHeart} onClick={() => void sendHeart(work)} aria-label={`${support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} · ${work.title}`}
-                  title={support.hearts[work.id] ? copy.removeHeart : copy.sendHeart} aria-pressed={Boolean(support.hearts[work.id])} aria-describedby={`mv-support-${work.id}`}
-                  aria-busy={support.busyId === work.id} disabled={!support.ready || support.busyId !== null || support.error === "read"}>
-                  <Heart size={34} strokeWidth={1.9} fill={support.hearts[work.id] ? "currentColor" : "none"} />
-                  <span id={`mv-support-${work.id}`}><span className={styles.srOnly}>{mv.support} </span>{work.supporterCount}</span>
-                </button>
-                <button className={styles.cardComments} onClick={() => openFeedback(work)} title={mv.readComments} aria-label={`${mv.readComments} · ${work.title}`}>
-                  <MessageCircleMore size={34} strokeWidth={1.9} />
-                </button>
-                <MvShare work={work} className={styles.cardShare} />
-              </div>
-            </div><p className={styles.cardArtist}>{work.artist}</p>
-          </article>)}</div>
-          {!works.length ? <div className={styles.noResults}>
-            <p>{mv.noResults}</p>
-            <button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button>
-          </div> : null}
+        <div className={styles.discoveryStage}>
+          <aside className={`${styles.chart} ${chartExpanded ? styles.chartExpanded : ""}`} aria-labelledby="mv-chart-title">
+            <div className={styles.sectionHeading}><h2 id="mv-chart-title">{mv.ranking}</h2><button className={styles.chartToggle} aria-expanded={chartExpanded} aria-controls="mv-chart-rows" onClick={() => setChartExpanded(value => !value)}>{chartExpanded ? mv.collapseChart : mv.expandChart}</button></div>
+            <p className={styles.sectionNote}>{mv.rankingNote}</p>
+            <div id="mv-chart-rows" className={styles.chartRows}>
+              {data.rankedIds == null ? <div role="status" className={styles.chartStatus}><p>{mv.rankingError}</p><button onClick={() => void load()}>{copy.retry}</button></div>
+                : !chart.length ? <p className={styles.chartStatus}>{mv.rankingEmpty}</p>
+                : <ol>{chart.map(work => <li key={work.id} data-work-id={work.id}>
+                  <span className={styles.rank}>{String(rankById.get(work.id)).padStart(2, "0")}</span>
+                  <button className={styles.rankPoster} onClick={() => watch(work)} aria-label={`${copy.watch} · ${work.title}`}><WorkImage work={work} video /><Play size={14} fill="currentColor" /></button>
+                  <div className={styles.rankInfo}><button className={styles.rankTitle} title={work.title} onClick={() => openFeedback(work)}>{work.title}</button><p>{work.artist}</p><div className={styles.rankStats}><span>{ratingText(work)}</span><span>{collectionText(work)}</span></div></div>{heartButton(work)}
+                </li>)}</ol>}
+            </div>
+          </aside>
+          <section className={styles.newest} aria-labelledby="mv-newest-title">
+            <div className={styles.sectionHeading}><h2 id="mv-newest-title">{mv.newest}</h2></div><p className={styles.sectionNote}>{mv.newestNote}</p>
+            <div className={styles.newestGrid}>{newest.map((work, index) => renderCard(work, index < 2))}</div>
+            {!newest.length ? <div className={styles.noResults}><p>{mv.noResults}</p><button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button></div> : null}
+          </section>
+        </div>
+        <section id="mv-catalog" className={styles.catalog} aria-labelledby="mv-catalog-title">
+          <div className={styles.catalogHeading}><h2 id="mv-catalog-title">{mv.catalogTitle}</h2><div className={styles.sorts} aria-label={mv.catalogTitle}>{(["latest", "popular"] as const).map(value => <button key={value} disabled={value === "popular" && data.rankedIds == null} aria-pressed={effectiveSort === value} onClick={() => { setSort(value); setLimit(12); }}>{mv[value]}</button>)}</div><p className={styles.catalogCount} role="status">{works.length} {mv.count}</p>{works.length > limit ? <button className={styles.viewAll} onClick={() => setLimit(works.length)}>{mv.viewAll}<ArrowRight size={17} /></button> : null}</div>
+          <div className={styles.grid}>{works.slice(0, limit).map(work => renderCard(work))}</div>
+          {!works.length ? <div className={styles.noResults}><p>{mv.noResults}</p><button onClick={reset}>{mv.reset}<ArrowRight size={17} /></button></div> : null}
           {works.length > limit ? <div className={styles.more}><button onClick={() => setLimit(current => current + 12)}>{mv.loadMore}<span>{Math.min(limit, works.length)} / {works.length}</span></button></div> : null}
         </section>
-        {channels.length ? <section className={styles.channels} aria-labelledby="mv-channels-title"><h2 id="mv-channels-title">{mv.channels}</h2><p>{mv.channelNote}</p>
-          <div>{channels.map(work => <a key={work.id} href={work.channelUrl} target="_blank" rel="noopener noreferrer"><WorkImage work={work} /><span><strong>{work.title}</strong><span>{work.artist}</span><small>{mv.openChannel} <ArrowRight size={14} /></small></span></a>)}</div></section> : null}
+        {channels.length ? <section className={styles.channels} aria-labelledby="mv-channels-title"><h2 id="mv-channels-title">{mv.channels}</h2><p>{mv.channelNote}</p><div>{channels.map(work => <a key={work.id} href={work.channelUrl} target="_blank" rel="noopener noreferrer"><WorkImage work={work} /><span><strong>{work.title}</strong><span>{work.artist}</span><small>{mv.openChannel}<ArrowRight size={14} /></small></span></a>)}</div></section> : null}
       </> : null}
-      <aside className={styles.submission}><div><h2>{mv.yourMv}</h2><p>{mv.submitNote}</p></div><div><Link href={withLang("/profile")}>{mv.myWorks}<ArrowRight size={17} /></Link><Link href={withLang("/listen-bar#play-request")}>{copy.submit}<ArrowRight size={17} /></Link></div></aside>
+      <aside className={styles.submission}><div><h2>{mv.yourMv}</h2><p>{mv.submitNote}</p></div><div><Link href={withLang("/profile")}>{mv.myWorks}<ArrowRight size={17} /></Link><Link href={`/profile?lang=${lang}&submit=1#submit-work`}>{copy.submit}<ArrowRight size={17} /></Link></div></aside>
       <footer className={base.footer}><p>{copy.footer}</p><div><Link href={withLang("/ai-music")}>{copy.explore}</Link><Link href={withLang("/about")}>{copy.about}</Link><Link href={withLang("/partners")}>{copy.contact}</Link></div></footer>
     </main>
     {feedbackWork ? <HomeWorkFeedback work={feedbackWork} onClose={() => { setFeedbackWork(null); setQueue(null); setPendingEnd(false); setReviewBusy(false); }} onChange={() => void load()} returnPath="/mv" showVideo autoPlay={viewAutoPlay}
