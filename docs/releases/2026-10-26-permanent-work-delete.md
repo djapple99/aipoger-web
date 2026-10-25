@@ -1,6 +1,6 @@
 # 本人作品永久刪除 — 2026-10-26
 
-使用者最新要求：作品下架後直接刪除資料，不要留「已下架」歷史。此要求取代前輪軟下架／保存附屬互動的規則。核心應用13a584d、SQL修訂2b775f0，分支codex/public-rule-copy；最終應用與部署資料於發布後補在下方。
+使用者最新要求：作品下架後直接刪除資料，不要留「已下架」歷史。此要求取代前輪軟下架／保存附屬互動的規則。核心應用13a584d、SQL修訂2b775f0，分支codex/public-rule-copy；最終應用50af0a81d785ebc90f145ee0b07e05781fc1dc91，Vercel dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT（aipoger-web-rnz8-o3alparmp-yohungs-projects.vercel.app）已READY並promote至aipoger.com／www。
 
 ## 最終行為
 
@@ -22,6 +22,6 @@
 
 ## 發布與維護
 
-正式應用核心13a584d及dpl_4kQ1kPETUzC6BSvEeZRp7SZHgnCR已READY並promote；SQL前進修訂2b775f0的migration已套用，不需為僅SQL變更重建相同應用。舊批次介面的英文輔助文案再統一為permanent delete，最終應用版本另列。回復舊版軟下架應用不會恢復已永久刪除的資料，不能把應用rollback宣稱為資料復原。
+正式應用核心13a584d及dpl_4kQ1kPETUzC6BSvEeZRp7SZHgnCR已READY並promote；SQL前進修訂2b775f0的migration已套用，不需為僅SQL變更重建相同應用。舊批次介面的英文輔助文案再統一為permanent delete，最終應用50af0a8已重新完成雲端build並promote，現行文件使用此基準；此末次只統一舊批次入口英文輔助文案，核心862項測試結果沿用，該TSX另外通過eslint。回復舊版軟下架應用不會恢復已永久刪除的資料，不能把應用rollback宣稱為資料復原。
 
 私人證據：New project/audits/2026-10-26-permanent-work-delete/，含production-http.json、production-work-list.png與測試／TypeScript／lint／build log。實際作者UUID不放公開report。現行規則、體驗、工程、索引及agent原地更新，Drive沿既有ID同步；舊guard修復report註明已被本次使用者規則取代。

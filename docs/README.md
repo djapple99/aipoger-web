@@ -11,7 +11,7 @@
 
 ## 現況與查找順序
 
-- 最新應用基準 `13a584d`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_4kQ1kPETUzC6BSvEeZRp7SZHgnCR` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
+- 最新應用基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
 
 - 前輪刪除guard修復 `8579b7a`／`codex/public-rule-copy`（2026-10-26）：修復d7dfdeb刪除操作標記被資料庫guard拒絕的問題，依錯誤種類給重試提示；正式部署 `dpl_GD8r35wYea9VmtJWh7BveXZbXdUq`，無SQL規則或作品資料變更。18項定向及全套820項測試通過／36選用略過，包含真實PostgreSQL guard驗證。見[刪除失敗修復report](releases/2026-10-26-creator-delete-guard.md)。
 
