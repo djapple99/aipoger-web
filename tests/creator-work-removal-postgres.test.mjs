@@ -25,9 +25,11 @@ test('PostgreSQL: permanent deletion is owned, atomic, cascading, retryable and 
  create table official_gatekeeper_drops(audio_path text,cover_path text);
  create table battle_result_archives(result_payload jsonb);
  create table credit_and_quota_ledger(source_id uuid,delta integer);
- grant usage on schema auth to service_role;grant select on auth.users to service_role;
+ grant usage on schema auth to service_role;
  grant all on all tables in schema public to service_role;`);
  await db.exec(await readFile(new URL('../supabase/migrations/20261025162815_creator_work_permanent_delete.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261025164026_creator_work_delete_auth_boundary.sql',import.meta.url),'utf8'));
+ assert.equal((await db.query("select has_table_privilege('service_role','auth.users','select') as allowed")).rows[0].allowed,false);
  await db.query('insert into auth.users(id) values ($1),($2)',[USER,uuid(8)]);
  for(const [n,active] of [[2,true],[3,false],[4,true]]){
   const id=uuid(n),owner=n===4?uuid(8):USER;
