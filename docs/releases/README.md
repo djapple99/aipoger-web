@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-25 MV人氣榜與最新上架](2026-10-25-mv-popularity-newest.md)
+
 - [2026-10-25 對戰連結投稿、三種長度與玩法指南](2026-10-25-battle-link-modes.md)
 
 - [2026-10-25 播放器還原與作者回覆2點](2026-10-25-creator-replies.md)

@@ -23,4 +23,8 @@ Local visual rendering used a sanitized snapshot of the existing public APIs bec
 
 No actionable P0/P1/P2 visual findings remain. The accepted P3 difference is the modest extra catalogue offset for real captions and accessible hit areas.
 
+## Production follow-through
+
+App `ea9ea8a`, deployment `dpl_DmFRys9uJtntpWB4cQn7qUd2ixem` is READY and aliased to aipoger.com/www. Real staged API confirms all 92 public MVs retained, all 58 eligible ranks exactly match Explore, prior ratings and saves unchanged. Production matches the staged dataset; original public comments unchanged. Actual YouTube playback reached 22.326 seconds, paused=false. Production desktop and four-language 320px mobile checks pass, with no horizontal overflow or console error/warning. Screenshot: `production-desktop.jpg` in the same private audit folder. Full tests: 780 passed / 31 existing optional DB skips / 0 failed (811 total). See `docs/releases/2026-10-25-mv-popularity-newest.md`.
+
 final result: passed
