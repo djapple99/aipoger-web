@@ -7,12 +7,12 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  Play,
   Search,
   WandSparkles,
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import StudioAudioPreviewButton from "@/components/studio-audio-preview-button";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ShowtimeQueuePlayer, {
@@ -177,15 +177,7 @@ function TechniqueCard({
         <p className="mt-3 text-sm font-bold leading-7 text-zinc-400">{sunoLibraryText(item.summary, locale)}</p>
         {hasAudioPreview ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onPlayAudioPreview?.()}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-orange-300/45 bg-orange-400/[0.1] px-4 text-sm font-black text-orange-50 transition hover:border-orange-200 hover:bg-orange-400/[0.18] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-100"
-              aria-label={isZh ? `播放 ${item.title.zh} 的 15 秒聲音示例` : `Play the 15-second sound example for ${item.title.en}`}
-            >
-              <Play className="h-4 w-4" fill="currentColor" />
-              {isZh ? "15 秒試聽" : "15s preview"}
-            </button>
+            <StudioAudioPreviewButton id={item.key} title={sunoLibraryText(item.title, locale)} isZh={isZh} onStart={() => onPlayAudioPreview?.()} />
             <span className="text-[11px] font-bold leading-5 text-zinc-500">
               {isZh ? "聲音方向示例・不是正式母帶；Suno 實際生成仍會變化" : "Sound direction sketch · not a final master; Suno generations will vary"}
             </span>

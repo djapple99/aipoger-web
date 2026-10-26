@@ -210,6 +210,29 @@ export default function GlobalMusicPlayer() {
     void playTrack({ ...current, index }, true, intentional);
   }, [playTrack]);
 
+  const resumeAudio = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !sessionRef.current || currentIsYouTube()) return;
+    if (!audio.paused) return;
+    const request = ++playRequestRef.current;
+    setPlaybackError("");
+    try {
+      await ensureVolumeControl(audio);
+      if (request !== playRequestRef.current) return;
+      await audio.play();
+      if (request === playRequestRef.current) setPlaying(true);
+    } catch {
+      if (request !== playRequestRef.current) return;
+      setPlaying(false);
+      setPlaybackError(label("目前無法播放，請稍後再試。", "Playback is unavailable. Try again shortly.", "現在再生できません。しばらくしてから再試行してください。", "현재 재생할 수 없습니다. 잠시 후 다시 시도해 주세요."));
+    }
+  }, [currentIsYouTube, ensureVolumeControl, label]);
+  const pauseAudio = useCallback(() => {
+    ++playRequestRef.current;
+    audioRef.current?.pause();
+    setPlaying(false);
+  }, []);
+
   const togglePlayback = useCallback(() => {
     if (currentIsYouTube()) {
       setPlaybackError("");
@@ -221,16 +244,12 @@ export default function GlobalMusicPlayer() {
     }
     const audio = audioRef.current;
     if (!audio) return;
-    setPlaybackError("");
     if (audio.paused) {
-      void ensureVolumeControl(audio).then(() => audio.play()).then(() => setPlaying(true)).catch(() => {
-        setPlaying(false);
-        setPlaybackError(label("目前無法播放，請稍後再試。", "Playback is unavailable. Try again shortly.", "現在再生できません。しばらくしてから再試行してください。", "현재 재생할 수 없습니다. 잠시 후 다시 시도해 주세요."));
-      });
+      void resumeAudio();
     } else {
-      audio.pause();
+      pauseAudio();
     }
-  }, [ensureVolumeControl, label, currentIsYouTube]);
+  }, [currentIsYouTube, pauseAudio, resumeAudio]);
 
   useEffect(() => {
     registerMusicPlayer({
@@ -390,16 +409,18 @@ export default function GlobalMusicPlayer() {
           className="fixed inset-x-0 bottom-0 z-[70] border-t border-yellow-100/25 bg-[#070707]/96 px-3 py-2.5 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] backdrop-blur-xl sm:px-5"
         >
           <div className="mx-auto grid max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 lg:grid-cols-[auto_minmax(9rem,0.75fr)_minmax(16rem,1.5fr)_auto] sm:gap-4">
-            <button
-              type="button"
-              onClick={togglePlayback}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-100"
-              aria-label={playing ? (label("暫停", "Pause", "一時停止", "일시정지")) : label("播放", "Play", "再生", "재생")}
-            >
-              {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4" fill="currentColor" />}
-            </button>
+            <div role="group" aria-label={label("播放控制", "Playback controls", "再生コントロール", "재생 컨트롤")} className="col-start-1 row-start-2 flex items-center gap-1.5 lg:row-start-1">
+              <button type="button" onClick={() => void resumeAudio()} aria-label={label("播放", "Play", "再生", "재생")}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-orange-500 px-2.5 text-xs font-bold text-black transition hover:bg-orange-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-100 sm:px-3">
+                <Play className="h-4 w-4" fill="currentColor" /><span>{label("播放", "Play", "再生", "재생")}</span>
+              </button>
+              <button type="button" onClick={pauseAudio} aria-label={label("暫停", "Pause", "一時停止", "일시정지")}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-orange-300/50 px-2.5 text-xs font-bold text-orange-100 transition hover:bg-orange-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-100 sm:px-3">
+                <Pause className="h-4 w-4" fill="currentColor" /><span>{label("暫停", "Pause", "一時停止", "일시정지")}</span>
+              </button>
+            </div>
 
-            <div className="flex min-w-0 items-center gap-2.5">
+            <div className="col-span-2 col-start-1 row-start-1 flex min-w-0 items-center gap-2.5 lg:col-span-1 lg:col-start-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={track.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
               <div className="min-w-0">
@@ -411,7 +432,7 @@ export default function GlobalMusicPlayer() {
               </div>
             </div>
 
-            <div className="col-span-3 row-start-2 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:col-span-1 lg:col-start-3 lg:row-start-1">
+            <div className="col-span-2 col-start-2 row-start-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:col-span-1 lg:col-start-3 lg:row-start-1">
               <span className="text-[10px] font-bold tabular-nums text-zinc-500">{formatTime(currentTime)}</span>
               <input
                 type="range"

@@ -10,6 +10,7 @@ const promptLibrary = readFileSync(
   new URL("../src/components/suno-practice-library-section.tsx", import.meta.url),
   "utf8",
 );
+const previewButton = readFileSync(new URL("../src/components/studio-audio-preview-button.tsx", import.meta.url), "utf8");
 const productRules = readFileSync(
   new URL("../docs/aipoger-product-rules.md", import.meta.url),
   "utf8",
@@ -59,8 +60,8 @@ test("every Bible preview URL has a compact public MP3 asset", () => {
 });
 
 test("Bible preview cards use one shared bottom queue player", () => {
-  assert.ok(promptLibrary.includes("15 秒試聽"));
-  assert.ok(promptLibrary.includes("15s preview"));
+  assert.ok(previewButton.includes("15 秒試聽"));
+  assert.ok(previewButton.includes("15s preview"));
   assert.ok(promptLibrary.includes("聲音方向示例・不是正式母帶；Suno 實際生成仍會變化"));
   assert.ok(promptLibrary.includes("<ShowtimeQueuePlayer ref={previewPlayerRef}"));
   assert.equal(promptLibrary.includes("<audio controls"), false);

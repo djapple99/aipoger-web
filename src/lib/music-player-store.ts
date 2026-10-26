@@ -21,3 +21,11 @@ export function publishMusicPlayer(next: MusicPlayerState) { state = next; liste
 export function getMusicPlayerState() { return state; }
 function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function useMusicPlayer() { return useSyncExternalStore(subscribe, getMusicPlayerState, () => empty); }
+export function getMusicTrackPlayback(id: string): "idle" | "playing" | "paused" {
+  if (state.session?.queue[state.session.index]?.id !== id) return "idle";
+  return state.playing ? "playing" : "paused";
+}
+// Preview buttons only subscribe to their own status, not every progress tick.
+export function useMusicTrackPlayback(id: string) {
+  return useSyncExternalStore(subscribe, () => getMusicTrackPlayback(id), () => "idle" as const);
+}
