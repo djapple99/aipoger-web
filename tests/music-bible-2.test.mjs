@@ -13,9 +13,9 @@ test('2.0 preserves every legacy ID, prompt, source, search string, order, and c
   const defaults = bibleCatalogDefaults();
   const merged = mergeBibleCatalog([]);
   for (const [key, original] of [['promptMoves', SUNO_PROMPT_MOVES], ['lyricMoves', SUNO_LYRIC_MOVES], ['taiwaneseEntries', TAIWANESE_LYRICS_ENTRIES]]) {
-    assert.deepEqual(defaults[key].map(withoutMetadata), original);
+    assert.deepEqual(defaults[key].map(withoutMetadata), original.map(withoutMetadata));
     assert.deepEqual(merged[key], defaults[key]);
-    assert.ok(defaults[key].every(item => JSON.stringify(item.metadata) === JSON.stringify(legacyBibleMetadata())));
+    assert.deepEqual(defaults[key].map(item=>item.metadata),original.map(item=>item.metadata??legacyBibleMetadata()));
   }
   for (const original of [SUNO_ARTIST_DNA_ENTRIES, SUNO_PROMPT_RECIPES]) {
     const enriched = original.map(withBibleMetadata);
@@ -88,9 +88,9 @@ test('member API keeps authentication, private caching, missing-table fallback a
   assert.equal(response.headers.get('cache-control'),'private, no-store');
   const body=await response.json();
   assert.equal(body.schemaReady,false);
-  for (const [key,count] of [['promptMoves',163],['lyricMoves',21],['taiwaneseEntries',38],['artistDnaEntries',772],['promptRecipes',747]]) {
+  for (const [key,count] of [['promptMoves',174],['lyricMoves',21],['taiwaneseEntries',38],['artistDnaEntries',772],['promptRecipes',747]]) {
     assert.equal(body[key].length,count);
-    assert.ok(body[key].every(item=>item.metadata.status==='Legacy' && item.metadata.lastVerifiedAt===null));
+    for(const item of body[key]){const declared=key==='promptMoves'?SUNO_PROMPT_MOVES.find(x=>x.key===item.key)?.metadata:undefined;assert.deepEqual(item.metadata,declared??legacyBibleMetadata());}
   }
 });
 

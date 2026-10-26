@@ -1,3 +1,4 @@
+import { BOOM_BAP_STUDIO_MOVES } from "./suno-boom-bap-studio-prompts.ts";
 import type { SunoStudioMasteringFamily, SunoTechnique } from "./suno-practice-library.ts";
 
 const STUDIO_SOURCES = [
@@ -1261,6 +1262,7 @@ export const BEATPORT_STUDIO_MASTERING_MOVES: SunoTechnique<"mastering">[] = BEA
 export const SUNO_STUDIO_MASTERING_MOVES: SunoTechnique<"mastering">[] = [
   ...BASE_STUDIO_MASTERING_MOVES,
   ...BEATPORT_STUDIO_MASTERING_MOVES,
+  ...BOOM_BAP_STUDIO_MOVES,
 ].map((move) => ({
   ...move,
   studioFamily: move.studioFamily ?? BASE_STUDIO_FAMILY_BY_KEY[move.key],
