@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：`0968840`／`codex/public-rule-copy`，2026-10-27完成驗收；Vercel `dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY，prod --skip-domain驗收後promote同一build，apex識別相同。錄音室試聽卡同步暫停／續播；共用音訊底欄新增有文字的獨立播放／暫停鍵，native resume以request序號避免暫停／關閉後異步重啟；YouTube原流程保留。15項定向通過，894項全套862通過／32選用略過／0失敗，TypeScript與本機／雲端webpack通過，lint0 errors／9既有warnings。真實MP3本機四語320px及1440px、正式會員教材頁播放／暫停／原進度續播與320px操作通過；11項正式HTTP含公開MP3原檔hash、會員API401及前版新聞布局。無DB／權限／素材變更，詳見[試聽控制report](releases/2026-10-27-preview-transport.md)。
+目前應用發布基準：`58d3997`／`codex/public-rule-copy`，2026-10-27完成驗收；Vercel `dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY，prod --skip-domain驗收後promote，apex識別相同。新增獨立Boom Bap資料模組11段並接入既有member catalog，總Prompt174／Studio111，音訊映射仍100且無新檔；Experimental metadata保留未知版本／核對日為null。33定向通過，896全套864通過／32選用略過／0失敗；tsc、本機／雲端webpack通過，lint0 errors／9既有warnings。正式會員DOM11段逐字核對、分類搜尋、複製成功提示、中英及320px無溢出，8項HTTP／權限／原音檔hash通過；沒有API／DB／播放器程式變更。見[Boom Bap report](releases/2026-10-27-boom-bap-prompts.md)。
+
+前輪試聽控制發布基準：`0968840`／`codex/public-rule-copy`，2026-10-27完成驗收；Vercel `dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY，prod --skip-domain驗收後promote同一build，apex識別相同。錄音室試聽卡同步暫停／續播；共用音訊底欄新增有文字的獨立播放／暫停鍵，native resume以request序號避免暫停／關閉後異步重啟；YouTube原流程保留。15項定向通過，894項全套862通過／32選用略過／0失敗，TypeScript與本機／雲端webpack通過，lint0 errors／9既有warnings。真實MP3本機四語320px及1440px、正式會員教材頁播放／暫停／原進度續播與320px操作通過；11項正式HTTP含公開MP3原檔hash、會員API401及前版新聞布局。無DB／權限／素材變更，詳見[試聽控制report](releases/2026-10-27-preview-transport.md)。
 
 前輪新聞比例與榜名發布：`e83af71`／`codex/public-rule-copy`，2026-10-27完成驗收；Vercel `dpl_5jeEBqwSBfHouaKaL7nZnxL4VQxy` READY，待驗收production build核對後promote，apex返回相同部署。新聞首頁／精選首頁共用服務端主次卡片網格，精選一大兩小、新聞Showtime式主打橫列＋兩小卡；Showtime社群榜名三色斜切框線與手機同色選取。27項定向通過；全套886項854通過／32選用略過／0失敗，TypeScript、本機webpack與雲端build通過，lint0 errors／9既有warnings。1440／768／320px及中英日韓介面驗收通過，正式19項HTTP／SEO／登入限制／社群API與三張卡片驗證通過；發布查核時error／fatal runtime log為0筆。沒有DB、Auth、播放器、留言評分、Credit或排行公式變更。見[版面與榜名report](releases/2026-10-27-news-layout.md)。
 

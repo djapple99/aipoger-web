@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-27 Boom Bap錄音室Prompt](2026-10-27-boom-bap-prompts.md)
+
 - [2026-10-27 錄音室試聽播放與暫停](2026-10-27-preview-transport.md)
 
 - [2026-10-27 新聞比例與社群榜名](2026-10-27-news-layout.md)

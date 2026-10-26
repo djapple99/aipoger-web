@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`0968840`／`codex/public-rule-copy`：錄音室試聽卡可暫停／續播，共用音訊底欄同時顯示播放與暫停；2026-10-27正式部署`dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY且apex核對一致。894項測試862通過／32選用略過，正式會員原進度續播、手機四語與11項HTTP通過；[發布report](releases/2026-10-27-preview-transport.md)。
+- 最新應用基準`58d3997`／`codex/public-rule-copy`：2026-10-27新增11段Boom Bap到錄音室Hip-Hop，保留英文原Prompt與版本差異、一鍵複製，這批無試聽；Studio111／原音訊100。部署`dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY且apex核對一致，896測試864通過／32略過，正式會員與8項HTTP驗收通過。[發布report](releases/2026-10-27-boom-bap-prompts.md)。
+
+- 前輪試聽控制`0968840`／`codex/public-rule-copy`：錄音室試聽卡可暫停／續播，共用音訊底欄同時顯示播放與暫停；2026-10-27正式部署`dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY且apex核對一致。894項測試862通過／32選用略過，正式會員原進度續播、手機四語與11項HTTP通過；[發布report](releases/2026-10-27-preview-transport.md)。
 
 - 前輪新聞比例與榜名`e83af71`／`codex/public-rule-copy`，2026-10-27完成驗收：首頁新聞一大兩小、新聞頁沿Showtime主打＋小卡、三個社群榜名三色斜切框線。部署`dpl_5jeEBqwSBfHouaKaL7nZnxL4VQxy` READY且apex核對一致；886測試854通過／32選用略過，正式19項HTTP與手機四語通過。見[新版比例與榜名report](releases/2026-10-27-news-layout.md)。
 
