@@ -11,12 +11,13 @@
 
 2026-10-26新聞按讚／討論已發布：文章底部新增會員按讚與留言，公開署名、訪客登入返回、重送去重與Owner管理已接上；見[新聞互動report](releases/2026-10-26-news-discussion.md)。
 
-2026-10-26音樂新聞已發布：先講重點、再詳解，使用愛波哥口語與自然幽默及自製圖文；網站新聞列表、首篇文章、首頁最新文章與分享／SEO已上線，見[發布report](releases/2026-10-26-music-news.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
+2026-10-26音樂新聞已發布：先講重點、再詳解，使用愛波哥口語與自然幽默及自製圖文；網站新聞列表、三篇圖文文章（YouTube Music、Suno／Reservoir、Spotify × Believe）、首頁最新文章與分享／SEO已上線，見[三篇新聞report](releases/2026-10-26-news-three-articles.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
 
 ## 現況與查找順序
 
 - 最新應用基準`b80ae04`／`codex/public-rule-copy`：新聞會員按讚與討論上線，部署`dpl_2cW555nJYzdaHMDJEmbjWNmCWGrB` READY；881測試849通過／32選用略過，正式資料庫與桌機／手機驗收通過。[討論區發布report](releases/2026-10-26-news-discussion.md)。
 
+- 目前三篇新聞`53365da`／`codex/public-rule-copy`：新增Suno權益與Spotify × Believe授權改編分析，正式部署`dpl_GEQBKTPqepFmsERT3UkFRpBPDwXW` READY且apex核對一致；885測試853通過／32選用略過，18項正式HTTP與手機／四語檢查通過。[發布與正式驗收](releases/2026-10-26-news-three-articles.md)。
 - 前輪音樂新聞`90142a6`／`codex/public-rule-copy`：音樂新聞與首篇YouTube Music AI標示圖文文章上線，正式部署`dpl_6K1wjRCjzBcgUpnDM6JkezZKMPyG` READY，870測試833通過／37選用略過；[發布與正式驗收](releases/2026-10-26-music-news.md)。
 
 - 前輪本人永久刪除基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
