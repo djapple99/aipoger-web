@@ -12,7 +12,9 @@ export const USER = uuid(1);
 // Execute the actual TypeScript modules with mocked I/O, not source-pattern assertions.
 export function loadTs(relativePath, mocks = {}, cache = new Map()) {
   let filename = path.resolve(root, relativePath);
-  if (!existsSync(filename) && existsSync(filename + ".ts")) filename += ".ts";
+  if (!existsSync(filename)) {
+    for (const extension of [".ts", ".tsx"]) if (existsSync(filename + extension)) { filename += extension; break; }
+  }
   if (cache.has(filename)) return cache.get(filename).exports;
   const loaded = { exports: {} };
   cache.set(filename, loaded);
@@ -22,7 +24,7 @@ export function loadTs(relativePath, mocks = {}, cache = new Map()) {
   const require = (specifier) => {
     if (Object.hasOwn(mocks, specifier)) return mocks[specifier];
     if (specifier === "server-only") return {};
-    if (specifier.startsWith("@/")) return loadTs(`src/${specifier.slice(2)}.ts`, mocks, cache);
+    if (specifier.startsWith("@/")) return loadTs(`src/${specifier.slice(2)}`, mocks, cache);
     if (specifier.startsWith(".")) return loadTs(path.relative(root, path.resolve(path.dirname(filename), specifier)), mocks, cache);
     return nativeRequire(specifier);
   };

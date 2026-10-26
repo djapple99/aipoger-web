@@ -13,6 +13,7 @@ import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
 import dynamic from "next/dynamic";
 const HomeWorkFeedback = dynamic(() => import("@/components/home-work-feedback"));
 import EditorialHeader from "@/components/editorial-header";
+import LatestMusicNews from "@/components/latest-music-news";
 import WorkImage from "@/components/work-image";
 import { SocialIcon } from "@/components/social-icons";
 import styles from "./home-editorial.module.css";
@@ -171,6 +172,7 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
         {!loading && !failed && !data?.singles.length ? <p className={styles.noSongs}>{copy.emptySongs}</p> : null}
         {playError ? <p role="alert" className={styles.refreshError}>{copy.playError}</p> : null}
       </section>
+      <LatestMusicNews lang={lang} />
       <footer className={styles.footer}>
         <div className={styles.footerCommunity}>
           <div className={styles.communityHeading}>

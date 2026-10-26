@@ -4,8 +4,8 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { usePresenceCount } from "@/lib/use-presence-count";
 
-const HIDDEN_PREFIXES = ["/battle/mock-", "/works/", "/ai-music-bible/"];
-const HIDDEN_EXACT = new Set(["/", "/battle", "/battle/listen", "/mv", "/ai-music", "/profile", "/listen-bar", "/auth", "/rank", "/ai-music-bible", "/about", "/partners"]);
+const HIDDEN_PREFIXES = ["/battle/mock-", "/works/", "/ai-music-bible/", "/news/"];
+const HIDDEN_EXACT = new Set(["/news", "/", "/battle", "/battle/listen", "/mv", "/ai-music", "/profile", "/listen-bar", "/auth", "/rank", "/ai-music-bible", "/about", "/partners"]);
 const FIXED_BATTLE_ROUTES = new Set(["setup", "hook-cut", "matchmaking", "result"]);
 
 function shouldHide(pathname: string | null) {

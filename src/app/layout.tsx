@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
+import "./music-news.css";
 import "./earworm-v3.css";
 import { I18nProvider } from "@/lib/i18n";
 import { htmlLangFor, isSupportedLang, LANG_COOKIE_NAME, langForRequest } from "@/lib/locale";

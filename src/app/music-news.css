@@ -1,0 +1,83 @@
+.music-news-page{min-height:100svh;background:#050505;color:#f5f5f5;padding-bottom:100px}
+.music-news-container{width:min(1360px,calc(100% - 120px));margin:auto}
+.music-news-index-heading{padding:54px 0 36px}
+.music-news-kicker{color:#ff9649;font-size:12px;letter-spacing:.13em;font-weight:700;margin:0 0 12px}
+.music-news-index-heading h1{margin:0;font-size:clamp(42px,6vw,76px);font-weight:800;line-height:1.2;letter-spacing:-.035em}
+.music-news-index-heading h1 span{color:#ff6a00}
+.music-news-deck{font-size:clamp(17px,1.65vw,21px);line-height:1.7;color:#d0d0d5;margin:18px 0}
+.music-news-index-heading>p:last-child{color:#a7a7af;line-height:1.8}
+.music-news-shelf{border-top:1px solid #ffffff26;margin-top:35px;padding:26px 0 5px}
+.music-news-section-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+.music-news-section-heading>div{display:flex;align-items:center;gap:22px}
+.music-news-section-heading h2{font-size:30px;line-height:1.3;font-weight:750;margin:0}
+.music-news-section-heading p{margin:0;font-size:15px;color:#b9b9c0}
+.music-news-section-heading>a{display:inline-flex;align-items:center;gap:9px;min-height:44px;font-size:14px;white-space:nowrap}
+.music-news-cards{display:grid;gap:24px}
+.music-news-card{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:32px;padding:0 0 24px;border-bottom:1px solid #ffffff26;align-items:center;min-width:0}
+.music-news-card-image{display:block;background:#121212;overflow:hidden}
+.music-news-card-image img{display:block;width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover;transition:transform .25s}
+.music-news-card-image:hover img{transform:scale(1.025)}
+.music-news-card-body{min-width:0}
+.music-news-card h3{font-weight:750;font-size:clamp(21px,2.2vw,32px);line-height:1.4;letter-spacing:-.02em;margin:13px 0;overflow-wrap:anywhere}
+.music-news-card-body>p:not(.music-news-meta){font-size:15px;color:#b9b9c0;line-height:1.8;margin:0 0 15px}
+.music-news-meta{display:flex;flex-wrap:wrap;align-items:center;gap:7px 15px;font-size:12px;color:#aaaab3;line-height:1.6;margin:12px 0}
+.music-news-card .music-news-meta span:first-child{color:#ff984d}
+.music-news-read{display:inline-flex;gap:10px;align-items:center;min-height:44px;color:#ffab6b;font-size:14px;font-weight:650}
+.music-news-back{display:inline-flex;align-items:center;min-height:44px;color:#bbb;font-size:13px;margin-top:20px}
+.music-news-article-heading{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:42px;align-items:center;padding:28px 0 38px}
+.music-news-article-heading h1{font-size:clamp(30px,3.2vw,48px);line-height:1.3;letter-spacing:-.035em;font-weight:800;margin:0}
+.music-news-cover{margin:0}
+.music-news-cover img{width:100%;height:auto;display:block}
+.music-news-cover figcaption{font-size:11px;color:#9999a2;margin:10px 0 0;line-height:1.7}
+.music-news-language{color:#ffc192;font-size:13px;margin:15px 0;line-height:1.7}
+.music-news-essentials{padding:28px 32px;background:#12100e;border:1px solid #ff8b3b55;border-left:3px solid #ff7a20;margin:0 0 42px}
+.music-news-essentials h2{font-size:23px;font-weight:750;margin:0 0 23px;line-height:1.5}
+.music-news-essentials ol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;list-style:none;margin:0;padding:0;counter-reset:essentials}
+.music-news-essentials li{min-width:0;counter-increment:essentials}
+.music-news-essentials li:before{content:"0" counter(essentials);color:#ff9b53;font-size:12px;letter-spacing:.12em;display:block;margin-bottom:9px}
+.music-news-essentials strong{display:block;font-size:17px;line-height:1.65;margin-bottom:7px}
+.music-news-essentials li span{color:#b5b3b1;font-size:14px;line-height:1.8;display:block}
+.music-news-source-line{margin:20px 0 0;color:#777;font-size:12px}
+.music-news-prose{max-width:850px;margin:auto}
+.music-news-prose p{font-size:17px;line-height:1.95;color:#cdcdd2;margin:18px 0;overflow-wrap:anywhere}
+.music-news-prose .music-news-lead{font-size:22px;color:#f2f2f4;line-height:1.8}
+.music-news-prose>section{border-top:1px solid #ffffff26;padding-top:25px;margin-top:36px}
+.music-news-prose .music-news-section-number{color:#ff9b53;font-size:12px;letter-spacing:.1em;margin:0 0 12px}
+.music-news-prose h2{font-size:clamp(23px,2.6vw,31px);line-height:1.5;font-weight:750;letter-spacing:-.02em;margin:0 0 15px}
+.music-news-source{display:inline-flex;min-height:32px;align-items:center;color:#ffa25e;font-size:12px;margin-left:7px;white-space:nowrap;text-decoration:underline;text-underline-offset:4px}
+.music-news-classification{margin:27px 0}
+.music-news-classification-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#ffffff26;border:1px solid #ffffff26}
+.music-news-classification-grid>div{padding:23px 20px;min-width:0;background:#101010}
+.music-news-classification-grid svg{color:#ff9851;margin-bottom:24px}
+.music-news-classification-grid>div:nth-child(2) svg{color:#8abeb9}
+.music-news-classification-grid>div:nth-child(3) svg{color:#b7abc9}
+.music-news-classification-grid span{display:block;font-size:10px;letter-spacing:.04em;color:#a8a8b0}
+.music-news-classification-grid h3{font-size:24px;font-weight:750;margin:10px 0}
+.music-news-classification-grid p{font-size:14px;line-height:1.8;margin:0}
+.music-news-prose figcaption{font-size:12px;line-height:1.8;color:#aaaab3;margin-top:12px}
+.music-news-flow{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin:27px 0;padding:24px;border:1px solid #ffffff26;background:#0e0e0e}
+.music-news-flow>div svg{color:#ff9851}
+.music-news-flow h3{margin:12px 0 6px;font-size:18px;font-weight:700}
+.music-news-flow p{margin:0;font-size:13px}
+.music-news-flow figcaption{grid-column:1/-1;margin:0}
+.music-news-opinion{margin:40px 0 25px;padding:30px;background:#12100e;border-left:3px solid #ff7a20}
+.music-news-opinion .music-news-kicker{font-size:12px;color:#ffab6b;margin-top:0}
+.music-news-opinion blockquote{border-top:1px solid #ffffff26;margin:24px 0;padding-top:8px}
+.music-news-opinion blockquote p{color:#f1d2bc}
+.music-news-opinion cite{font-size:12px;color:#aaa;font-style:normal;line-height:1.8;display:block}
+.music-news-actions{padding:20px 0}
+.music-news-actions ul{padding-left:22px;color:#cdcdd2;line-height:1.95;font-size:17px}
+.music-news-actions li{padding:4px 0 4px 4px}
+.music-news-article-footer{max-width:850px;margin:20px auto 0;border-top:1px solid #ffffff26;padding-top:25px}
+.music-news-article-footer h2{font-size:18px;font-weight:700}
+.music-news-article-footer p,.music-news-article-footer ol{font-size:13px;line-height:1.9;color:#aaaab3}
+.music-news-article-footer ol{padding-left:18px}
+.music-news-article-footer li{padding:6px 0;overflow-wrap:anywhere}
+.music-news-page a:hover,.music-news-shelf a:hover{color:#ffae71}
+.music-news-page a:focus-visible,.music-news-shelf a:focus-visible{outline:2px solid #ffab6b;outline-offset:5px}
+@media(max-width:1000px){.music-news-section-heading>div{display:block}.music-news-section-heading p{margin-top:6px}.music-news-article-heading{grid-template-columns:1fr;gap:24px}.music-news-cover{max-width:780px}.music-news-card{gap:24px}.music-news-essentials ol{gap:20px}}
+@media(max-width:700px){.music-news-container{width:calc(100% - 36px)}.music-news-index-heading{padding:30px 0 24px}.music-news-card{grid-template-columns:1fr;gap:13px;padding-bottom:22px}.music-news-card h3{font-size:23px;margin:10px 0}.music-news-card-body>p:not(.music-news-meta){font-size:14px}.music-news-meta{gap:6px 12px;font-size:11px}.music-news-section-heading{align-items:flex-start;gap:12px}.music-news-section-heading h2{font-size:25px}.music-news-section-heading p{font-size:13px;line-height:1.7}.music-news-section-heading>a{font-size:12px;gap:5px}.music-news-shelf{margin-top:28px;padding-top:23px}.music-news-article-heading{padding:18px 0 26px}.music-news-article-heading h1{font-size:31px}.music-news-essentials{padding:21px 18px;margin-bottom:28px}.music-news-essentials h2{font-size:21px}.music-news-essentials ol{grid-template-columns:1fr;gap:20px}.music-news-essentials li:before{margin-bottom:4px}.music-news-prose p{font-size:16px}.music-news-prose .music-news-lead{font-size:20px}.music-news-classification-grid{grid-template-columns:1fr}.music-news-classification-grid>div{padding:20px}.music-news-classification-grid svg{margin-bottom:12px}.music-news-classification-grid h3{font-size:22px}.music-news-flow{grid-template-columns:1fr;padding:20px;gap:18px}.music-news-opinion{padding:23px 18px;margin-top:30px}.music-news-actions ul{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.music-news-card-image img{transition:none}}
+
+/* Keep the promised essentials-first reading order on small screens. */
+@media(max-width:700px){.music-news-container>article{display:flex;flex-direction:column}.music-news-article-heading,.music-news-article-body{display:contents}.music-news-title-block{order:0;padding:18px 0 26px}.music-news-essentials{order:1;margin-bottom:25px}.music-news-cover{order:2;margin-bottom:25px}.music-news-prose{order:3}.music-news-article-footer{order:4}}

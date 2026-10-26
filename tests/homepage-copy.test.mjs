@@ -1,3 +1,4 @@
+import { musicNewsCopy } from '../src/lib/music-news.ts';
 import { lazyRuntime } from "./helpers/lazy-runtime.mjs";
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -22,6 +23,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  const player={playing:true,session:null}; const window=new EventTarget();const document=new EventTarget();document.hidden=false;
  window.setInterval=()=>1;window.clearInterval=()=>{};
  const modules={
+  '@/lib/music-news':{musicNewsCopy}, '@/components/latest-music-news':{__esModule:true,default:'latest-news'},
   react,'react/jsx-runtime':{jsx:(type,props)=>typeof type==='function'?type(props):({type,props}),jsxs:(type,props)=>typeof type==='function'?type(props):({type,props})},
   'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},
   'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','Pause','Play','Radio','X'].map(x=>[x,x])),

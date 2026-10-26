@@ -103,7 +103,7 @@
   .singleCover { width: 145px; height: 145px; }
   .exploreHeading > div:first-child { align-items: flex-start; flex-direction: column; gap: 7px; }
 }
-@media (max-width: 1000px) {
+@media (max-width: 1180px) {
   .headerInner { flex-wrap: wrap; gap: 0; padding-top: 12px; }
   .headerActions { gap: 18px; }
   .navigation { order: 3; width: 100%; min-height: 57px; justify-content: space-between; gap: 18px; }

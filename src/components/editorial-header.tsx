@@ -5,11 +5,12 @@ import { useEffect, useState } from "react";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { useI18n } from "@/lib/i18n";
 import { homeCopy } from "@/lib/home-copy";
+import { musicNewsCopy } from "@/lib/music-news";
 import { supabase } from "@/lib/supabase";
 import LangToggle from "@/components/lang-toggle";
 import styles from "./home-editorial.module.css";
 
-export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle" | "showtime" | "bible" | "about" | "partners"; returnPath?: string }) {
+export default function EditorialHeader({ active, returnPath }: { active: "home" | "mv" | "explore" | "creator" | "battle" | "showtime" | "bible" | "about" | "partners" | "news"; returnPath?: string }) {
   const { lang } = useI18n(); const copy = homeCopy(lang);
   const [signedIn, setSignedIn] = useState(false);
   const withLang = (path: string) => { const [url, hash] = path.split("#"); return `${url}${url.includes("?") ? "&" : "?"}lang=${lang}${hash ? `#${hash}` : ""}`; };
@@ -32,6 +33,7 @@ export default function EditorialHeader({ active, returnPath }: { active: "home"
           <Link href={withLang("/rank")} className={active === "showtime" ? styles.active : undefined} aria-current={active === "showtime" ? "page" : undefined}>Showtime</Link>
           <Link href={withLang("/battle")} className={active === "battle" ? styles.active : undefined} aria-current={active === "battle" ? "page" : undefined}>Battle</Link>
           <Link href={withLang("/ai-music-bible")} className={active === "bible" ? styles.active : undefined} aria-current={active === "bible" ? "page" : undefined}>{copy.bible}</Link>
+          <Link href={withLang("/news")} className={active === "news" ? styles.active : undefined} aria-current={active === "news" ? "page" : undefined}>{musicNewsCopy[lang].title}</Link>
         </nav>
         <div className={styles.headerActions}>
           <Link href={withLang("/profile?submit=1#submit-work")} className={styles.submit}><span className={styles.submitLabel}>{copy.submit}</span><span className={styles.mobileSubmitLabel}>{lang === "zh" || lang === "ja" ? "投稿" : lang === "ko" ? "제출" : "Submit"}</span></Link>

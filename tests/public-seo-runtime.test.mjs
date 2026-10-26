@@ -96,6 +96,8 @@ test('sitemap paginates published playlists, deduplicates, localizes real pages 
   });
   const rows = await sitemap(), urls = rows.map(row => row.url);
   assert.equal(new Set(urls).size, urls.length);
+  assert.ok(urls.includes("https://aipoger.com/news?lang=en"));
+  assert.deepEqual(urls.filter(url => url.includes("/news/")), ["https://aipoger.com/news/youtube-music-ai-labels?lang=zh"]);
   for (const lang of ['zh', 'en', 'ja', 'ko']) {
     assert.ok(urls.includes(`https://aipoger.com/works/${work.id}?lang=${lang}`));
     assert.ok(urls.includes(`https://aipoger.com/choice/${uuid(82)}?lang=${lang}&kind=creator`));
@@ -140,7 +142,7 @@ test('sitemap XML escapes query separators and attribute characters without chan
   assert.ok(!xml.includes('&kind=')); assert.ok(!xml.includes('&amp;amp;'));
 });
 
-for (const path of ['/works/' + uuid(70), '/ai-music-bible/short-prompts']) test(`editorial subpages suppress the legacy floating home and language controls (${path})`, () => {
+for (const path of ['/works/' + uuid(70), '/ai-music-bible/short-prompts', '/news', '/news/youtube-music-ai-labels']) test(`editorial subpages suppress the legacy floating home and language controls (${path})`, () => {
   const mocks = { ...common('zh'), 'next/navigation': { usePathname: () => path }, 'next/image': { default: nothing },
     '@/components/lang-toggle': { default: () => { throw new Error('duplicate toggle'); } } };
   for (const name of ['nav-home-link', 'global-lang-toggle']) {

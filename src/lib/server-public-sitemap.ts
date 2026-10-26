@@ -6,6 +6,7 @@ import { readAllHomePages } from "@/lib/home-discovery";
 import { readPublicWorkIndex } from "@/lib/server-home-discovery";
 import { readPublicAlbums } from "@/lib/server-albums";
 import { readPublicBattles } from "@/lib/server-public-battles";
+import { publishedMusicNews } from "@/lib/music-news";
 import { BIBLE_PUBLIC_SLUGS } from "@/lib/bible-public-articles";
 import { PUBLIC_LANGS, publicUrl, publicAlternates } from "@/lib/public-seo";
 
@@ -27,8 +28,9 @@ const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => 
   ]);
   const validWorks = await Promise.all(works.map(async work => work.workKind !== "album" || (await readPublicAlbums(work.id)).length ? work : null));
   const entries: MetadataRoute.Sitemap = [
-    ...["/", "/mv", "/ai-music", "/rank", "/battle", "/ai-music-bible", "/about", "/partners", "/music-analysis"].flatMap(path => localized(path)),
+    ...["/", "/mv", "/ai-music", "/rank", "/battle", "/ai-music-bible", "/about", "/partners", "/music-analysis", "/news"].flatMap(path => localized(path)),
     ...localized("/ai-music", { view: "albums" }),
+    ...publishedMusicNews().map(article => ({ url: publicUrl(`/news/${article.slug}`, "zh"), lastModified: new Date(article.verifiedOn), alternates: { languages: { "zh-Hant": publicUrl(`/news/${article.slug}`, "zh"), "x-default": publicUrl(`/news/${article.slug}`, "zh") } } })),
     ...PUBLIC_LANGS.map(lang => ({ url: publicUrl("/drop-guide", lang) })),
     { url: publicUrl("/earworm", "zh") },
     ...validWorks.flatMap(work => work ? localized(`/works/${work.id}`) : []),
@@ -41,5 +43,5 @@ const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => 
     } } }))),
   ];
   return [...new Map(entries.map(entry => [entry.url, entry])).values()];
-}, ["aipoger-public-sitemap-v1"], { revalidate: 300 });
+}, ["aipoger-public-sitemap-v2-news"], { revalidate: 300 });
 export async function readPublicSitemap() { return buildSitemap(); }
