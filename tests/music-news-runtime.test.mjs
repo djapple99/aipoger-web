@@ -5,7 +5,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { loadTs } from './helpers/choice-runtime.mjs';
 const { publishedMusicNews, musicNewsArticle, musicNewsCopy } = loadTs('src/lib/music-news.ts');
-const article = publishedMusicNews()[0];
+const article = musicNewsArticle("youtube-music-ai-labels");
 const empty = () => null;
 function mocks(lang) { return {
  'next/link':{default:({href,children,...props})=>React.createElement('a',{href,...props},children)},
@@ -39,7 +39,8 @@ for(const lang of ['zh','en','ja','ko']) test(`news has crawlable content and tr
 test('unknown news does not resolve to another article or enter static params',async()=>{
  const page=loadTs('src/app/news/[slug]/page.tsx',mocks('zh'));
  assert.equal(musicNewsArticle('missing-news'),undefined);
- assert.deepEqual(page.generateStaticParams(),[{slug:article.slug}]);
+ assert.deepEqual(page.generateStaticParams(),publishedMusicNews().map(({slug})=>({slug})));
+ assert.equal(page.generateStaticParams().length,3);
  await assert.rejects(page.default({params:Promise.resolve({slug:'missing-news'}),searchParams:Promise.resolve({})}),/NEWS_404/);
  assert.equal((await page.generateMetadata({params:Promise.resolve({slug:'missing-news'})})).robots.index,false);
 });
@@ -47,4 +48,33 @@ test('news artwork is a real 1200 x 630 PNG',()=>{
  const bytes=readFileSync(new URL('../public/news/youtube-music-ai-labels.png',import.meta.url));
  assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1200);assert.equal(bytes.readUInt32BE(20),630);
  assert.ok(bytes.length<150_000);
+});
+
+for(const slug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-licensed-ai-remixes']) {
+ test(`news renders its own body, sources and metadata: ${slug}`,async()=>{
+  const story=musicNewsArticle(slug), page=loadTs('src/app/news/[slug]/page.tsx',mocks('zh'));
+  const props={params:Promise.resolve({slug}),searchParams:Promise.resolve({lang:'zh'})};
+  const html=renderToStaticMarkup(await page.default(props));
+  assert.ok(html.includes(story.title));assert.ok(html.includes(story.deck));assert.ok(html.includes(story.coverCaption));
+  assert.ok(!html.includes('晚餐都涼了')); // A valid slug must not fall back to the original YouTube body.
+  assert.ok(html.indexOf('30 秒先看懂')<html.indexOf('01 /'));
+  const json=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+  assert.deepEqual(json.citation,story.sources.map(x=>x.url));assert.equal(json.headline,story.title);
+  assert.equal(json.mainEntityOfPage,`https://aipoger.com/news/${slug}?lang=zh`);
+  const metadata=await page.generateMetadata(props);
+  assert.equal(metadata.openGraph.images[0].url,`https://aipoger.com${story.cover}`);
+  assert.equal(metadata.twitter.card,'summary_large_image');
+  const bytes=readFileSync(new URL(`../public${story.cover}`,import.meta.url));
+  assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1200);assert.equal(bytes.readUInt32BE(20),630);assert.ok(bytes.length<150_000);
+  if(slug.startsWith('suno')) { assert.ok(html.includes('不是法院判決'));assert.ok(html.includes('合規下載'));assert.ok(html.includes('2026 年 9 月 3 日')); }
+  else { assert.ok(html.includes('工具仍待推出'));assert.ok(html.includes('接受或拒絕'));assert.ok(html.includes('不能把它解讀成')); }
+ });
+}
+test('home and index expose exactly three distinct published articles with working deep links',async()=>{
+ const deps=mocks('zh'), Shelf=loadTs('src/components/latest-music-news.tsx',deps).default;
+ const Index=loadTs('src/app/news/page.tsx',deps).default;
+ for(const html of [renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'})),renderToStaticMarkup(await Index({searchParams:Promise.resolve({lang:'zh'})}))]) {
+  assert.equal((html.match(/class="music-news-card"/g)||[]).length,3);
+  for(const story of publishedMusicNews()){assert.ok(html.includes(story.title));assert.ok(html.includes(`/news/${story.slug}?lang=zh`));}
+ }
 });

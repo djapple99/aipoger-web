@@ -97,7 +97,7 @@ test('sitemap paginates published playlists, deduplicates, localizes real pages 
   const rows = await sitemap(), urls = rows.map(row => row.url);
   assert.equal(new Set(urls).size, urls.length);
   assert.ok(urls.includes("https://aipoger.com/news?lang=en"));
-  assert.deepEqual(urls.filter(url => url.includes("/news/")), ["https://aipoger.com/news/youtube-music-ai-labels?lang=zh"]);
+  assert.deepEqual(urls.filter(url => url.includes("/news/")), ["https://aipoger.com/news/spotify-believe-licensed-ai-remixes?lang=zh", "https://aipoger.com/news/suno-reservoir-lawsuit-commercial-rights?lang=zh", "https://aipoger.com/news/youtube-music-ai-labels?lang=zh"]);
   for (const lang of ['zh', 'en', 'ja', 'ko']) {
     assert.ok(urls.includes(`https://aipoger.com/works/${work.id}?lang=${lang}`));
     assert.ok(urls.includes(`https://aipoger.com/choice/${uuid(82)}?lang=${lang}&kind=creator`));

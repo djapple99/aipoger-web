@@ -6,3 +6,15 @@ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" vie
 await writeFile('public/news/youtube-music-ai-labels.svg',svg);
 const info=await sharp(Buffer.from(svg)).png().toFile('public/news/youtube-music-ai-labels.png');
 console.log(JSON.stringify({width:info.width,height:info.height,bytes:info.size}));
+
+// Sibling covers retain the original editorial grid; diagrams are our own vectors.
+const editions = [
+  { slug: 'suno-reservoir-lawsuit-commercial-rights', number: '002', lines: ['Suno 又被告，', '你的歌還能發嗎？'], sub: '平台訓練 × 商用許可 × 著作權', pill: '三個層次，一次拆清楚', art: `<g fill="none" stroke-width="2"><rect x="777" y="144" width="294" height="345" rx="10" stroke="#ffffff22"/><path d="M819 201H1027M819 225H952" stroke="#ffffff50"/><rect x="808" y="270" width="230" height="43" rx="6" stroke="#ff8635"/><rect x="808" y="330" width="230" height="43" rx="6" stroke="#82b7b3"/><rect x="808" y="390" width="230" height="43" rx="6" stroke="#b7abc9"/><path d="M842 291H1004M842 351H980M842 411H1004" stroke="#ffffff80"/></g>` },
+  { slug: 'spotify-believe-licensed-ai-remixes', number: '003', lines: ['你的歌，', '誰能拿去改編？'], sub: 'Spotify × Believe · 授權 AI 混音', pill: '同意、署名，還有分帳', art: `<g fill="none" stroke-width="2"><circle cx="917" cy="214" r="53" stroke="#ff8635"/><path d="M890 214L909 231L944 193" stroke="#ff9851" stroke-width="5"/><path d="M917 268V317M917 317L809 389M917 317L1025 389" stroke="#ffffff50"/><circle cx="809" cy="412" r="48" stroke="#82b7b3"/><circle cx="1025" cy="412" r="48" stroke="#b7abc9"/><path d="M798 426V399L824 393V419M1010 412H1040M1025 397V427" stroke="#f6f2ed" stroke-width="4"/><circle cx="791" cy="427" r="7" fill="#f6f2ed"/><circle cx="817" cy="420" r="7" fill="#f6f2ed"/></g>` },
+];
+for (const e of editions) {
+ const cover = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#101010"/><rect width="12" height="630" fill="#ff7a20"/><path d="M690 0V630" stroke="#ffffff18"/><circle cx="930" cy="316" r="224" fill="none" stroke="#ffffff0d"/>${e.art}<g font-family="PingFang TC, Noto Sans CJK TC, sans-serif"><text x="64" y="81" fill="#ff9851" font-size="22" font-weight="600" letter-spacing="3">AIPOGER / MUSIC NEWS</text><text x="60" y="218" fill="#f6f2ed" font-size="64" font-weight="700">${e.lines[0]}</text><text x="60" y="309" fill="#f6f2ed" font-size="64" font-weight="700">${e.lines[1]}</text><text x="64" y="377" fill="#aaa8a4" font-size="24">${e.sub}</text><rect x="64" y="429" width="298" height="46" rx="23" fill="#ff7a20"/><text x="87" y="460" fill="#111" font-size="22" font-weight="600">${e.pill}</text><path d="M64 528H1136" stroke="#ffffff35"/><text x="64" y="574" fill="#b4b0aa" font-size="20" letter-spacing="1">CREATOR RIGHTS / RELEASES / AI MUSIC</text><text x="1041" y="574" fill="#ff9851" font-size="20">NO. ${e.number}</text></g></svg>`;
+ await writeFile(`public/news/${e.slug}.svg`, cover);
+ const result = await sharp(Buffer.from(cover)).png().toFile(`public/news/${e.slug}.png`);
+ console.log(JSON.stringify({slug:e.slug,width:result.width,height:result.height,bytes:result.size}));
+}

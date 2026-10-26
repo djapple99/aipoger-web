@@ -61,3 +61,13 @@ test('news failures retain auth/rate/conflict status and disclose no database or
   }
   const x = setup({ identityError: true }); assert.equal((await x.route.POST(x.req({ body: 'Hello', requestId: uuid(22) }), context)).status, 503); assert.equal(x.calls.length, 0);
 });
+
+test('new article discussions remain public to read and require verified membership to write',async()=>{
+ for(const newSlug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-licensed-ai-remixes']) {
+  const x=setup(), ctx={params:Promise.resolve({slug:newSlug})};
+  assert.equal((await x.route.GET(x.req(null,null),ctx)).status,200);
+  assert.equal(x.calls[0].args.p_slug,newSlug);
+  for(const method of ['POST','PUT'])assert.equal((await x.route[method](x.req({body:'Hello',liked:true,requestId:uuid(22)},null),ctx)).status,401);
+  assert.equal(x.calls.length,1);
+ }
+});
