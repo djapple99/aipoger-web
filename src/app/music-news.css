@@ -81,3 +81,37 @@
 
 /* Keep the promised essentials-first reading order on small screens. */
 @media(max-width:700px){.music-news-container>article{display:flex;flex-direction:column}.music-news-article-heading,.music-news-article-body{display:contents}.music-news-title-block{order:0;padding:18px 0 26px}.music-news-essentials{order:1;margin-bottom:25px}.music-news-cover{order:2;margin-bottom:25px}.music-news-prose{order:3}.music-news-article-footer{order:4}}
+
+.music-news-discussion{order:5;width:100%;max-width:850px;margin:40px auto 0;border-top:1px solid #ffffff26;padding-top:28px;scroll-margin-top:100px}
+.music-news-discussion>header{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:24px}
+.music-news-discussion h2{font-size:26px;font-weight:750;line-height:1.4;margin:0 0 8px}
+.music-news-discussion>header p,.news-discussion-signin p{color:#a8a8b1;font-size:14px;line-height:1.8;margin:0}
+.music-news-discussion button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:9px 16px;border:1px solid #ffffff30;background:#111;color:#e7e7eb;font-size:14px;font-weight:600;cursor:pointer}
+.music-news-discussion button:disabled{cursor:default;opacity:.5}
+.music-news-discussion button:focus-visible,.music-news-discussion textarea:focus-visible{outline:2px solid #ffab6b;outline-offset:4px}
+.news-discussion-actions{display:flex;gap:10px;flex-shrink:0}
+.news-discussion-actions span{font-variant-numeric:tabular-nums;color:#aaaab3}
+.music-news-discussion .news-like[aria-pressed=true]{color:#ffab6b;border-color:#ff8b3b88;background:#25170e}
+.music-news-discussion form{padding:22px;background:#101010;border:1px solid #ffffff20}
+.music-news-discussion label{display:block;font-size:17px;font-weight:650;line-height:1.5}
+.news-writing-as{font-size:12px;color:#a7a7b0;margin:8px 0 14px;overflow-wrap:anywhere}
+.music-news-discussion textarea{display:block;width:100%;min-height:120px;resize:vertical;padding:14px;border:1px solid #ffffff30;background:#080808;color:#f5f5f5;line-height:1.8;font-size:16px}
+.music-news-discussion textarea::placeholder{color:#888892}
+.news-comment-submit{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px}
+.news-comment-submit>span{color:#9999a3;font-size:12px}
+.music-news-discussion .news-comment-submit button{background:#ff730f;color:#080808;border-color:#ff954a}
+.news-discussion-signin{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;background:#101010;border:1px solid #ffffff20}
+.music-news-discussion .news-discussion-signin button{color:#ffab6b;border-color:#ff8b3b77}
+.news-discussion-error{margin:16px 0;color:#ffb8a5;font-size:14px;line-height:1.8}
+.news-discussion-success{color:#9ed0b8;font-size:14px;margin:16px 0}
+.news-discussion-empty{color:#9999a3;padding:24px 0;margin:0;font-size:14px}
+.news-comment-list>article{padding:24px 0;border-bottom:1px solid #ffffff20;scroll-margin-top:100px}
+.news-comment-list header{display:flex;align-items:center;gap:12px}
+.news-comment-initial{height:38px;width:38px;flex-shrink:0;border:1px solid #ffffff26;background:#181818;display:flex;align-items:center;justify-content:center;color:#ffab6b;font-size:15px}
+.news-comment-list h3{font-size:14px;font-weight:650;margin:0 0 3px;overflow-wrap:anywhere}
+.news-comment-list time{font-size:11px;color:#9999a3}
+.news-comment-list header>div{min-width:0;flex:1}
+.news-comment-list header>button{margin-left:auto;min-width:44px;padding:9px}
+.news-comment-list>article>p{font-size:16px;line-height:1.9;color:#d0d0d5;white-space:pre-wrap;overflow-wrap:anywhere;margin:15px 0 0}
+.music-news-discussion .news-discussion-more{margin-top:22px}
+@media(max-width:700px){.music-news-discussion{margin-top:30px;padding-top:24px}.music-news-discussion>header{display:block}.music-news-discussion h2{font-size:23px}.news-discussion-actions{margin-top:18px;flex-wrap:wrap}.music-news-discussion form{padding:17px}.news-discussion-signin{display:block;padding:17px}.news-discussion-signin button{margin-top:12px}.news-comment-list>article{padding:20px 0}}

@@ -5,6 +5,7 @@ import EditorialHeader from "@/components/editorial-header";
 import ShareButton from "@/components/share-button";
 import SeoJsonLd from "@/components/seo-json-ld";
 import YouTubeAiLabelsArticle from "@/components/youtube-ai-labels-article";
+import MusicNewsDiscussion from "@/components/music-news-discussion";
 import { musicNewsArticle, musicNewsCopy, musicNewsSources, publishedMusicNews } from "@/lib/music-news";
 import { publicShareCopy } from "@/lib/public-share-copy";
 import { requestLang } from "@/lib/server-public-locale";
@@ -38,6 +39,7 @@ export default async function MusicNewsArticlePage({ params, searchParams }: Pro
         <footer className="music-news-article-footer"><h2>查核來源</h2><p>本文依官方公開資料整理，新聞事實與本站觀點分別呈現；平台規則以官方最新說明為準。</p>
           <ol>{musicNewsSources.map(source => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.label} ↗</a></li>)}</ol>
           <Link className="music-news-read" href={`/news?lang=${lang}`}>← {copy.back}</Link></footer>
+        <MusicNewsDiscussion slug={article.slug} title={article.title} lang={lang} />
         <SeoJsonLd data={{ "@context": "https://schema.org", "@type": "NewsArticle", headline: article.title, description: article.summary,
           inLanguage: article.language, datePublished: article.publishedOn, dateModified: article.verifiedOn, mainEntityOfPage: publicUrl(path, "zh"),
           image: [new URL(article.cover, publicUrl("/", "zh")).href], author: { "@type": "Person", name: "愛波哥", url: "https://www.youtube.com/@djapple2000" },

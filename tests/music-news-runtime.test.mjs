@@ -13,6 +13,7 @@ function mocks(lang) { return {
  'next/navigation':{notFound:()=>{throw new Error('NEWS_404');}},
  '@/lib/server-public-locale':{requestLang:async()=>lang},
  '@/components/editorial-header':{default:empty},'@/components/share-button':{default:empty},
+ '@/components/music-news-discussion':{default:empty},
  '@/components/seo-json-ld':{default:({data})=>React.createElement('script',{type:'application/ld+json',dangerouslySetInnerHTML:{__html:JSON.stringify(data)}})},
 };}
 for(const lang of ['zh','en','ja','ko']) test(`news has crawlable content and truthful language (${lang})`, async()=>{

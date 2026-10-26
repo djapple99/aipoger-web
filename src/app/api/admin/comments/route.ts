@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
+import { musicNewsArticle } from "@/lib/music-news";
 import {
   SUNO_ARTIST_DNA_ENTRIES,
   SUNO_PROMPT_RECIPES,
@@ -8,7 +9,7 @@ import {
 
 export const runtime = "nodejs";
 
-type CommentSource = "listen_bar" | "choice" | "bible";
+type CommentSource = "listen_bar" | "choice" | "bible" | "news";
 type ModerationStatus = "visible" | "hidden";
 type AdminAction = "hide" | "restore" | "delete" | "resolve_reports";
 
@@ -28,6 +29,7 @@ type CommentRow = {
   collection_id?: string;
   entry_kind?: "artist_dna" | "prompt_recipe";
   entry_key?: string;
+  article_slug?: string;
 };
 
 type ReportRow = {
@@ -51,19 +53,21 @@ const TABLES: Record<CommentSource, string> = {
   listen_bar: "listen_bar_track_comments",
   choice: "aipoger_choice_collection_comments",
   bible: "ai_music_bible_entry_comments",
+  news: "music_news_comments",
 };
 
 const BASE_SELECTS: Record<CommentSource, string> = {
   listen_bar: "id,track_id,user_id,display_name,body,created_at",
   choice: "id,collection_kind,collection_id,user_id,display_name,avatar_url,body,created_at",
   bible: "id,entry_kind,entry_key,user_id,display_name,avatar_url,body,created_at",
+  news: "id,article_slug,user_id,display_name,body,created_at",
 };
 
 const MODERATION_SELECT = "moderation_status,moderation_note,moderated_at";
 const DATA_BUCKET = "listen-bar-data";
 const REPORT_PATH = "moderation/content-reports.json";
 const REPORT_LIMIT = 500;
-const SOURCES = new Set<CommentSource>(["listen_bar", "choice", "bible"]);
+const SOURCES = new Set<CommentSource>(["listen_bar", "choice", "bible", "news"]);
 const ACTIONS = new Set<AdminAction>(["hide", "restore", "delete", "resolve_reports"]);
 
 function adminClient() {
@@ -209,15 +213,17 @@ export async function GET(request: NextRequest) {
     if (guard.error) return guard.error;
     const { admin } = guard;
 
-    const [listenBar, choice, bible] = await Promise.all([
+    const [listenBar, choice, bible, news] = await Promise.all([
       loadSource(admin, "listen_bar"),
       loadSource(admin, "choice"),
       loadSource(admin, "bible"),
+      loadSource(admin, "news"),
     ]);
     const allRows = [
       ...listenBar.rows.map((row) => ({ source: "listen_bar" as const, row })),
       ...choice.rows.map((row) => ({ source: "choice" as const, row })),
       ...bible.rows.map((row) => ({ source: "bible" as const, row })),
+      ...news.rows.map((row) => ({ source: "news" as const, row })),
     ];
 
     const trackIds = unique(listenBar.rows.map((row) => row.track_id));
@@ -270,6 +276,7 @@ export async function GET(request: NextRequest) {
         ? trackTitles.get(row.track_id ?? "") || "已下架或找不到的歌曲"
         : source === "choice"
           ? choiceTitles.get(`${row.collection_kind}:${row.collection_id}`) || "Choice 歌單"
+          : source === "news" ? musicNewsArticle(row.article_slug ?? "")?.title || "音樂新聞文章"
           : row.entry_kind === "artist_dna"
             ? artistTitles.get(row.entry_key ?? "") || "聲音 DNA 索引"
             : recipeTitles.get(row.entry_key ?? "") || "Prompt 配方索引";
@@ -277,11 +284,12 @@ export async function GET(request: NextRequest) {
         ? "/listen-bar?lang=zh"
         : source === "choice"
           ? `/choice/${row.collection_id}?kind=${row.collection_kind}&lang=zh`
+          : source === "news" ? `/news/${encodeURIComponent(row.article_slug ?? "")}?lang=zh#news-comment-${row.id}`
           : `/ai-music-bible?lang=zh#suno-inspiration-index`;
       return {
         id: row.id,
         source,
-        sourceLabel: source === "listen_bar" ? "歌曲評論" : source === "choice" ? "Choice 評論" : "聖經評論",
+        sourceLabel: source === "listen_bar" ? "歌曲評論" : source === "choice" ? "Choice 評論" : source === "news" ? "新聞留言" : "聖經評論",
         displayName: row.display_name,
         avatarUrl: row.avatar_url ?? null,
         body: row.body,
@@ -305,6 +313,7 @@ export async function GET(request: NextRequest) {
         listen_bar: { exists: listenBar.exists, moderationReady: listenBar.moderationReady },
         choice: { exists: choice.exists, moderationReady: choice.moderationReady },
         bible: { exists: bible.exists, moderationReady: bible.moderationReady },
+        news: { exists: news.exists, moderationReady: news.moderationReady },
       },
       counts: {
         total: comments.length,

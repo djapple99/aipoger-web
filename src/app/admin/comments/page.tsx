@@ -22,7 +22,7 @@ import { fontRighteous } from "@/lib/fonts";
 import { getActiveAuthSession, loadIsAdmin } from "@/lib/user-profile-admin";
 
 type AdminState = "checking" | "login" | "denied" | "ready";
-type CommentSource = "listen_bar" | "choice" | "bible";
+type CommentSource = "listen_bar" | "choice" | "bible" | "news";
 type CommentFilter = "all" | "reported" | "visible" | "hidden";
 type SourceFilter = "all" | CommentSource;
 type CommentAction = "hide" | "restore" | "delete" | "resolve_reports";
@@ -61,6 +61,7 @@ const sourceFilters: Array<{ key: SourceFilter; label: string }> = [
   { key: "listen_bar", label: "歌曲評論" },
   { key: "choice", label: "Choice 評論" },
   { key: "bible", label: "聖經評論" },
+  { key: "news", label: "新聞留言" },
 ];
 
 const statusFilters: Array<{ key: CommentFilter; label: string }> = [
@@ -110,6 +111,7 @@ export default function AdminCommentsPage() {
     listen_bar: { exists: true, moderationReady: false },
     choice: { exists: true, moderationReady: false },
     bible: { exists: false, moderationReady: false },
+    news: { exists: false, moderationReady: false },
   });
   const [query, setQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
