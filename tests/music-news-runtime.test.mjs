@@ -75,6 +75,22 @@ test('home and index expose exactly three distinct published articles with worki
  const Index=loadTs('src/app/news/page.tsx',deps).default;
  for(const html of [renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'})),renderToStaticMarkup(await Index({searchParams:Promise.resolve({lang:'zh'})}))]) {
   assert.equal((html.match(/class="music-news-card"/g)||[]).length,3);
+  assert.equal((html.match(/data-news-card="lead"/g)||[]).length,1);
+  assert.equal((html.match(/data-news-card="companion"/g)||[]).length,2);
   for(const story of publishedMusicNews()){assert.ok(html.includes(story.title));assert.ok(html.includes(`/news/${story.slug}?lang=zh`));}
+ }
+});
+
+test('news layout handles sparse editions and additional stories without duplication or empty slots',()=>{
+ const Grid=loadTs('src/components/music-news-grid.tsx',mocks('zh')).default;
+ const fixtures=Array.from({length:6},(_,i)=>({...article,slug:`fixture-${i}`,title:`Story ${i}`}));
+ for(const count of [0,1,2,3,6])for(const surface of ['home','index']){
+  const html=renderToStaticMarkup(React.createElement(Grid,{articles:fixtures.slice(0,count),lang:'ja',surface}));
+  if(!count){assert.equal(html,'');continue;}
+  assert.equal((html.match(/data-news-card="lead"/g)||[]).length,1);
+  assert.equal((html.match(/data-news-card="companion"/g)||[]).length,Math.min(2,count-1));
+  assert.equal((html.match(/class="music-news-card"/g)||[]).length,count);
+  assert.equal(html.includes('music-news-companions'),count>1);
+  for(let i=0;i<count;i++){assert.ok(html.includes(`/news/fixture-${i}?lang=ja`));assert.equal((html.match(new RegExp(`title="Story ${i}"`,'g'))||[]).length,1);}
  }
 });

@@ -1,5 +1,5 @@
 import EditorialHeader from "@/components/editorial-header";
-import MusicNewsCard from "@/components/music-news-card";
+import MusicNewsGrid from "@/components/music-news-grid";
 import SeoJsonLd from "@/components/seo-json-ld";
 import { musicNewsCopy, musicNewsHref, publishedMusicNews } from "@/lib/music-news";
 import { requestLang } from "@/lib/server-public-locale";
@@ -16,7 +16,8 @@ export default async function MusicNewsPage({ searchParams }: Props) {
   return <div className="music-news-page"><EditorialHeader active="news" returnPath="/news" />
     <main className="music-news-container"><header className="music-news-index-heading"><p className="music-news-kicker">AIPOGER JOURNAL</p>
       <h1>{copy.title}<span aria-hidden="true">.</span></h1><p className="music-news-deck">{copy.intro}</p><p>{copy.description}</p></header>
-      <div className="music-news-cards">{articles.map(article => <MusicNewsCard article={article} lang={lang} key={article.slug} />)}</div>
+      <section aria-labelledby="news-latest-title"><div className="music-news-index-section"><h2 id="news-latest-title">{copy.latest}</h2></div>
+        <MusicNewsGrid articles={articles} lang={lang} surface="index" /></section>
       <SeoJsonLd data={{ "@context": "https://schema.org", "@type": "CollectionPage", name: copy.title, url: publicUrl("/news", lang),
         mainEntity: { "@type": "ItemList", itemListElement: articles.map((article, i) => ({ "@type": "ListItem", position: i + 1, name: article.title,
           url: new URL(musicNewsHref(article, "zh"), publicUrl("/news", "zh")).href })) } }} />

@@ -51,10 +51,10 @@ export function ShowtimeCommunityRail({ lang, data, error, retry }: {
   return <aside className={styles.rail} data-showtime-community aria-label={copy.community}>
     <p className={styles.message}>{copy.message.map(line => <span key={line}>{line}</span>)}</p>
     <div className={styles.communityTabs} role="group" aria-label={copy.community}>
-      {lists.map(list => <button key={list.key} type="button" onClick={() => setSelected(list.key)} aria-pressed={selected === list.key}>{list.tab}</button>)}
+      {lists.map(list => <button key={list.key} type="button" onClick={() => setSelected(list.key)} aria-pressed={selected === list.key} data-community-tab={list.key}>{list.tab}</button>)}
     </div>
     {error ? <div role="alert" className={styles.communityStatus}><p>{copy.error}</p><button type="button" onClick={retry}><RotateCw size={16} />{copy.retry}</button></div> : lists.map(list => <section key={list.key} className={`${styles.board} ${selected === list.key ? styles.selectedBoard : ""}`} data-community-board={list.key} aria-labelledby={`showtime-${list.key}`}>
-      <header><h2 id={`showtime-${list.key}`}>{list.title}</h2><span>{copy.recent}</span></header>
+      <header><h2 id={`showtime-${list.key}`} className={styles.boardTitle}><span>{list.title}</span></h2><span>{copy.recent}</span></header>
       {!data ? <p role="status" className={styles.communityStatus}>{copy.loading}</p> : data[list.key].length === 0 ? <p className={styles.communityStatus}>{copy.empty}</p> : <ol>
         {data[list.key].map((person, index) => <li key={`${index}:${person.name}`}>
           <span className={styles.position}>{String(index + 1).padStart(2, "0")}</span>
