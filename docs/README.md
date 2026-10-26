@@ -15,9 +15,11 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`b80ae04`／`codex/public-rule-copy`：新聞會員按讚與討論上線，部署`dpl_2cW555nJYzdaHMDJEmbjWNmCWGrB` READY；881測試849通過／32選用略過，正式資料庫與桌機／手機驗收通過。[討論區發布report](releases/2026-10-26-news-discussion.md)。
+- 最新應用基準`e83af71`／`codex/public-rule-copy`，2026-10-27完成驗收：首頁新聞一大兩小、新聞頁沿Showtime主打＋小卡、三個社群榜名三色斜切框線。部署`dpl_5jeEBqwSBfHouaKaL7nZnxL4VQxy` READY且apex核對一致；886測試854通過／32選用略過，正式19項HTTP與手機四語通過。見[新版比例與榜名report](releases/2026-10-27-news-layout.md)。
 
-- 目前三篇新聞`53365da`／`codex/public-rule-copy`：新增Suno權益與Spotify × Believe授權改編分析，正式部署`dpl_GEQBKTPqepFmsERT3UkFRpBPDwXW` READY且apex核對一致；885測試853通過／32選用略過，18項正式HTTP與手機／四語檢查通過。[發布與正式驗收](releases/2026-10-26-news-three-articles.md)。
+- 前輪新聞互動`b80ae04`／`codex/public-rule-copy`：新聞會員按讚與討論上線，部署`dpl_2cW555nJYzdaHMDJEmbjWNmCWGrB` READY；881測試849通過／32選用略過，正式資料庫與桌機／手機驗收通過。[討論區發布report](releases/2026-10-26-news-discussion.md)。
+
+- 前輪三篇新聞`53365da`／`codex/public-rule-copy`：新增Suno權益與Spotify × Believe授權改編分析，正式部署`dpl_GEQBKTPqepFmsERT3UkFRpBPDwXW` READY且apex核對一致；885測試853通過／32選用略過，18項正式HTTP與手機／四語檢查通過。[發布與正式驗收](releases/2026-10-26-news-three-articles.md)。
 - 前輪音樂新聞`90142a6`／`codex/public-rule-copy`：音樂新聞與首篇YouTube Music AI標示圖文文章上線，正式部署`dpl_6K1wjRCjzBcgUpnDM6JkezZKMPyG` READY，870測試833通過／37選用略過；[發布與正式驗收](releases/2026-10-26-music-news.md)。
 
 - 前輪本人永久刪除基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
