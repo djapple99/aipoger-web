@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-26 音樂新聞與首篇圖文文章](2026-10-26-music-news.md)
+
 - [2026-10-26 本人作品永久刪除](2026-10-26-permanent-work-delete.md)
 
 - [2026-10-26 本人刪除被資料庫guard拒絕修復](2026-10-26-creator-delete-guard.md)

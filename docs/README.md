@@ -9,9 +9,13 @@
 5. [內容與營運](</Users/huangyihong/Documents/New project/docs/aipoger-growth.md>)
 6. [待辦與未完成項目](</Users/huangyihong/Documents/New project/docs/aipoger-roadmap.md>)
 
+2026-10-26音樂新聞已發布：先講重點、再詳解，使用愛波哥口語與自然幽默及自製圖文；網站新聞列表、首篇文章、首頁最新文章與分享／SEO已上線，見[發布report](releases/2026-10-26-music-news.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
+
 ## 現況與查找順序
 
-- 最新應用基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
+- 最新應用基準`90142a6`／`codex/public-rule-copy`：音樂新聞與首篇YouTube Music AI標示圖文文章上線，正式部署`dpl_6K1wjRCjzBcgUpnDM6JkezZKMPyG` READY，870測試833通過／37選用略過；[發布與正式驗收](releases/2026-10-26-music-news.md)。
+
+- 前輪本人永久刪除基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
 
 - 前輪刪除guard修復 `8579b7a`／`codex/public-rule-copy`（2026-10-26）：修復d7dfdeb刪除操作標記被資料庫guard拒絕的問題，依錯誤種類給重試提示；正式部署 `dpl_GD8r35wYea9VmtJWh7BveXZbXdUq`，無SQL規則或作品資料變更。18項定向及全套820項測試通過／36選用略過，包含真實PostgreSQL guard驗證。見[刪除失敗修復report](releases/2026-10-26-creator-delete-guard.md)。
 
