@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`58d3997`／`codex/public-rule-copy`：2026-10-27新增11段Boom Bap到錄音室Hip-Hop，保留英文原Prompt與版本差異、一鍵複製，這批無試聽；Studio111／原音訊100。部署`dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY且apex核對一致，896測試864通過／32略過，正式會員與8項HTTP驗收通過。[發布report](releases/2026-10-27-boom-bap-prompts.md)。
+- 最新應用基準`f463313`／`codex/public-rule-copy`：46個表情詞＋3張對照卡新增到創作聖經，這49張每次複製5點；不足連到Profile「我的點數」，集中餘額、任務、費用與紀錄，投稿168小時加註一週。正式migration20261027074525已套用並回滾驗證，903測試871通過／32略過；部署`dpl_HGgqXaazUbsrvUq6giGHsoQxUFFa` READY且apex同版，會員實扣與四語手機驗收通過。[發布report](releases/2026-10-27-expression-credit-wallet.md)。
+
+- 前輪應用基準`58d3997`／`codex/public-rule-copy`：2026-10-27新增11段Boom Bap到錄音室Hip-Hop，保留英文原Prompt與版本差異、一鍵複製，這批無試聽；Studio111／原音訊100。部署`dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY且apex核對一致，896測試864通過／32略過，正式會員與8項HTTP驗收通過。[發布report](releases/2026-10-27-boom-bap-prompts.md)。
 
 - 前輪試聽控制`0968840`／`codex/public-rule-copy`：錄音室試聽卡可暫停／續播，共用音訊底欄同時顯示播放與暫停；2026-10-27正式部署`dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY且apex核對一致。894項測試862通過／32選用略過，正式會員原進度續播、手機四語與11項HTTP通過；[發布report](releases/2026-10-27-preview-transport.md)。
 
