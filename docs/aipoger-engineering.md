@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：`56825bf`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY並promote同一待驗收build，apex核對同ID。探索／酒吧進頁嘗試一次音檔及YouTube隨機連播，尊重既有session與暫停／關閉；瀏覽器阻擋保留手動播放。耳朵測驗改主動開窗，YouTube初始化及短暫metadata缺失有guard；自動start標記被動聆聽。932測試893通過／39選用略過／0失敗，tsc及本機／雲端正式build通過，lint0 errors／9既有warnings。實際音檔與YouTube自動播放、暫停後focus刷新不重啟、嚴格autoplay阻擋及一鍵恢復、四語320px／390／768／1440px驗收通過；正式隨機音檔實播、瀏覽器error0，查核runtime error／fatal0。未改DB、Auth、Storage、Credit或排行公式；瀏覽器禁止自動出聲仍需一次點擊。詳見[電台自動播放report](releases/2026-10-27-radio-autoplay.md)。
+目前應用發布基準：`4acfd8b`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY，aipoger.com／www綁定同版。預設品牌分享改1200×630黑底白Logo，root及共用OG／Twitter、無封面作品／Choice同一版本化路徑；各作品與新聞、教材、Battle模式專屬封面沿原資料。32項定向與932全套（893通過／39選用略過／0失敗）、TypeScript／本機webpack通過，lint0 errors／9既有warnings。原透明白Logo素材未覆寫，沒有DB或其他功能變動；正式分享驗收見[黑底分享預覽report](releases/2026-10-27-dark-share-preview.md)。
+
+前輪應用發布基準：`56825bf`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY並promote同一待驗收build，apex核對同ID。探索／酒吧進頁嘗試一次音檔及YouTube隨機連播，尊重既有session與暫停／關閉；瀏覽器阻擋保留手動播放。耳朵測驗改主動開窗，YouTube初始化及短暫metadata缺失有guard；自動start標記被動聆聽。932測試893通過／39選用略過／0失敗，tsc及本機／雲端正式build通過，lint0 errors／9既有warnings。實際音檔與YouTube自動播放、暫停後focus刷新不重啟、嚴格autoplay阻擋及一鍵恢復、四語320px／390／768／1440px驗收通過；正式隨機音檔實播、瀏覽器error0，查核runtime error／fatal0。未改DB、Auth、Storage、Credit或排行公式；瀏覽器禁止自動出聲仍需一次點擊。詳見[電台自動播放report](releases/2026-10-27-radio-autoplay.md)。
 
 前輪應用發布基準：`2d59278`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY並promote，apex核對同ID。新聞標題／副標同排、左最新主打／右真實熱門排行、所有文章純封面網格；server-only HEAD精確計數與60秒快取，不讀私有列，不寫入。25定向通過，全套926項887通過／39略過／0失敗；tsc、本機／雲端webpack通過，lint0 errors／9既有warnings；四語320px及390／768／1712px、正式23項HTTP與原四封面hash／原互動及MV資料保留驗收通過。詳見[新聞網格與熱門排行report](releases/2026-10-27-news-cover-grid.md)。
 

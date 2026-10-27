@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`56825bf`／`codex/public-rule-copy`：探索音樂／傷心酒吧進頁即嘗試一次隨機連播，音檔與可見YouTube共用電台；暫停／關閉後不被資料刷新重開，瀏覽器阻擋可手動播放，耳朵測驗保留原按鈕主動開窗。932測試893通過／39略過，實際音檔／YouTube、四語手機及正式播放驗收通過；部署`dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY且apex同版，原作品／評分／Credit保留。[發布report](releases/2026-10-27-radio-autoplay.md)。
+- 最新應用基準`4acfd8b`／`codex/public-rule-copy`：預設網站分享採1200×630實心黑底與原白色AIPOGER符號／字標，OG／Twitter及無封面品牌回退集中同一版本化路徑；既有專屬作品／新聞／Battle模式封面保留。932測試893通過／39略過，部署`dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY並綁定aipoger.com／www。[發布report](releases/2026-10-27-dark-share-preview.md)。
+
+- 前輪應用基準`56825bf`／`codex/public-rule-copy`：探索音樂／傷心酒吧進頁即嘗試一次隨機連播，音檔與可見YouTube共用電台；暫停／關閉後不被資料刷新重開，瀏覽器阻擋可手動播放，耳朵測驗保留原按鈕主動開窗。932測試893通過／39略過，實際音檔／YouTube、四語手機及正式播放驗收通過；部署`dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY且apex同版，原作品／評分／Credit保留。[發布report](releases/2026-10-27-radio-autoplay.md)。
 
 - 前輪應用基準`2d59278`／`codex/public-rule-copy`：新聞頁依已確認demo改為左最新、右熱門、下方純封面網格，副標緊接主標；熱門依真實按讚＋可見留言，無互動／失敗標示最新排序。926測試887通過／39略過，四語手機／平板／桌機與正式23項HTTP通過；部署`dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY且apex同版，原封面／互動與音樂資料保留。[發布report](releases/2026-10-27-news-cover-grid.md)。
 
