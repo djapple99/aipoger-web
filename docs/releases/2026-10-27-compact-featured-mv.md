@@ -17,4 +17,13 @@
 
 ## 驗證與發布
 
-待正式驗收後補齊。
+- 應用`0fd1478`，平板斷點修訂`4cedfc1`；只改精選首頁及評分讀取，沒有DB migration或正式互動寫入。
+- 定向50/50；完整918項：879通過、39選用略過、0失敗。TypeScript、本機webpack通過；lint 0 errors、9既有圖片warnings。
+- 待驗收桌機1712px，同一首`no one stays — where nothing can breathe`：精選高度757.63→641.82px，探索標題頂端889.63→773.82px，往上115.81px；左右操作列y=666.82px、高52px，無水平溢出。
+- 手機中英日韓320px、中文390px無水平溢出；評分／評論／YouTube／前後切換均至少44px。768px初驗發現兩欄留下空白，最終修訂將900px及以下改單欄，防止重現。
+- 點真實9.0／2人評分開啟同作品原評論視窗，顯示同分數及原評論、創作者回覆；訪客輸入禁用，沒有提交測試內容。原YouTube影片實際播放至0:02／0:31，收起正常，瀏覽器error 0。
+- 待驗收公開API：四支首頁評分與MV原彙總一致；四支精選ID、全部99支MV ID與人氣順序保留；Eve限時推薦仍第一，兩頁期限仍2026-11-01T00:00:00+08:00。
+- 驗收圖片與JSON：私人`audits/2026-10-27-compact-featured-mv/`，包含已確認demo、前後桌機、手機四語、平板、幾何與資料核對。
+- 最終雲端build READY：`dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3`，來源`4cedfc1`；先prod --skip-domain驗收，後promote同一build，aipoger.com核對同ID。原先`0fd1478`候選build未綁正式網域。
+- 正式11項HTTP通過（四語首頁、MV／Explore／Showtime／News、兩個discovery、通知訪客401），四支真實評分、99支MV、限時置頂與期限再核對通過；桌機左右操作y相同，輪播與原作品評分正常。發布查核error／fatal runtime log為0。
+- 最終768px為單欄681px、無溢出；1712px保持903.68／420.32雙欄。最終修訂只改平板CSS斷點，原50項定向／全套測試結果仍適用，雲端建置重新通過。

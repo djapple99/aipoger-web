@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY，待驗收API通過後promote，apex核對同ID。指定Eve萬聖節MV固定首頁精選首位及MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原規則；原99支MV、投稿時間、評分、週支持及人氣排序保留。全套911項872通過／39選用略過／0失敗，TypeScript、本機及雲端webpack通過，lint0 errors／9既有warnings；正式12項HTTP、桌機與兩頁中英日韓320px、觀看原影片驗收通過，無DB或migration。詳見[萬聖節推薦report](releases/2026-10-27-halloween-mv.md)。
+目前應用發布基準：`4cedfc1`（首頁實作`0fd1478`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY並promote，apex核對同ID。首頁精選MV標題副標同排、左下評論／YouTube／換頁與右側觀看CTA齊線、真實評分／人數，探索區上移約116px；900px以下單欄。50定向及918全套879通過／39略過／0失敗；tsc、本機及雲端webpack通過，lint0 errors／9既有warnings；四語320px、390／768／1712px及正式11項HTTP通過，原99支MV／人氣順序／萬聖節期限保留，無DB寫入或migration。設計準則寫入體驗正文，詳見[簡潔精選MV report](releases/2026-10-27-compact-featured-mv.md)。
+
+前輪應用發布基準：`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY，待驗收API通過後已promote，apex核對同ID。指定Eve萬聖節MV固定首頁精選首位及MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原規則；原99支MV、投稿時間、評分、週支持及人氣排序保留。全套911項872通過／39選用略過／0失敗，TypeScript、本機及雲端webpack通過，lint0 errors／9既有warnings；正式12項HTTP、桌機與兩頁中英日韓320px、觀看原影片驗收通過，無DB或migration。詳見[萬聖節推薦report](releases/2026-10-27-halloween-mv.md)。
 
 前輪應用發布基準：`ac9178e`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY並promote同一待驗收build至aipoger.com。新增SBA創作者經營圖文新聞，首頁仍三篇、列表四篇，獨立來源／OG／NewsArticle及Sitemap，沿原按讚／討論；標題平衡換行。34定向通過，全套907項868通過／39選用略過／0失敗；TypeScript、本機webpack及最終雲端build通過，lint0 errors／9既有warnings。正式16項HTTP與待驗收中英日韓320px、桌機1440px驗收通過；沒有DB、Auth、評分／Credit或音樂作品變更。詳見[SBA新聞report](releases/2026-10-27-sba-creator-news.md)。
 

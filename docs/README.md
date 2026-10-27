@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`：Eve萬聖節MV固定首頁精選第一支與MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原曝光規則。911測試872通過／39選用略過，正式12項HTTP與兩頁四語手機驗收完成；部署`dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY且apex同版。[發布report](releases/2026-10-27-halloween-mv.md)。
+- 最新應用基準`4cedfc1`／`codex/public-rule-copy`：首頁精選MV依已確認demo改緊湊布局、真實評分與人數、左下操作與觀看CTA對齊；「簡潔又有力」成為體驗文件的後續設計準則。918測試879通過／39略過，四語手機／桌機／平板及正式11項HTTP通過；部署`dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY且apex同版，原萬聖節推薦保留。[發布report](releases/2026-10-27-compact-featured-mv.md)。
+
+- 前輪應用基準`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`：Eve萬聖節MV固定首頁精選第一支與MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原曝光規則。911測試872通過／39選用略過，正式12項HTTP與兩頁四語手機驗收完成；部署`dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY且apex同版。[發布report](releases/2026-10-27-halloween-mv.md)。
 
 - 前輪應用基準`ac9178e`／`codex/public-rule-copy`：SBA創作者經營圖文新聞、原創封面與兩組圖解，首頁三篇／列表四篇，沿原會員互動與SEO。907測試868通過／39選用略過；正式16項HTTP、四語320px及桌機驗收完成；部署`dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY且apex同版。[發布report](releases/2026-10-27-sba-creator-news.md)。
 
