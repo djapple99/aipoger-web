@@ -1,6 +1,8 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：`4cedfc1`（首頁實作`0fd1478`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY並promote，apex核對同ID。首頁精選MV標題副標同排、左下評論／YouTube／換頁與右側觀看CTA齊線、真實評分／人數，探索區上移約116px；900px以下單欄。50定向及918全套879通過／39略過／0失敗；tsc、本機及雲端webpack通過，lint0 errors／9既有warnings；四語320px、390／768／1712px及正式11項HTTP通過，原99支MV／人氣順序／萬聖節期限保留，無DB寫入或migration。設計準則寫入體驗正文，詳見[簡潔精選MV report](releases/2026-10-27-compact-featured-mv.md)。
+目前應用發布基準：`2d59278`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY並promote，apex核對同ID。新聞標題／副標同排、左最新主打／右真實熱門排行、所有文章純封面網格；server-only HEAD精確計數與60秒快取，不讀私有列，不寫入。25定向通過，全套926項887通過／39略過／0失敗；tsc、本機／雲端webpack通過，lint0 errors／9既有warnings；四語320px及390／768／1712px、正式23項HTTP與原四封面hash／原互動及MV資料保留驗收通過。詳見[新聞網格與熱門排行report](releases/2026-10-27-news-cover-grid.md)。
+
+前輪應用發布基準：`4cedfc1`（首頁實作`0fd1478`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY並promote，apex核對同ID。首頁精選MV標題副標同排、左下評論／YouTube／換頁與右側觀看CTA齊線、真實評分／人數，探索區上移約116px；900px以下單欄。50定向及918全套879通過／39略過／0失敗；tsc、本機及雲端webpack通過，lint0 errors／9既有warnings；四語320px、390／768／1712px及正式11項HTTP通過，原99支MV／人氣順序／萬聖節期限保留，無DB寫入或migration。設計準則寫入體驗正文，詳見[簡潔精選MV report](releases/2026-10-27-compact-featured-mv.md)。
 
 前輪應用發布基準：`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY，待驗收API通過後已promote，apex核對同ID。指定Eve萬聖節MV固定首頁精選首位及MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原規則；原99支MV、投稿時間、評分、週支持及人氣排序保留。全套911項872通過／39選用略過／0失敗，TypeScript、本機及雲端webpack通過，lint0 errors／9既有warnings；正式12項HTTP、桌機與兩頁中英日韓320px、觀看原影片驗收通過，無DB或migration。詳見[萬聖節推薦report](releases/2026-10-27-halloween-mv.md)。
 

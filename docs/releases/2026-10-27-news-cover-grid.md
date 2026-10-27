@@ -11,4 +11,11 @@
 
 ## 驗收及發布
 
-待完成後補齊。
+- 應用`2d59278`／`codex/public-rule-copy`；Vercel `dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY。先prod --skip-domain驗收，再promote同一build，aipoger.com核對同部署。
+- 定向25項全通過，完整926項887通過／39選用略過／0失敗；TypeScript、本機及雲端webpack通過，lint 0 errors／9既有圖片warnings。
+- 1712px標題區217.79→112.40px，首封面y357.69→233.40px，主內容高度1257.33→1039.87px。三欄封面與原demo一致、無重複圖外文字。768px封面兩欄、320px中英日韓與390px單欄無溢出，熱門連結至少66px。
+- 四篇原封面連結具完整無障礙標題；手機韓文介面實際點Spotify封面進原全文，語言、來源、延伸閱讀及討論保留。未提交真人留言／讚作測試。瀏覽器error 0。
+- 正式23項HTTP通過：四語新聞頁、首頁／MV／Showtime／登入、兩個discovery、通知訪客401、四篇全文／四張封面／四個討論API。四張PNG SHA256與本機原檔一致。
+- 正式熱門排序與真實公開計數一致：Suno一則可見留言、其他文章零互動；順序為Suno、SBA、Spotify、YouTube，未採用demo示意順序。前後按讚／留言計數一致，首頁原精選ID、MV完整清單及人氣順序、萬聖節置頂與期限保留。
+- 發布查核error／fatal runtime log為0；沒有資料表／RLS／Auth／Credit／文章正文變更。計數快取可能使新互動稍晚反映，讀取失敗以最新排序與明確註記呈現。
+- 設計正文與既有Drive固定檔案原地同步，不建立另一套設計主文件。

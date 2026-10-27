@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`4cedfc1`／`codex/public-rule-copy`：首頁精選MV依已確認demo改緊湊布局、真實評分與人數、左下操作與觀看CTA對齊；「簡潔又有力」成為體驗文件的後續設計準則。918測試879通過／39略過，四語手機／桌機／平板及正式11項HTTP通過；部署`dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY且apex同版，原萬聖節推薦保留。[發布report](releases/2026-10-27-compact-featured-mv.md)。
+- 最新應用基準`2d59278`／`codex/public-rule-copy`：新聞頁依已確認demo改為左最新、右熱門、下方純封面網格，副標緊接主標；熱門依真實按讚＋可見留言，無互動／失敗標示最新排序。926測試887通過／39略過，四語手機／平板／桌機與正式23項HTTP通過；部署`dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY且apex同版，原封面／互動與音樂資料保留。[發布report](releases/2026-10-27-news-cover-grid.md)。
+
+- 前輪應用基準`4cedfc1`／`codex/public-rule-copy`：首頁精選MV依已確認demo改緊湊布局、真實評分與人數、左下操作與觀看CTA對齊；「簡潔又有力」成為體驗文件的後續設計準則。918測試879通過／39略過，四語手機／桌機／平板及正式11項HTTP通過；部署`dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY且apex同版，原萬聖節推薦保留。[發布report](releases/2026-10-27-compact-featured-mv.md)。
 
 - 前輪應用基準`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`：Eve萬聖節MV固定首頁精選第一支與MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原曝光規則。911測試872通過／39選用略過，正式12項HTTP與兩頁四語手機驗收完成；部署`dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY且apex同版。[發布report](releases/2026-10-27-halloween-mv.md)。
 
