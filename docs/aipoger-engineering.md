@@ -424,7 +424,7 @@ When the 10 active limit is implemented, also check:
 
 - `/listen-bar` 與 `/l/all`／原14曲風短鏈導向 `/ai-music#explore-radio`，保留語言、曲風与原曲深連結；`#play-request`／submit=1導Profile上傳。Spotlight參數忽略，不指定播放。
 - `/api/listen-bar/tracks`直接沿用`/api/ai-music/tracks`，完整分頁讀取資格候選，三個日曆月期限与公開moderation／lifecycle條件一致；不得把讀取失敗當零歌曲或零票。
-- 電台與卡片使用music-player-store共用控制，音檔唯一root audio，YouTube使用單一可見IFrame API播放器；驗證混合佇列實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root；進頁不自動播放。
+- 電台與卡片使用music-player-store共用控制，音檔唯一root audio，YouTube使用單一可見IFrame API播放器；驗證混合佇列實際自然播放、seek、volume、上一首歷史、下一首循環、卡片接替、跨頁持續與滾動切換控制。Inline IntersectionObserver只隱藏dock控制，音訊留在root。2026-10-27起進頁曲庫ready後嘗試一次隨機連播，保留舊連結曲風及既有session；驗證暫停／關閉、資料刷新、語言切換與分頁返回不重啟，背景首次開啟延後到可見、autoplay阻擋有手動恢復。自動start使用intentional:false，主動操作仍沿原聆聽衡量，不更動評分／Credit／人氣。
 - 電台／卡片／dock評論開原ID modal、登入return带track/comments=1；每曲評論持久保存与原通知審核保留，創作者自留言不通知自己。Top10／50無評論圖示。
 - 新ProfileMusicUpload抽出原有處理，只在自己的作品區開啟；guest引導登入后保留submit/語言/hash。Private讀取錯誤不得假裝無作品；上傳前與INSERT前重新核對同一帳號，同步鎖防雙重提交，失敗保留draft並清理僅該次新資產。
 - 手選14曲風、21秒可選分析告知／worker未啟用手選回退、原格式30MB、metadata/cover/lyrics/YT、雜湊、一般會員連結／音檔共用個人168小時三首的DB原子限制保留，Owner不限數量；每曲風五首active上限取消。上傳格式／限制按產品規則，失敗不計額度、刪除不退額度。

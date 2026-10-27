@@ -13,7 +13,7 @@ function component(path,extra={}){
   if(name.endsWith('ai-music.module.css'))return {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})};
   if(name==='@/lib/i18n')return {useI18n:()=>({lang:'zh',t:key=>key})};
   if(name==='@/lib/music-queue')return {shuffleMusicQueue};
-  if(name==='react')return {useEffect(){},useRef:()=>({current:null}),useState:x=>[x,()=>{}],useId:()=>':chart-list:'};
+  if(name==='react')return {useCallback:fn=>fn,useEffect(){},useRef:()=>({current:null}),useState:x=>[x,()=>{}],useId:()=>':chart-list:'};
   return extra[name]??{};
  },loaded,loaded.exports);return loaded.exports.default;
 }

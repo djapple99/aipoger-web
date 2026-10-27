@@ -1,8 +1,8 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Creator covers use the existing public image URLs. */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Heart, MessageCircleMore, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
-import { musicPlayer, useMusicPlayer, type MusicTrack } from "@/lib/music-player-store";
+import { getMusicPlayerState, musicPlayer, useMusicPlayer, type MusicTrack } from "@/lib/music-player-store";
 import { shuffleMusicQueue } from "@/lib/music-queue";
 import { useI18n } from "@/lib/i18n";
 import { MUSIC_GENRE_OPTIONS } from "@/lib/music-genres";
@@ -14,10 +14,11 @@ export default function ExploreRadio({ tracks, ready, hearted, heartBusy, onHear
   onHeart: (id: string) => void; onComment: (id: string) => void;
 }) {
   const { lang, t } = useI18n();
-  const text = (zh: string, en: string, ja: string, ko: string) => lang === "en" ? en : lang === "ja" ? ja : lang === "ko" ? ko : zh;
+  const text = useCallback((zh: string, en: string, ja: string, ko: string) => lang === "en" ? en : lang === "ja" ? ja : lang === "ko" ? ko : zh, [lang]);
   const player = useMusicPlayer();
   const [genre, setGenre] = useState("all");
   const radio = useRef<HTMLElement>(null);
+  const entryHandled = useRef(false);
   const candidates = genre === "all" ? tracks : tracks.filter(track => track.genre === genre);
   const active = player.session?.queue[player.session.index];
   const track = active ?? candidates[0];
@@ -40,17 +41,32 @@ export default function ExploreRadio({ tracks, ready, hearted, heartBusy, onHear
     observer.observe(element);
     return () => { observer.disconnect(); window.dispatchEvent(new CustomEvent("aipoger:player-inline-visible", { detail: false })); };
   }, []);
-  const start = (choice: string) => {
+  const start = useCallback((choice: string, intentional = true) => {
+    entryHandled.current = true;
     setGenre(choice);
     const queue = shuffleMusicQueue(choice === "all" ? tracks : tracks.filter(track => track.genre === choice));
     if (!queue.length) return;
     const label = choice === "all" ? text("全部曲風", "All genres", "すべてのジャンル", "모든 장르") : t(MUSIC_GENRE_OPTIONS.find(option => option.value === choice)?.labelKey ?? "");
-    void musicPlayer?.start(queue, 0, `${text("傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")} · ${label}`, { sourceKey: `bar:${choice}`, repeat: true });
-  };
+    void musicPlayer?.start(queue, 0, `${text("傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")} · ${label}`, { sourceKey: `bar:${choice}`, repeat: true, intentional });
+  }, [tracks, text, t]);
+  useEffect(() => {
+    const autoplay = () => {
+      if (entryHandled.current || !ready || !tracks.length || !musicPlayer || document.hidden) return;
+      // Preserve an existing session, including a listener's deliberate pause.
+      entryHandled.current = true;
+      if (getMusicPlayerState().session) return;
+      const requested = new URLSearchParams(window.location.search).get("genre");
+      const choice = MUSIC_GENRE_OPTIONS.some(option => option.value === requested) ? requested! : "all";
+      start(choice, false);
+    };
+    autoplay();
+    document.addEventListener("visibilitychange", autoplay);
+    return () => document.removeEventListener("visibilitychange", autoplay);
+  }, [ready, tracks, start]);
   const shortcuts = ["all", "Jazz / Bossa 微醺時刻", "R&B 深情瞬間", "Disco / Funk / City-Pop"];
   return <section id="explore-radio" ref={radio} className={styles.radioStation} aria-label={text("傷心酒吧電台", "Bar Heartbreak radio", "Bar Heartbreakラジオ", "Bar Heartbreak 라디오")}>
     <div className={styles.radioHeading}>
-      <div className={styles.stationName}><h2>{text("傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")}</h2><span>{text("連續電台", "Nonstop radio", "連続再生", "논스톱 라디오")}</span></div>
+      <div className={styles.stationName}><h2>{text("傷心酒吧", "Bar Heartbreak", "Bar Heartbreak", "Bar Heartbreak")}</h2><span>{player.playing ? text("隨機播放中 · 隨時可暫停", "On shuffle · Pause anytime", "シャッフル再生中 · いつでも一時停止", "랜덤 재생 중 · 언제든 일시정지") : text("隨機連播", "Shuffle radio", "シャッフルラジオ", "랜덤 라디오")}</span></div>
       <div className={styles.radioGenres} role="group" aria-label={text("電台曲風", "Radio genre", "ラジオのジャンル", "라디오 장르")}>
         <span>{text("電台曲風", "Radio genre", "ジャンル", "라디오 장르")}</span>
         {shortcuts.map((choice, index) => <button key={choice} type="button" aria-pressed={genre === choice} disabled={!ready || !(choice === "all" ? tracks.length : tracks.some(track => track.genre === choice))} onClick={() => start(choice)}>{index === 0 ? text("全部", "All", "すべて", "전체") : index === 1 ? "Jazz / Bossa" : index === 2 ? "R&B" : "City-Pop"}</button>)}

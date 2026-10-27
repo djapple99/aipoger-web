@@ -258,7 +258,8 @@ export default function GlobalMusicPlayer() {
         if (!playable.length) return false;
         historyRef.current = [];
         setHistoryDepth(0);
-        return playTrack({ queue: playable, index, sourceLabel, ...options });
+        const { intentional = true, ...sessionOptions } = options;
+        return playTrack({ queue: playable, index, sourceLabel, ...sessionOptions }, true, intentional);
       },
       close, toggle: togglePlayback, move,
       seek: (seconds) => {
