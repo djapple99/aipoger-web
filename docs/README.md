@@ -11,11 +11,13 @@
 
 2026-10-26新聞按讚／討論已發布：文章底部新增會員按讚與留言，公開署名、訪客登入返回、重送去重與Owner管理已接上；見[新聞互動report](releases/2026-10-26-news-discussion.md)。
 
-2026-10-26音樂新聞已發布：先講重點、再詳解，使用愛波哥口語與自然幽默及自製圖文；網站新聞列表、三篇圖文文章（YouTube Music、Suno／Reservoir、Spotify × Believe）、首頁最新文章與分享／SEO已上線，見[三篇新聞report](releases/2026-10-26-news-three-articles.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
+音樂新聞現有四篇原創繁中圖文（YouTube Music、Suno／Reservoir、Spotify × Believe、SBA創作者事業分類）；先講重點、再詳解，使用愛波哥口語與自製圖解。首頁仍最多三篇，列表保留全部；最新文章2026-10-27發布，見[SBA新聞report](releases/2026-10-27-sba-creator-news.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
 
 ## 現況與查找順序
 
-- 最新應用基準`35137ce`／`codex/public-rule-copy`：點數視窗精簡成餘額、使用規則與兩個小入口；任務／明細點開才看，明細每頁5筆，原點數與所有流水保留。906測試874通過／32略過，正式四語手機與50筆近期紀錄比對通過；部署`dpl_9CYrmbg17t7qtGxGHDipXDYMDeyT` READY且apex同版。[發布report](releases/2026-10-27-compact-credit-wallet.md)。
+- 最新應用基準`ac9178e`／`codex/public-rule-copy`：SBA創作者經營圖文新聞、原創封面與兩組圖解，首頁三篇／列表四篇，沿原會員互動與SEO。907測試868通過／39選用略過；正式16項HTTP、四語320px及桌機驗收完成；部署`dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY且apex同版。[發布report](releases/2026-10-27-sba-creator-news.md)。
+
+- 前輪應用基準`35137ce`／`codex/public-rule-copy`：點數視窗精簡成餘額、使用規則與兩個小入口；任務／明細點開才看，明細每頁5筆，原點數與所有流水保留。906測試874通過／32略過，正式四語手機與50筆近期紀錄比對通過；部署`dpl_9CYrmbg17t7qtGxGHDipXDYMDeyT` READY且apex同版。[發布report](releases/2026-10-27-compact-credit-wallet.md)。
 
 - 前輪應用基準`f463313`／`codex/public-rule-copy`：46個表情詞＋3張對照卡新增到創作聖經，這49張每次複製5點；不足連到Profile「我的點數」，集中餘額、任務、費用與紀錄，投稿168小時加註一週。正式migration20261027074525已套用並回滾驗證，903測試871通過／32略過；部署`dpl_HGgqXaazUbsrvUq6giGHsoQxUFFa` READY且apex同版，會員實扣與四語手機驗收通過。[發布report](releases/2026-10-27-expression-credit-wallet.md)。
 

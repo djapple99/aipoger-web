@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-27 SBA創作者經營圖文新聞](2026-10-27-sba-creator-news.md)
+
 - [2026-10-27 Boom Bap錄音室Prompt](2026-10-27-boom-bap-prompts.md)
 
 - [2026-10-27 錄音室試聽播放與暫停](2026-10-27-preview-transport.md)
