@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`4acfd8b`／`codex/public-rule-copy`：預設網站分享採1200×630實心黑底與原白色AIPOGER符號／字標，OG／Twitter及無封面品牌回退集中同一版本化路徑；既有專屬作品／新聞／Battle模式封面保留。932測試893通過／39略過，部署`dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY並綁定aipoger.com／www。[發布report](releases/2026-10-27-dark-share-preview.md)。
+- 最新應用基準`cb7a722`／`codex/public-rule-copy`（2026-10-28）：49張表情詞／對照卡每次新複製8點，其他獎勵及投稿費用不變，賺點任務先列評分與評論。舊5點紀錄、會員餘額與已付款重試保留，舊頁面新扣點須刷新。migration正式ledger20261027194919已套用，11項定向及933全套901通過／32略過，四語手機與正式10項HTTP通過；部署`dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY且apex／www同版。[發布report](releases/2026-10-28-expression-eight-credit.md)。
+
+- 前輪應用基準`4acfd8b`／`codex/public-rule-copy`：預設網站分享採1200×630實心黑底與原白色AIPOGER符號／字標，OG／Twitter及無封面品牌回退集中同一版本化路徑；既有專屬作品／新聞／Battle模式封面保留。932測試893通過／39略過，部署`dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY並綁定aipoger.com／www。[發布report](releases/2026-10-27-dark-share-preview.md)。
 
 - 前輪應用基準`56825bf`／`codex/public-rule-copy`：探索音樂／傷心酒吧進頁即嘗試一次隨機連播，音檔與可見YouTube共用電台；暫停／關閉後不被資料刷新重開，瀏覽器阻擋可手動播放，耳朵測驗保留原按鈕主動開窗。932測試893通過／39略過，實際音檔／YouTube、四語手機及正式播放驗收通過；部署`dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY且apex同版，原作品／評分／Credit保留。[發布report](releases/2026-10-27-radio-autoplay.md)。
 
@@ -60,7 +62,7 @@
 - Drop由發起者選每首60秒／90秒／整首、接戰沿用；一般投稿、Drop／Q Crash接受原支援連結或MP3最高320kbps／30MB，MV僅影片連結，前後端及Storage統一；舊大型音檔入口退役，新私人草稿無引用才清理；舊音檔與戰績保留。四語Battle玩法指南整合盲聽／Drop／Q Crash，原舞台及投票／點數保留。
 - Battle盲聽／Q Crash／Drop標題旁各有分享鍵，預覽使用模式專屬器材插畫，分享連結保留語言並定位入口。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
-- 本次Credit發布加入每日回訪15、有效評分評論10、歌曲／MV送愛心3及額外成功投稿60，保留盲聽3及舊流水；2026-10-15最新歌曲／MV規則為首次評分固定、評論一次修改、會員不得刪除、已發評論獎勵不追回／不重發，Owner權限依產品正文，Heart追回／恢復未改；APC／付款及舊案聖經2點解鎖未啟用，新增49張表情詞／對照卡每次複製5點已啟用，不繼承舊APC；公開指南不顯示舊歌+5或Owner免扣點，但內部行為保留；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
+- 本次Credit發布加入每日回訪15、有效評分評論10、歌曲／MV送愛心3及額外成功投稿60，保留盲聽3及舊流水；2026-10-15最新歌曲／MV規則為首次評分固定、評論一次修改、會員不得刪除、已發評論獎勵不追回／不重發，Owner權限依產品正文，Heart追回／恢復未改；APC／付款及舊案聖經2點解鎖未啟用，新增49張表情詞／對照卡自2026-10-28起每次複製8點已啟用，原5點紀錄保留，不繼承舊APC；公開指南不顯示舊歌+5或Owner免扣點，但內部行為保留；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
 - 優先讀本機六份正文，其次讀 [Google Drive 最新規格資料夾](https://drive.google.com/drive/folders/1C_mLLcpRvTNh6m6ZkWVhPN_QWVr9CrCN)；雲端是本機同步副本，發布狀態仍需工程證據。Library 可搜尋 `AIPOGER 最新文件索引`、`aipoger-product-rules.md`。
 - GitHub main 停留在較舊狀態。遠端查詢須讀有發布證據的分支，不可把 main 的舊文件或 7 月簡報當最新規格；未讀正確路徑前不可直接回報「找不到」。
 
