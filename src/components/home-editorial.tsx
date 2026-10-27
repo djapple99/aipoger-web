@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Heart, Pause, Play, Radio, X } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Heart, MessageCircleMore, Pause, Play, Radio, Star, X, Youtube } from "lucide-react";
 import { AIPOGER_BRAND_LOGO, AIPOGER_SOCIAL_LINKS } from "@/lib/brand";
 import { useI18n } from "@/lib/i18n";
+import { mvCopy } from "@/lib/mv-copy";
 import { homeCopy } from "@/lib/home-copy";
 import { musicPlayer, useMusicPlayer } from "@/lib/music-player-store";
 import type { HomeDiscovery, HomeWork } from "@/lib/home-discovery";
@@ -24,6 +25,7 @@ const communityLinks = ["Facebook", "LINE"].flatMap(label =>
 export default function HomeEditorial({ initialData }: { initialData?: HomeDiscovery } = {}) {
   const { lang, t } = useI18n();
   const copy = homeCopy(lang);
+  const mv = mvCopy(lang);
   const [data, setData] = useState<HomeDiscovery | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
   const [failed, setFailed] = useState(false);
@@ -37,6 +39,7 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
   const selected = playingWork ?? data?.featured.find(work => work.id === selectedId) ?? data?.featured[0];
   const selectedIndex = data?.featured.findIndex(work => work.id === selected?.id) ?? 0;
   const videoOpen = Boolean(playingWork?.videoId);
+  const selectedRating = data?.featured.find(work => work.id === selected?.id) ?? selected;
 
   useEffect(() => { setSelectedId(null); }, [data?.rotationKey]);
 
@@ -103,13 +106,13 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
       <section id="featured-mv" className={styles.featured} aria-labelledby="home-feature-title">
         <div className={styles.sectionIntro}>
           <p className={styles.eyebrow}>{copy.eyebrow}</p>
-          <h1 id="home-feature-title">{copy.title}</h1>
-          <p className={styles.intro}>{copy.intro}</p>
+          <div className={styles.titleRow}><h1 id="home-feature-title">{copy.title}</h1>
+            <p className={styles.intro}>{copy.intro}</p></div>
         </div>
 
         {loading && !data ? <div className={styles.status} role="status">{copy.loading}</div>
           : failed && !data ? <div className={styles.status} role="alert"><p>{copy.error}</p><button onClick={() => { setLoading(true); void load(); }}>{copy.retry}<ArrowRight size={18} /></button></div>
-          : selected ? <div className={styles.hero}>
+          : selected ? <div className={`${styles.hero} ${styles.featuredHero}`}>
             <div className={styles.video}>
               {videoOpen ? <>
                 <iframe src={`https://www.youtube-nocookie.com/embed/${selected.videoId}?autoplay=1&rel=0`}
@@ -125,20 +128,27 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
               <p className={styles.workLabel}>{selected.discoveryReason === "seasonal" ? copy.seasonal : selected.discoveryReason === "community" || (!selected.discoveryReason && data?.featureKind === "community") ? copy.community : selected.discoveryReason === "discovery" ? copy.rotatingWork : copy.newWork}</p>
               <h2 title={selected.title}><Link prefetch={false} href={workHref(selected)}>{selected.title}</Link></h2>
               <p className={styles.artist}>{selected.artist}</p>
-              {selected.supporterCount > 0 ? <div className={styles.support}>
-                <Heart size={18} /> <span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
-              </div> : <p className={styles.supportBuilding}>{copy.noSupport}</p>}
+              <div className={styles.workMetrics}>
+                <button className={styles.featureRating} onClick={() => setFeedback({ work: selected })} aria-label={`${mv.rateQuestion} · ${selected.title}`}>
+                  <Star size={19} fill="currentColor" />
+                  {selectedRating?.ratingCount == null ? <span>{mv.ratingError}</span>
+                    : selectedRating.ratingCount > 0 && selectedRating.ratingAverage != null ? <><strong>{selectedRating.ratingAverage.toFixed(1)} / 10</strong><span>· {selectedRating.ratingCount} {mv.raters}</span></>
+                    : <span>{mv.unrated}</span>}
+                </button>
+                {selected.supporterCount > 0 ? <div className={styles.support}>
+                  <Heart size={18} /> <span>{copy.supporters} <strong>{selected.supporterCount}</strong> {copy.people}</span>
+                </div> : null}
+              </div>
               <div className={styles.quote}>
                 <p>{selected.comment ? copy.comments : copy.creatorSays}</p>
                 <blockquote>{selected.comment?.text || selected.description || copy.noComment}</blockquote>
                 {selected.comment ? <cite>{selected.comment.name}</cite> : null}
               </div>
-              <button className={styles.primary} onClick={videoOpen ? () => setPlayingWork(null) : watch}>
-                {videoOpen ? <X size={21} /> : <Play size={21} fill="currentColor" />}{videoOpen ? copy.closeVideo : copy.watch}
-              </button>
+            </div>
+            <div className={styles.featureTools}>
               <div className={styles.workLinks}>
-                <button onClick={() => setFeedback({ work: selected })}>{copy.discuss}<ArrowRight size={17} /></button>
-                <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer">{copy.openYouTube}<ArrowRight size={17} /></a>
+                <button onClick={() => setFeedback({ work: selected })}><MessageCircleMore size={21} />{copy.discuss}<ArrowRight size={17} /></button>
+                <a href={selected.youtubeUrl!} target="_blank" rel="noopener noreferrer"><Youtube size={22} />{copy.openYouTube}<ArrowRight size={17} /></a>
               </div>
               {(data?.featured.length ?? 0) > 1 ? <div className={styles.featureControls}>
                 <span>{Math.max(0, selectedIndex) + 1} / {data!.featured.length}</span>
@@ -146,6 +156,9 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
                 <button onClick={() => moveFeatured(1)} aria-label={copy.next}><ChevronRight size={20} /></button>
               </div> : null}
             </div>
+            <button className={`${styles.primary} ${styles.featureWatch}`} onClick={videoOpen ? () => setPlayingWork(null) : watch}>
+              {videoOpen ? <X size={21} /> : <Play size={21} fill="currentColor" />}{videoOpen ? copy.closeVideo : copy.watch}
+            </button>
           </div> : <div className={styles.empty}>
             <h2>{copy.empty}</h2><p>{copy.emptyBody}</p>
             <Link href={withLang("/ai-music")}>{copy.allMusic}<ArrowRight size={19} /></Link>

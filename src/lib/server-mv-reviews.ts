@@ -13,3 +13,10 @@ export async function mvRatingSummaries(admin = mvReviewAdmin()) {
   return new Map<string, { ratingAverage: number | null; ratingCount: number; ratingTotal: number }>(data.map(row =>
     [row.track_id, { ratingAverage: Number(row.average), ratingCount: Number(row.people), ratingTotal: Number(row.total) }]));
 }
+
+/** Enrich visible recommendations with the same public scores used by the MV page. */
+export async function addWorkRatingSummaries(works: { id: string; ratingAverage?: number | null; ratingCount?: number; ratingTotal?: number }[], admin = mvReviewAdmin()) {
+  if (!works.length) return;
+  const summaries = await mvRatingSummaries(admin);
+  for (const work of works) Object.assign(work, summaries.get(work.id) ?? { ratingAverage: null, ratingCount: 0, ratingTotal: 0 });
+}

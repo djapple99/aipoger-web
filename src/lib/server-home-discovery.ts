@@ -6,7 +6,7 @@ import { buildAiMusicSurfaceLifecycleMap } from "./ai-music-surface-lifecycle";
 import { buildHomeDiscovery, buildPublicHomeWorks, readAllHomePages, taipeiHomeWeek, type HomeHeartRow, type HomeTrackRow } from "./home-discovery";
 import { isInDiscoveryMusicPool } from "./music-pool";
 import type { ListenBarTrackRow } from "./listen-bar";
-import { mvRatingSummaries } from "./server-mv-reviews";
+import { addWorkRatingSummaries, mvRatingSummaries } from "./server-mv-reviews";
 import { buildMvDiscovery } from "./mv-discovery";
 import { readMvPopularity } from "./server-mv-popularity";
 
@@ -55,7 +55,11 @@ async function addFeaturedComments(result: { featured: { id: string; comment?: {
 export async function readHomeDiscovery() {
   const source = await readDiscoverySource();
   const result = buildHomeDiscovery(source.rows, source.hearts, source.mediaUrl, source.now);
-  await addFeaturedComments(result, source);
+  await Promise.all([
+    addFeaturedComments(result, source),
+    // Keep discovery usable on a ratings outage; missing fields remain unknown, never zero.
+    addWorkRatingSummaries(result.featured, source.admin).catch(() => {}),
+  ]);
   return result;
 }
 

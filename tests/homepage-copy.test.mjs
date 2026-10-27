@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
+import { mvCopy } from '../src/lib/mv-copy.ts';
 import { homeCopy } from '../src/lib/home-copy.ts';
 import { AIPOGER_SOCIAL_LINKS } from '../src/lib/brand.ts';
 const source=readFileSync(new URL('../src/components/home-editorial.tsx',import.meta.url),'utf8');
@@ -26,8 +27,8 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
   '@/lib/music-news':{musicNewsCopy}, '@/components/latest-music-news':{__esModule:true,default:'latest-news'},
   react,'react/jsx-runtime':{jsx:(type,props)=>typeof type==='function'?type(props):({type,props}),jsxs:(type,props)=>typeof type==='function'?type(props):({type,props})},
   'next/link':{__esModule:true,default:'link'},'next/image':{__esModule:true,default:'image'},
-  'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','Pause','Play','Radio','X'].map(x=>[x,x])),
-  '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png',AIPOGER_SOCIAL_LINKS},'@/components/social-icons':{SocialIcon:'social-icon'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/home-copy':{homeCopy},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
+  'lucide-react':Object.fromEntries(['ArrowRight','ChevronLeft','ChevronRight','Heart','MessageCircleMore','Star','Youtube','Pause','Play','Radio','X'].map(x=>[x,x])),
+  '@/lib/brand':{AIPOGER_BRAND_LOGO:'/brand.png',AIPOGER_SOCIAL_LINKS},'@/components/social-icons':{SocialIcon:'social-icon'},'@/lib/i18n':{useI18n:()=>({lang,t:key=>key})},'@/lib/mv-copy':{mvCopy},'@/lib/home-copy':{homeCopy},'@/lib/music-genres':{MUSIC_GENRE_OPTIONS:[{value:'EDM 百大電音',labelKey:'genre_edm'}]},
   '@/lib/music-player-store':{useMusicPlayer:()=>player,musicPlayer:{toggle:()=>toggles++,start:async(...args)=>{starts.push(args);return true;}}},
   '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}},
   '@/components/home-work-feedback':{__esModule:true,default:'feedback'},'@/components/lang-toggle':{__esModule:true,default:'lang-toggle'},'./home-editorial.module.css':{__esModule:true,default:{}},
@@ -86,4 +87,23 @@ test('a discovery refresh cannot replace a playing MV or an open review',async t
  assert.equal(ui.nodes().find(n=>n.type==='feedback').props.work.id,work.id);
  ui.button('收起影片').onClick();await ui.flush();
  assert.ok(ui.text().includes('New arrival'));
+});
+
+for (const lang of ['zh','en','ja','ko']) test(`featured ratings distinguish real scores, no reviews and unavailable data (${lang})`, async t => {
+ const payload={featureKind:'new',featured:[{...work,ratingAverage:9.25,ratingCount:2}],singles:[]};
+ const ui=await mount(t,lang,payload);
+ assert.ok(ui.text().includes('9.3 / 10')); assert.ok(ui.text().includes('2 '+mvCopy(lang).raters));
+ ui.button(mvCopy(lang).rateQuestion+' · '+work.title).onClick();await ui.flush();
+ assert.equal(ui.nodes().find(n=>n.type==='feedback').props.work.id,work.id);
+ await ui.refresh({...payload,featured:[{...work,ratingAverage:null,ratingCount:0}]});
+ assert.ok(ui.text().includes(mvCopy(lang).unrated)); assert.ok(!ui.text().includes('0.0 / 10'));
+ await ui.refresh({...payload,featured:[work]});
+ assert.ok(ui.text().includes(mvCopy(lang).ratingError)); assert.ok(!ui.text().includes(mvCopy(lang).unrated));
+});
+test('a fresh rating updates on the playing recommendation without replacing its iframe',async t=>{
+ const payload={featureKind:'new',featured:[{...work,ratingAverage:8,ratingCount:1}],singles:[]};
+ const ui=await mount(t,'zh',payload);ui.button(homeCopy('zh').watch).onClick();await ui.flush();
+ const src=ui.nodes().find(n=>n.type==='iframe').props.src;
+ await ui.refresh({...payload,featured:[{...work,ratingAverage:8.5,ratingCount:2}]});
+ assert.equal(ui.nodes().find(n=>n.type==='iframe').props.src,src);assert.ok(ui.text().includes('8.5 / 10'));
 });
