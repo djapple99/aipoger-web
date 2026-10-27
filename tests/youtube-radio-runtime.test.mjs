@@ -14,7 +14,7 @@ async function setup(t, initiallyReady = true){
  });
  ui.refs[0].current={appendChild(){},querySelector:()=>({})};
  resolveAPI({Player:class{constructor(_,opts){instances++;options=opts;return player}}});await ui.flush();if(initiallyReady)options.events.onReady();
- return {ui,loads,cues,errors,progress,states,playerRef,timeout:()=>listeners.timeout(),events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(){modal=true;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'}};
+ return {ui,loads,cues,errors,progress,states,playerRef,timeout:()=>listeners.timeout(),events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(){modal=true;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'},missingData(){player.getVideoData=()=>undefined;}};
 }
 test('radio reuses one visible YouTube player and advances once after a real end',async t=>{
  const x=await setup(t);assert.equal(x.loads[0],'abcdefghijk');assert.equal(x.volume(),85);assert.equal(x.ui.find('div').style.height,200);
@@ -41,4 +41,9 @@ test('stalled iframe initialization reports an actionable failure without advanc
 test('a modal during YouTube initialization defers playback without calling an unready player',async t=>{
  const x=await setup(t,false);x.modal();assert.equal(x.paused(),0);
  x.events.onReady();assert.deepEqual(x.loads,[]);assert.equal(x.cues[0],'abcdefghijk');assert.equal(x.ended(),0);
+});
+
+test('transient missing YouTube metadata during navigation does not throw or advance',async t=>{
+ const x=await setup(t);x.missingData();assert.doesNotThrow(()=>x.tick());
+ assert.doesNotThrow(()=>x.events.onStateChange({data:0}));assert.equal(x.ended(),0);
 });

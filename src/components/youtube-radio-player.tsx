@@ -55,7 +55,7 @@ export default function YouTubeRadioPlayer(props: {
             load.current();
           },
           onStateChange: (event: { data: number }) => {
-            if (!active || player?.getVideoData().video_id !== latest.current.videoId) return;
+            if (!active || !ready.current || player?.getVideoData()?.video_id !== latest.current.videoId) return;
             if (event.data === 1) {
               if (obscured()) { pauseIfObscured(); return; }
               suspended.current = false;
@@ -76,7 +76,7 @@ export default function YouTubeRadioPlayer(props: {
       });
     }).catch(() => { if (active) latest.current.onError(false); });
     const timer = window.setInterval(() => {
-      if (ready.current && player?.getVideoData().video_id === latest.current.videoId) {
+      if (ready.current && player?.getVideoData()?.video_id === latest.current.videoId) {
         latest.current.onProgress(player.getCurrentTime() || 0, player.getDuration() || 0);
       }
     }, 400);
