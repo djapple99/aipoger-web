@@ -1,5 +1,6 @@
 import type { BibleMetadata } from "./bible-metadata.ts";
 import { SUNO_STUDIO_MASTERING_MOVES } from "./suno-studio-mastering-prompts.ts";
+import { SUNO_EXPRESSION_MOVES } from "./suno-expression-prompts.ts";
 import { SUNO_INSTRUMENT_TONE_PROMPTS } from "./suno-instrument-tone-prompts.ts";
 
 export type SunoLibraryLocale = "zh" | "en";
@@ -17,8 +18,11 @@ export type SunoPromptCategory =
   | "dance"
   | "production"
   | "mastering"
+  | "expression"
   | "theory"
   | "recipe";
+
+export type SunoExpressionFamily = "vocal" | "emotion" | "energy" | "character" | "comparison";
 
 export type SunoStudioMasteringFamily =
   | "electronic"
@@ -57,6 +61,7 @@ export type SunoTechnique<Category extends string> = {
   sources: string[];
   keywords: string[];
   studioFamily?: SunoStudioMasteringFamily;
+  expressionFamily?: SunoExpressionFamily;
 };
 
 export type SunoGenreGroup = {
@@ -72,28 +77,12 @@ export const SUNO_PROMPT_CATEGORIES: { key: SunoPromptCategory | "all"; label: S
   { key: "dance", label: { zh: "舞曲能量", en: "Dance energy" } },
   { key: "production", label: { zh: "音色與混音", en: "Sound & mix" } },
   { key: "mastering", label: { zh: "錄音室 Mastering", en: "Studio mastering" } },
+  { key: "expression", label: { zh: "表情與氛圍", en: "Expression & mood" } },
   { key: "theory", label: { zh: "調性與節奏", en: "Key & rhythm" } },
   { key: "recipe", label: { zh: "愛波哥配方", en: "AIPOGER recipes" } },
 ];
 
-export const SUNO_STUDIO_MASTERING_FAMILY_OPTIONS: { key: SunoStudioMasteringFamily | "all"; label: SunoLocalizedText }[] = [
-  { key: "all", label: { zh: "全部錄音室", en: "All studios" } },
-  { key: "electronic", label: { zh: "電子音樂", en: "Electronic" } },
-  { key: "hip-hop", label: { zh: "Hip-Hop", en: "Hip-Hop" } },
-  { key: "soul-rnb", label: { zh: "Soul & R&B", en: "Soul & R&B" } },
-  { key: "new-age-ambient", label: { zh: "New Age & Ambient", en: "New Age & Ambient" } },
-  { key: "rock-roll", label: { zh: "Rock & Roll", en: "Rock & Roll" } },
-  { key: "indie-dance", label: { zh: "Indie Dance", en: "Indie Dance" } },
-  { key: "disco-funk", label: { zh: "Disco & Funk", en: "Disco & Funk" } },
-  { key: "jazz-bossa", label: { zh: "Jazz & Bossa", en: "Jazz & Bossa" } },
-  { key: "pop", label: { zh: "Pop", en: "Pop" } },
-  { key: "classical-cinematic", label: { zh: "Classical & Cinematic", en: "Classical & Cinematic" } },
-  { key: "latin-caribbean", label: { zh: "Latin & Caribbean", en: "Latin & Caribbean" } },
-  { key: "african-amapiano", label: { zh: "African & Amapiano", en: "African & Amapiano" } },
-  { key: "asian-middle-eastern", label: { zh: "Asian & Middle Eastern", en: "Asian & Middle Eastern" } },
-  { key: "country-folk", label: { zh: "Country & Folk", en: "Country & Folk" } },
-  { key: "dj-edit", label: { zh: "DJ Edit／Extended", en: "DJ Edit / Extended" } },
-];
+export { SUNO_STUDIO_MASTERING_FAMILY_OPTIONS } from "./suno-practice-taxonomy.ts";
 
 export const SUNO_LYRIC_CATEGORIES: { key: SunoLyricCategory | "all"; label: SunoLocalizedText }[] = [
   { key: "all", label: { zh: "全部", en: "All" } },
@@ -365,6 +354,7 @@ export const SUNO_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
   ...SUNO_CORE_PROMPT_MOVES,
   ...SUNO_STUDIO_MASTERING_MOVES,
   ...SUNO_INSTRUMENT_TONE_PROMPTS,
+  ...SUNO_EXPRESSION_MOVES,
 ];
 
 export const SUNO_LYRIC_MOVES: SunoTechnique<SunoLyricCategory>[] = [

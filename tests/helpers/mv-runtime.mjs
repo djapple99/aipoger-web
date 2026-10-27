@@ -10,6 +10,7 @@ export async function mountMv(t,file,initialProps,mocks,globals={}){
  let cursor=0,tree,dirty=true,props=initialProps;const states=[],refs=[],effects=[];
  const callbacks=[];
  const react={useCallback(fn,deps){const i=cursor++;if(!callbacks[i]||deps.some((v,j)=>!Object.is(v,callbacks[i].deps[j])))callbacks[i]={deps,fn};return callbacks[i].fn;},useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;dirty=true;}];},useRef(value){return refs[cursor++]??={current:value};},useEffect(fn,deps=[]){const i=cursor++;if(!effects[i]||deps.some((v,j)=>!Object.is(v,effects[i].deps[j]))){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()};}}};
+ react.useMemo=(fn)=>{cursor++;return fn();};
  const modules={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},...mocks};
  modules['next/dynamic']=lazyRuntime(modules); modules['@/lib/album-copy']={albumCopy};
  const loaded={exports:{}};const require=name=>{assert.ok(name in modules,name);return modules[name];};

@@ -14,7 +14,8 @@ import {
   X,
 } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
-import { creditCopy, creditReason } from "@/lib/credit-copy";
+import CreditWallet from "@/components/credit-wallet";
+import { creditReason } from "@/lib/credit-copy";
 import { creatorText } from "@/lib/creator-center-copy";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -146,6 +147,7 @@ export function CreatorCenterLayout({
     const openChallenge = () => setDialog("works");
     const revealChallenge = () => {
       if (window.location.hash === "#pending-ai-music-challenges") openChallenge();
+      if (window.location.hash === "#my-credit") setDialog("credit");
     };
     revealChallenge();
     window.addEventListener("hashchange", revealChallenge);
@@ -394,9 +396,7 @@ export function CreatorCenterLayout({
             <div>
               {tx("我的 Credit", "My Credit")}
               <strong>
-                {data?.isOwner
-                  ? tx("免扣點", "No deduction", "ポイント免除", "포인트 면제")
-                  : data?.credits.enabled ? String(data.credits.balance ?? "—") : tx("尚未啟用", "Not active", "準備中", "준비 중")}
+                {data?.credits.enabled ? String(data.credits.balance ?? "—") : tx("尚未啟用", "Not active", "準備中", "준비 중")}
               </strong>
               <small>
                 {data?.isOwner
@@ -411,10 +411,10 @@ export function CreatorCenterLayout({
               </small>
               <button onClick={() => setDialog("credit")}>
                 {tx(
-                  "點數紀錄",
-                  "Credit history",
-                  "ポイント履歴",
-                  "포인트 내역",
+                  "查看我的點數",
+                  "View my Credit",
+                  "Creditを確認",
+                  "내 Credit 보기",
                 )}{" "}
                 →
               </button>
@@ -903,10 +903,7 @@ export function CreatorCenterLayout({
             />
           ) : dialog === "credit" ? (
             <div>
-              <p>{data?.credits.enabled
-                ? creditCopy(lang).rules
-                : tx("點數尚未啟用，目前沒有點數收支紀錄。", "Credits are not active yet.")}</p>
-              {data?.credits.debt ? <p role="status">{creditCopy(lang).debt}：{data.credits.debt} Credit</p> : null}
+              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} /> : <p>{loading ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : tx("目前無法讀取點數，請重試。", "Credit unavailable. Please retry.", "Creditを読み込めません。再試行してください。", "Credit을 불러올 수 없습니다. 다시 시도해 주세요.")}</p>}
               {data?.credits.entries?.length ? <ul>{data.credits.entries.map(entry => <li key={entry.id} style={{display:"flex",justifyContent:"space-between",gap:16,padding:"12px 0",borderBottom:"1px solid #34434b"}}>
                 <span>{creditReason(lang, entry.reason)} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>{entry.delta > 0 ? "+" : ""}{entry.delta}</strong>
               </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，回訪、愛心、有效評論與盲聽都會累積。", "No transactions yet. Visits, Hearts, qualifying reviews and blind comparisons earn Credit.")}</p> : null}

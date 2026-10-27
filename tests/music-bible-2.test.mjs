@@ -88,7 +88,7 @@ test('member API keeps authentication, private caching, missing-table fallback a
   assert.equal(response.headers.get('cache-control'),'private, no-store');
   const body=await response.json();
   assert.equal(body.schemaReady,false);
-  for (const [key,count] of [['promptMoves',174],['lyricMoves',21],['taiwaneseEntries',38],['artistDnaEntries',772],['promptRecipes',747]]) {
+  for (const [key,count] of [['promptMoves',223],['lyricMoves',21],['taiwaneseEntries',38],['artistDnaEntries',772],['promptRecipes',747]]) {
     assert.equal(body[key].length,count);
     for(const item of body[key]){const declared=key==='promptMoves'?SUNO_PROMPT_MOVES.find(x=>x.key===item.key)?.metadata:undefined;assert.deepEqual(item.metadata,declared??legacyBibleMetadata());}
   }

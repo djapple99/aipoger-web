@@ -147,7 +147,7 @@ export default function CreatorLinkUpload({
   return (
     <div className={styles.linkForm}>
       <p className={styles.allowance}>
-        {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("免費額度已用", "Free allowance used", "無料枠使用", "무료 한도 사용")}{" "}{quota ? `${Math.min(quota.used, 3)} / ${quota.limit}` : "—"} · {text("每168小時三件免費，之後每件60 Credit", "3 free per 168 hours, then 60 Credit each", "168時間に3件無料、その後は1件60 Credit", "168시간에3건 무료, 이후 건당60 Credit")}</>}
+        {quota?.unlimited ? text("Owner · 投稿不限數量", "Owner · Unlimited submissions", "Owner · 投稿数の制限なし", "Owner · 제출 수 제한 없음") : <>{text("免費額度已用", "Free allowance used", "無料枠使用", "무료 한도 사용")}{" "}{quota ? `${Math.min(quota.used, 3)} / ${quota.limit}` : "—"} · {text("每168小時（一週）三件免費，之後每件60 Credit", "3 free per 168 hours (one week), then 60 Credit each", "168時間（1週間）に3件無料、その後は1件60 Credit", "168시간(1주일)에3건 무료, 이후 건당60 Credit")}</>}
       </p>
       {!quota?.unlimited ? <p>{creditCopy(lang).allowance} · Credit {quota?.balance ?? "—"}{quota?.debt ? ` · ${creditCopy(lang).debt} ${quota.debt}` : ""}</p> : null}
       {quota && !quota.unlimited && quota.used >= 3 ? <label><input type="checkbox" checked={confirmedCredit} onChange={e => setConfirmedCredit(e.target.checked)} /> {creditCopy(lang).consent}</label> : null}

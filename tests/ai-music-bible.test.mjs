@@ -136,7 +136,7 @@ test("stem separation guide is bilingual, sourced, and points only to known engi
 });
 
 test("Suno prompt and lyric libraries keep unique, bilingual, sourced moves", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 174);
+  assert.equal(SUNO_PROMPT_MOVES.length, 223);
   assert.equal(SUNO_INSTRUMENT_TONE_PROMPTS.length, 40);
   assert.equal(SUNO_STUDIO_MASTERING_MOVES.length, 111);
   assert.equal(BEATPORT_STUDIO_MASTERING_MOVES.length, 45);
@@ -276,7 +276,7 @@ test("expanded Studio Mastering prompts are discoverable by genre, culture, and 
 });
 
 test("Prompt and lyric finders explain their controls and expose clear states", () => {
-  assert.equal(SUNO_PROMPT_MOVES.length, 174);
+  assert.equal(SUNO_PROMPT_MOVES.length, 223);
   assert.match(biblePageComponent, /document\.title = BIBLE_DOCUMENT_TITLES\[lang\]/);
   assert.match(practiceLibraryComponent, /找你需要的 Prompt 招式/);
   assert.match(practiceLibraryComponent, /Jazz、1980s、印度、交響、側鏈/);
