@@ -45,7 +45,6 @@ import NewMusicBadge from "@/components/new-music-badge";
 import {
   markEarwormPromptSkipped,
   readEarwormLocalProfile,
-  shouldPromptForEarwormFromBrowser,
   type EarwormLocalProfile,
 } from "@/lib/earworm-profile";
 
@@ -612,9 +611,6 @@ export default function AiMusicClient({ initialView = "genre", initialAlbumId = 
   useEffect(() => {
     const profile = readEarwormLocalProfile();
     setEarwormProfile(profile);
-    if (!shouldPromptForEarwormFromBrowser(profile)) return;
-    const frame = window.requestAnimationFrame(() => setEarwormPromptOpen(true));
-    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {

@@ -37,3 +37,8 @@ test('stalled iframe initialization reports an actionable failure without advanc
  const x=await setup(t,false);x.timeout();assert.deepEqual(x.errors,[false]);assert.equal(x.ended(),0);
  x.events.onReady();x.timeout();assert.deepEqual(x.errors,[false]);assert.equal(x.loads[0],'abcdefghijk');
 });
+
+test('a modal during YouTube initialization defers playback without calling an unready player',async t=>{
+ const x=await setup(t,false);x.modal();assert.equal(x.paused(),0);
+ x.events.onReady();assert.deepEqual(x.loads,[]);assert.equal(x.cues[0],'abcdefghijk');assert.equal(x.ended(),0);
+});

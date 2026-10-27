@@ -25,7 +25,7 @@ export default function YouTubeRadioPlayer(props: {
     const timeout = window.setTimeout(() => { if (active && !ready.current) latest.current.onError(false); }, 15_000);
     const obscured = () => document.hidden || Boolean(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'));
     const pauseIfObscured = () => {
-      if (obscured()) { suspended.current = true; player?.pauseVideo(); }
+      if (obscured()) { suspended.current = true; if (ready.current) player?.pauseVideo(); }
     };
     load.current = () => {
       if (!ready.current || !player) return;
