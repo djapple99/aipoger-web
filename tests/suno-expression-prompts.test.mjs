@@ -116,11 +116,11 @@ test('prompt UI filters families and aliases, routes paid copies, retries clipbo
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {creditCopy,creditReason} from '../src/lib/credit-copy.ts';
-test('wallet centralizes balance, earning routes and weekly allowance in four languages',()=>{
+test('wallet defaults to balance, usage and two collapsed actions in four languages',()=>{
  const {default:Wallet}=loadTs('src/components/credit-wallet.tsx',{'next/link':{default:({children,...props})=>React.createElement('a',props,children)}});
  for(const lang of ['zh','en','ja','ko']){
  const html=renderToStaticMarkup(React.createElement(Wallet,{lang,balance:42,debt:0}));
- assert.match(html,/>42<\/strong>/);assert.match(html,/168/);assert.match(html,/60/);assert.match(html,/5/);assert.match(html,new RegExp(`/battle/listen\\?lang=${lang}`));assert.match(html,new RegExp(`/ai-music\\?lang=${lang}#works`));
+ assert.match(html,/>42<\/strong>/);assert.match(html,/168/);assert.match(html,/60/);assert.match(html,/5/);assert.equal((html.match(/aria-expanded="false"/g)||[]).length,2);assert.doesNotMatch(html,/<ul|href=|<section id="credit-wallet-earn"/);
  assert.notEqual(creditReason(lang,'bible_prompt_copy'),'bible_prompt_copy');
  }
  assert.match(creditCopy('zh').allowance,/168小時（一週）/);

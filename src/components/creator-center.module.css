@@ -960,3 +960,16 @@
 .fileUpload :global(fieldset), .fileUpload :global(form), .fileUpload :global(details) { min-width: 0; max-width: 100%; }
 .fileUpload :global(input), .fileUpload :global(select), .fileUpload :global(textarea), .uploader iframe { max-width: 100%; }
 @media (max-width: 920px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+
+/* The wallet opens as a compact summary; other creator dialogs retain their widths. */
+.dialog.creditDialog {
+  width: min(calc(100vw - 32px), 560px);
+  border-radius: 14px;
+}
+.creditDialog .dialogHeader {
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.creditDialog .dialogHeader h2 {
+  font-size: 19px;
+}

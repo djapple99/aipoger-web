@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import EditorialHeader from "@/components/editorial-header";
 import CreditWallet from "@/components/credit-wallet";
-import { creditReason } from "@/lib/credit-copy";
 import { creatorText } from "@/lib/creator-center-copy";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
@@ -877,7 +876,7 @@ export function CreatorCenterLayout({
         </div>
         <dialog
           ref={dialogRef}
-          className={styles.dialog}
+          className={`${styles.dialog} ${dialog === "credit" ? styles.creditDialog : ""}`}
           onCancel={close}
           onClick={(e) => {
             if (e.currentTarget === e.target) close();
@@ -903,10 +902,8 @@ export function CreatorCenterLayout({
             />
           ) : dialog === "credit" ? (
             <div>
-              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} /> : <p>{!error ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : <button type="button" onClick={onRefresh}>{tx("無法讀取點數，按此重試", "Credit unavailable. Retry", "Creditを再読み込み", "Credit 다시 불러오기")}</button>}</p>}
-              {data?.credits.entries?.length ? <ul>{data.credits.entries.map(entry => <li key={entry.id} style={{display:"flex",justifyContent:"space-between",gap:16,padding:"12px 0",borderBottom:"1px solid #34434b"}}>
-                <span>{creditReason(lang, entry.reason)} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>{entry.delta > 0 ? "+" : ""}{entry.delta}</strong>
-              </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，回訪、愛心、有效評論與盲聽都會累積。", "No transactions yet. Visits, Hearts, qualifying reviews and blind comparisons earn Credit.")}</p> : null}
+              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} entries={data.credits.entries} /> : <p>{!error ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : <button type="button" onClick={onRefresh}>{tx("無法讀取點數，按此重試", "Credit unavailable. Retry", "Creditを再読み込み", "Credit 다시 불러오기")}</button>}</p>}
+
             </div>
           ) : (
             <div className={styles.legacy} data-mode={dialog ?? "works"}>
