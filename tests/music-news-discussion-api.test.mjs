@@ -63,7 +63,7 @@ test('news failures retain auth/rate/conflict status and disclose no database or
 });
 
 test('new article discussions remain public to read and require verified membership to write',async()=>{
- for(const newSlug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-licensed-ai-remixes']) {
+ for(const newSlug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-licensed-ai-remixes','sba-creator-small-business-guidance']) {
   const x=setup(), ctx={params:Promise.resolve({slug:newSlug})};
   assert.equal((await x.route.GET(x.req(null,null),ctx)).status,200);
   assert.equal(x.calls[0].args.p_slug,newSlug);

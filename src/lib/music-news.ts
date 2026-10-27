@@ -51,6 +51,21 @@ const catalog: readonly MusicNews[] = [{
     { label: "Spotify 官方公告：Believe and Spotify Partner…（2026-10-20）", url: "https://newsroom.spotify.com/2026-10-20/believe-spotify-licensing-agreement-fan-made-covers-remixes/" },
     { label: "Believe 官方新聞稿：Licensed Fan Remixes and Covers（2026-10-20）", url: "https://www.believe.com/press-release/believe-and-spotify-partner-to-unlock-new-opportunities-for-artists-through-licensed-fan-remixes-and-covers/" },
   ],
+}, {
+  slug: "sba-creator-small-business-guidance", published: true, language: "zh-Hant",
+  title: "創作者也是老闆：美國 SBA 釐清影音創作者的小企業分類",
+  summary: "美國 SBA 釐清影音創作者的事業分類。這次改了什麼、和貸款補助有何差別？從 MV、音樂教學到頻道經營，整理創作帳本可以先做這三件事。",
+  category: "創作者經營", publishedOn: "2026-10-27", eventOn: "2026-10-15", verifiedOn: "2026-10-27",
+  cover: "/news/sba-creator-small-business-guidance.png",
+  coverAlt: "AIPOGER 原創圖解：影音創作者以作品、收入與合約建立自己的事業紀錄",
+  coverCaption: "圖／AIPOGER 原創概念圖，非 SBA 文件或申請介面",
+  deck: "做歌、剪 MV、經營頻道，幕後還有報價、合約與帳本。美國這次把分類說清楚，我們也來把自己的創作事業整理清楚。",
+  sources: [
+    { label: "SBA 官方公告：創作者事業分類指引（2026-10-15）", url: "https://legacy.sba.gov/article/2026/10/15/sba-issues-historic-guidance-recognize-americas-content-creator-economy" },
+    { label: "SBA：Grants，補助的用途與限制（2026-10-27 查核）", url: "https://www.sba.gov/loans/additional-funding-opportunities/grants/" },
+    { label: "美國勞工統計局：NAICS 5121 影音與 5122 錄音產業分類", url: "https://www.bls.gov/iag/tgs/iag512.htm" },
+    { label: "Inc.：SBA 新指引與創作者融資（2026-10-26）", url: "https://www.inc.com/melissa-angell/are-you-a-content-creator-heres-how-the-sbas-new-guidance-could-help-you-get-funding/91422681" },
+  ],
 }];
 export function publishedMusicNews(): MusicNews[] {
   return catalog.filter(article => article.published).sort((a, b) => b.publishedOn.localeCompare(a.publishedOn) || a.slug.localeCompare(b.slug));

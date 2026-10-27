@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#101010"/><rect width="12" height="630" fill="#ff7a20"/>
+<path d="M690 0V630" stroke="#ffffff18"/><circle cx="931" cy="302" r="213" fill="none" stroke="#ffffff0d"/>
+<g fill="none" stroke-width="3" stroke-linejoin="round">
+<rect x="802" y="140" width="268" height="171" rx="12" stroke="#ff9851"/>
+<path d="M908 183L970 225L908 267Z" fill="#ff7a2026" stroke="#ff9851"/>
+<path d="M800 336H1072M870 337L853 365H1019L1002 337" stroke="#ffffff50"/>
+<rect x="746" y="382" width="159" height="99" rx="8" fill="#101010" stroke="#82b7b3"/>
+<path d="M768 408H840M768 430H879M768 452H859" stroke="#82b7b3"/>
+<rect x="948" y="363" width="143" height="118" rx="8" fill="#101010" stroke="#b7abc9"/>
+<path d="M970 391H1068M970 413H1031M971 447L984 460L1013 432" stroke="#b7abc9"/>
+</g>
+<g font-family="PingFang TC, Noto Sans CJK TC, sans-serif">
+<text x="64" y="81" fill="#ff9851" font-size="22" font-weight="600" letter-spacing="3">AIPOGER / MUSIC NEWS</text>
+<text x="60" y="219" fill="#f6f2ed" font-size="64" font-weight="700">創作者，</text>
+<text x="60" y="310" fill="#f6f2ed" font-size="64" font-weight="700">也是老闆。</text>
+<text x="64" y="377" fill="#aaa8a4" font-size="24">美國 SBA 釐清影音創作者分類</text>
+<rect x="64" y="429" width="324" height="46" rx="23" fill="#ff7a20"/>
+<text x="87" y="460" fill="#111" font-size="22" font-weight="600">作品、收入，還有合約</text>
+<path d="M64 528H1136" stroke="#ffffff35"/>
+<text x="64" y="574" fill="#b4b0aa" font-size="20" letter-spacing="1">CREATOR BUSINESS / VIDEO / AI MUSIC</text>
+<text x="1041" y="574" fill="#ff9851" font-size="20">NO. 004</text>
+</g></svg>
