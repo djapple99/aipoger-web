@@ -1,3 +1,4 @@
+export const AIPOGER_SHARE_IMAGE_PATH = "/aipoger-og-card-dark-20261027.png";
 export const AIPOGER_BRAND_LOGO_PATH = "/aipoger-brand-logo-transparent-20260522.png";
 export const AIPOGER_BRAND_LOGO = AIPOGER_BRAND_LOGO_PATH;
 export const AIPOGER_CHOICE_LOGO = "/aipoger-choice-logo-transparent.png";

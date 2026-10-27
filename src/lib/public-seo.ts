@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AIPOGER_SHARE_IMAGE_PATH } from "@/lib/brand";
 import { isSupportedLang, type Lang } from "@/lib/locale";
 import { publicSiteUrl } from "@/lib/site-url";
 
@@ -24,7 +25,7 @@ export function publicMetadata({ path, lang, title, description, params, image, 
   type?: "website" | "article";
 }): Metadata {
   const url = publicUrl(path, lang, params);
-  const cover = image ?? { url: "/aipoger-og-card-20260522.png", width: 1200, height: 630, alt: "AIPOGER" };
+  const cover = image ?? { url: AIPOGER_SHARE_IMAGE_PATH, width: 1200, height: 630, alt: "AIPOGER" };
   const absoluteImage = { ...cover, url: new URL(cover.url, publicSiteUrl()).href };
   return { title: { absolute: title }, description, alternates: publicAlternates(path, lang, params),
     openGraph: { title, description, url, siteName: "AIPOGER", type, locale: { zh: "zh_TW", en: "en_US", ja: "ja_JP", ko: "ko_KR" }[lang], images: [absoluteImage] },

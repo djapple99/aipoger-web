@@ -46,6 +46,7 @@ This document protects AIPOGER's visual identity. Use it before redesigning any 
 
 ## 搜尋入口、作品分享與教學轉換（2026-10-25）
 
+- 2026-10-27使用者確認：首頁及一般網站分享採實心黑底、原白色AIPOGER符號與字標，1200×630 PNG，無透明底或白色外框。共用`AIPOGER_SHARE_IMAGE_PATH`，Open Graph／Twitter及作品／Choice無封面時的品牌回退均指向同一版本化圖片。作品、MV、新聞及歌單已有專屬封面時沿原內容展示。更新預設圖不代表已發社群貼文的快取會立即重抓。
 - 首頁、探索、MV、Showtime／Choice與Battle公開清單以伺服器端資料作為首次畫面，再沿原前端互動更新；不把載入佔位當作公開頁正文。作品標題可連至 `/works/[id]?lang=…`，原播放與評論按鈕維持原操作。
 - 獨立作品頁顯示原歌名、舞台署名、介紹、媒體及同一作品的評論評分；依2026-10-25後續確認，桌機／手機均上播下評，880px緊湊單欄。評論輸入／送出不重建播放器。分享鍵導向同一原 ID，舊歌曲／MV連結仍可用。
 - 未選曲或歌曲沒有非空歌詞時，收合歌詞操作與內容，不顯示「Lyrics not provided」，不把未填歌詞推定為器樂。

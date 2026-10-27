@@ -2,7 +2,7 @@ export const preferredRegion = "hnd1";
 import { notFound } from "next/navigation";
 import { readPublicChoice } from "@/lib/server-public-choice";
 import type { Metadata } from "next";
-import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
+import { AIPOGER_SHARE_IMAGE_PATH } from "@/lib/brand";
 import { choiceDisplayTitle } from "@/lib/aipoger-choice";
 import { getChoiceCopy } from "@/lib/choice-copy";
 import { isSupportedLang, type Lang } from "@/lib/locale";
@@ -13,7 +13,7 @@ import { choiceShareImagePath } from "@/lib/choice-share";
 import { isChoiceStorageCover } from "@/lib/choice-share-cover";
 
 const siteUrl = publicSiteUrl();
-const defaultImageUrl = new URL(AIPOGER_BRAND_LOGO, siteUrl).href;
+const defaultImageUrl = new URL(AIPOGER_SHARE_IMAGE_PATH, siteUrl).href;
 
 export async function generateMetadata({
   params,

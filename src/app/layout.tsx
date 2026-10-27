@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AIPOGER_SHARE_IMAGE_PATH } from "@/lib/brand";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
 import "./music-news.css";
@@ -17,7 +18,7 @@ import { publicSiteUrl } from "@/lib/site-url";
 
 const siteUrl = publicSiteUrl();
 const metadataBase = new URL(siteUrl);
-const ogImage = "/aipoger-og-card-20260522.png";
+const ogImage = AIPOGER_SHARE_IMAGE_PATH;
 
 export const metadata: Metadata = {
   metadataBase,
