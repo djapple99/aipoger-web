@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`f463313`／`codex/public-rule-copy`：46個表情詞＋3張對照卡新增到創作聖經，這49張每次複製5點；不足連到Profile「我的點數」，集中餘額、任務、費用與紀錄，投稿168小時加註一週。正式migration20261027074525已套用並回滾驗證，903測試871通過／32略過；部署`dpl_HGgqXaazUbsrvUq6giGHsoQxUFFa` READY且apex同版，會員實扣與四語手機驗收通過。[發布report](releases/2026-10-27-expression-credit-wallet.md)。
+- 最新應用基準`35137ce`／`codex/public-rule-copy`：點數視窗精簡成餘額、使用規則與兩個小入口；任務／明細點開才看，明細每頁5筆，原點數與所有流水保留。906測試874通過／32略過，正式四語手機與50筆近期紀錄比對通過；部署`dpl_9CYrmbg17t7qtGxGHDipXDYMDeyT` READY且apex同版。[發布report](releases/2026-10-27-compact-credit-wallet.md)。
+
+- 前輪應用基準`f463313`／`codex/public-rule-copy`：46個表情詞＋3張對照卡新增到創作聖經，這49張每次複製5點；不足連到Profile「我的點數」，集中餘額、任務、費用與紀錄，投稿168小時加註一週。正式migration20261027074525已套用並回滾驗證，903測試871通過／32略過；部署`dpl_HGgqXaazUbsrvUq6giGHsoQxUFFa` READY且apex同版，會員實扣與四語手機驗收通過。[發布report](releases/2026-10-27-expression-credit-wallet.md)。
 
 - 前輪應用基準`58d3997`／`codex/public-rule-copy`：2026-10-27新增11段Boom Bap到錄音室Hip-Hop，保留英文原Prompt與版本差異、一鍵複製，這批無試聽；Studio111／原音訊100。部署`dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY且apex核對一致，896測試864通過／32略過，正式會員與8項HTTP驗收通過。[發布report](releases/2026-10-27-boom-bap-prompts.md)。
 
@@ -46,7 +48,7 @@
 - Drop由發起者選每首60秒／90秒／整首、接戰沿用；一般投稿、Drop／Q Crash接受原支援連結或MP3最高320kbps／30MB，MV僅影片連結，前後端及Storage統一；舊大型音檔入口退役，新私人草稿無引用才清理；舊音檔與戰績保留。四語Battle玩法指南整合盲聽／Drop／Q Crash，原舞台及投票／點數保留。
 - Battle盲聽／Q Crash／Drop標題旁各有分享鍵，預覽使用模式專屬器材插畫，分享連結保留語言並定位入口。
 - 酒吧容量生存淘汰、Challenger 保護、Showtime 認證、Daily Spotlight 已退役；24H Full Song Battle 隱藏於前台。
-- 本次Credit發布加入每日回訪15、有效評分評論10、歌曲／MV送愛心3及額外成功投稿60，保留盲聽3及舊流水；2026-10-15最新歌曲／MV規則為首次評分固定、評論一次修改、會員不得刪除、已發評論獎勵不追回／不重發，Owner權限依產品正文，Heart追回／恢復未改；APC／付款／聖經扣點仍未啟用，不繼承舊APC；公開指南不顯示舊歌+5或Owner免扣點，但內部行為保留；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
+- 本次Credit發布加入每日回訪15、有效評分評論10、歌曲／MV送愛心3及額外成功投稿60，保留盲聽3及舊流水；2026-10-15最新歌曲／MV規則為首次評分固定、評論一次修改、會員不得刪除、已發評論獎勵不追回／不重發，Owner權限依產品正文，Heart追回／恢復未改；APC／付款及舊案聖經2點解鎖未啟用，新增49張表情詞／對照卡每次複製5點已啟用，不繼承舊APC；公開指南不顯示舊歌+5或Owner免扣點，但內部行為保留；自動音訊曲風建議的前端已發布，worker 尚待啟用。創作者私人「作品表現」第一版已發布；新版聆聽比例從發布後開始累積，不能補成歷史完整數據。
 - 優先讀本機六份正文，其次讀 [Google Drive 最新規格資料夾](https://drive.google.com/drive/folders/1C_mLLcpRvTNh6m6ZkWVhPN_QWVr9CrCN)；雲端是本機同步副本，發布狀態仍需工程證據。Library 可搜尋 `AIPOGER 最新文件索引`、`aipoger-product-rules.md`。
 - GitHub main 停留在較舊狀態。遠端查詢須讀有發布證據的分支，不可把 main 的舊文件或 7 月簡報當最新規格；未讀正確路徑前不可直接回報「找不到」。
 
