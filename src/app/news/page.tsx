@@ -1,5 +1,6 @@
 import EditorialHeader from "@/components/editorial-header";
-import MusicNewsGrid from "@/components/music-news-grid";
+import MusicNewsIndex from "@/components/music-news-index";
+import { newsPopularity } from "@/lib/server-news-popularity";
 import SeoJsonLd from "@/components/seo-json-ld";
 import { musicNewsCopy, musicNewsHref, publishedMusicNews } from "@/lib/music-news";
 import { requestLang } from "@/lib/server-public-locale";
@@ -13,11 +14,11 @@ export async function generateMetadata({ searchParams }: Props) {
 }
 export default async function MusicNewsPage({ searchParams }: Props) {
   const lang = await requestLang((await searchParams).lang); const copy = musicNewsCopy[lang]; const articles = publishedMusicNews();
+  const popularity = await newsPopularity();
   return <div className="music-news-page"><EditorialHeader active="news" returnPath="/news" />
-    <main className="music-news-container"><header className="music-news-index-heading"><p className="music-news-kicker">AIPOGER JOURNAL</p>
-      <h1>{copy.title}<span aria-hidden="true">.</span></h1><p className="music-news-deck">{copy.intro}</p><p>{copy.description}</p></header>
-      <section aria-labelledby="news-latest-title"><div className="music-news-index-section"><h2 id="news-latest-title">{copy.latest}</h2></div>
-        <MusicNewsGrid articles={articles} lang={lang} surface="index" /></section>
+    <main className="music-news-container"><header className="music-news-index-heading music-news-heading-inline">
+      <h1>{copy.title}<span aria-hidden="true">.</span></h1><div><p className="music-news-deck">{copy.intro}</p><p>{copy.description}</p></div></header>
+      <MusicNewsIndex articles={articles} lang={lang} popularity={popularity} />
       <SeoJsonLd data={{ "@context": "https://schema.org", "@type": "CollectionPage", name: copy.title, url: publicUrl("/news", lang),
         mainEntity: { "@type": "ItemList", itemListElement: articles.map((article, i) => ({ "@type": "ListItem", position: i + 1, name: article.title,
           url: new URL(musicNewsHref(article, "zh"), publicUrl("/news", "zh")).href })) } }} />

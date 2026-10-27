@@ -14,6 +14,7 @@ function mocks(lang) { return {
  '@/lib/server-public-locale':{requestLang:async()=>lang},
  '@/components/editorial-header':{default:empty},'@/components/share-button':{default:empty},
  '@/components/music-news-discussion':{default:empty},
+ '@/lib/server-news-popularity':{newsPopularity:async()=>({slugs:publishedMusicNews().map(a=>a.slug),status:'empty'})},
  '@/components/seo-json-ld':{default:({data})=>React.createElement('script',{type:'application/ld+json',dangerouslySetInnerHTML:{__html:JSON.stringify(data)}})},
 };}
 for(const lang of ['zh','en','ja','ko']) test(`news has crawlable content and truthful language (${lang})`, async()=>{
@@ -72,15 +73,32 @@ for(const slug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-l
   else { assert.ok(html.includes('原本就可能取得 SBA 支援'));assert.ok(html.includes('不是 SBA 申請文件清單'));assert.ok(html.includes('5122 / 錄音產業')); }
  });
 }
-test('home keeps three latest stories while the index retains all four with working deep links',async()=>{
+test('home keeps its existing cards while news index has one lead and all four accessible cover-only links',async()=>{
  const deps=mocks('zh'), Shelf=loadTs('src/components/latest-music-news.tsx',deps).default;
  const Index=loadTs('src/app/news/page.tsx',deps).default;
- for(const [html,stories] of [[renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'})),publishedMusicNews().slice(0,3)],[renderToStaticMarkup(await Index({searchParams:Promise.resolve({lang:'zh'})})),publishedMusicNews()]]) {
-  assert.equal((html.match(/class="music-news-card"/g)||[]).length,stories.length);
-  assert.equal((html.match(/data-news-card="lead"/g)||[]).length,1);
-  assert.equal((html.match(/data-news-card="companion"/g)||[]).length,2);
-  for(const story of stories){assert.ok(html.includes(story.title));assert.ok(html.includes(`/news/${story.slug}?lang=zh`));}
+ const shelf=renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'}));
+ assert.equal((shelf.match(/class="music-news-card"/g)||[]).length,3);
+ assert.equal((shelf.match(/data-news-card="companion"/g)||[]).length,2);
+ const html=renderToStaticMarkup(await Index({searchParams:Promise.resolve({lang:'zh'})}));
+ assert.equal((html.match(/class="music-news-card"/g)||[]).length,1);
+ assert.ok(html.includes('熱門新聞'));assert.ok(html.includes('尚無互動'));
+ const grid=html.split('class="music-news-cover-grid"')[1].split('</section>')[0];
+ assert.equal((grid.match(/<article/g)||[]).length,4);
+ assert.ok(!grid.includes('music-news-card-body'));assert.ok(!grid.includes('aria-hidden'));assert.ok(!grid.includes('tabindex="-1"'));
+ for(const story of publishedMusicNews()) {assert.ok(grid.includes(`/news/${story.slug}?lang=zh`));assert.ok(grid.includes(`aria-label="${story.title}"`));assert.ok(grid.includes(story.cover));}
+});
+
+for(const lang of ['zh','en','ja','ko']) test(`news popularity status is truthful and links retain language (${lang})`,()=>{
+ const Index=loadTs('src/components/music-news-index.tsx',mocks(lang)).default;
+ const stories=publishedMusicNews(),slugs=[stories[2].slug,stories[0].slug];
+ for(const [status,key] of [['ranked','popularOrder'],['empty','popularEmpty'],['unavailable','popularUnavailable']]) {
+  const html=renderToStaticMarkup(React.createElement(Index,{articles:stories,lang,popularity:{slugs,status}}));
+  assert.ok(html.includes(musicNewsCopy[lang][key]));
+  const ranking=html.split('<aside')[1].split('</aside>')[0];
+  assert.ok(ranking.indexOf(slugs[0])<ranking.indexOf(slugs[1]));
+  for(const slug of slugs)assert.ok(ranking.includes(`/news/${slug}?lang=${lang}`));
  }
+ assert.equal(renderToStaticMarkup(React.createElement(Index,{articles:[],lang,popularity:{slugs:[],status:'empty'}})),'');
 });
 
 test('news layout handles sparse editions and additional stories without duplication or empty slots',()=>{
