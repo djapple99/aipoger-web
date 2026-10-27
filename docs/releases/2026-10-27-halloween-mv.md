@@ -1,6 +1,6 @@
 # 萬聖節 MV 限時推薦
 
-使用者確認與實作日期：2026-10-27（Asia/Taipei）。發布狀態：待正式驗收。
+使用者確認與實作日期：2026-10-27（Asia/Taipei）。已正式發布並驗收。應用`d5c6893`，部署來源`1b99229`，發布分支`codex/public-rule-copy`（實作分支`codex/halloween-mv-feature`）。
 
 ## 範圍
 
@@ -18,4 +18,15 @@
 
 - 3項新規則測試涵蓋每4小時輪替、新作及更高週支持、去重、到期精確邊界、非年度循環、快取邊界、缺少／隱藏／未公開／非影片／專輯排除。
 - 1項新增MV runtime測試驗證推薦位於榜單前、觀看沿原作品、到期重讀後移除推薦且保留正在播放的影片。
-- 全套911項：872通過、39選用測試略過、0失敗。TypeScript通過；lint0 errors／9既有img warnings。建置與正式驗收結果於完成後補入。
+- 全套911項：872通過、39選用測試略過、0失敗。TypeScript通過；lint0 errors／9既有img warnings。本機與最終雲端webpack建置通過。
+
+- 正式首頁與MV頁四語320px無水平溢出；推薦操作鍵44px以上。桌機原封面載入1280px，YouTube觀看視窗確認同一影片`0NlXuljHn0I`，開啟／關閉正常，未送出評論、評分或Heart。
+- 正式12項HTTP（首頁、四語MV、作品頁、兩個discovery API、登入、酒吧、音樂分析、Battle setup）皆200；瀏覽器未捕捉到error。
+- 發布前後99支MV ID與原投稿時間保留。期間指定MV新增1份真實公開評分／支持，因此另以舊build和新build同時讀取目前資料比對：99筆原日期／評分／支持、完整人氣排序及原週支持精選完全一致。推薦不改寫作品互動。
+
+## 部署與文件
+
+- Vercel `dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY；[build](https://aipoger-web-rnz8-qxq6vp46o-yohungs-projects.vercel.app)。先prod --skip-domain並檢查首頁與MV API的指定作品／期限，再promote同一build；aipoger.com查核相同ID。
+- 基底包含當日SBA新聞`ac9178e`、精簡點數視窗及既有發布；主repo其他未提交程式未部署。無資料庫變更、秘密或環境設定修改。
+- 現行產品／體驗／工程／索引及協作入口更新；Drive沿既有檔案ID原地同步並核對讀回。營運／roadmap不變。
+- 私人驗收證據：`/Users/huangyihong/Documents/New project/audits/2026-10-27-halloween-mv/`，含前後公開API、舊新版資料比對、HTTP與桌機／四語手機截圖。未來期限由固定時間的單元／runtime測試驗證，不宣稱已觀察未來正式狀態。

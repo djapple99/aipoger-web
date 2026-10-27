@@ -15,7 +15,9 @@
 
 ## 現況與查找順序
 
-- 最新應用基準`ac9178e`／`codex/public-rule-copy`：SBA創作者經營圖文新聞、原創封面與兩組圖解，首頁三篇／列表四篇，沿原會員互動與SEO。907測試868通過／39選用略過；正式16項HTTP、四語320px及桌機驗收完成；部署`dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY且apex同版。[發布report](releases/2026-10-27-sba-creator-news.md)。
+- 最新應用基準`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`：Eve萬聖節MV固定首頁精選第一支與MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原曝光規則。911測試872通過／39選用略過，正式12項HTTP與兩頁四語手機驗收完成；部署`dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY且apex同版。[發布report](releases/2026-10-27-halloween-mv.md)。
+
+- 前輪應用基準`ac9178e`／`codex/public-rule-copy`：SBA創作者經營圖文新聞、原創封面與兩組圖解，首頁三篇／列表四篇，沿原會員互動與SEO。907測試868通過／39選用略過；正式16項HTTP、四語320px及桌機驗收完成；部署`dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY且apex同版。[發布report](releases/2026-10-27-sba-creator-news.md)。
 
 - 前輪應用基準`35137ce`／`codex/public-rule-copy`：點數視窗精簡成餘額、使用規則與兩個小入口；任務／明細點開才看，明細每頁5筆，原點數與所有流水保留。906測試874通過／32略過，正式四語手機與50筆近期紀錄比對通過；部署`dpl_9CYrmbg17t7qtGxGHDipXDYMDeyT` READY且apex同版。[發布report](releases/2026-10-27-compact-credit-wallet.md)。
 

@@ -1,5 +1,7 @@
 # AIPOGER 必要發布證據
 
+- [2026-10-27 萬聖節 MV 限時推薦](2026-10-27-halloween-mv.md)：首頁與MV主頁置頂、台灣11月1日零時自動恢復、正式桌機／四語手機及原資料核對。
+
 - [2026-10-27 SBA創作者經營圖文新聞](2026-10-27-sba-creator-news.md)
 
 - [2026-10-27 Boom Bap錄音室Prompt](2026-10-27-boom-bap-prompts.md)
