@@ -21,6 +21,12 @@
 
 - 正式24項HTTP檢查通過：首頁／探索／MV／Showtime四語共16頁均回新品牌圖片；Battle四語保留原盲聽器材圖，首頁以Facebook／Twitter／LINE的crawler User-Agent另驗3項，圖片本身1項。
 - 各頁Open Graph及Twitter圖片一致；品牌圖標示1200×630，正式PNG為52205 bytes，與本機成品SHA-256完全相同。實際影像為不透明RGB、四角5／5／5近黑、白Logo像素255。
-- 本輪是直接核對網站HTML與實際圖片，沒有登入社群或代發貼文，也沒有聲稱已觸發Facebook／LINE既有貼文重新擷取。已發貼文仍可能使用平台快取，需由平台重抓。
+- 首次發布驗證為直接核對網站HTML與實際圖片，當時尚未觸發社群重抓；後續Facebook補驗及原貼文附件更新如下。LINE既有快取未操作。
 - 私人證據保存在`New project/audits/2026-10-27-dark-share-preview/`：24項結果、正式下載圖片、來源及成品hash。素材來源為使用者提供的`aipoger 黑底白logo.png`，原檔不變。
 - 體驗正文、工程、固定索引及協作入口同步既有Drive ID；無需SQL或人工部署步驟。
+
+## 同日晚間 Facebook 快取與原貼文補驗
+
+使用者再次回報既有Facebook貼文仍白底。官方分享偵錯工具顯示根網址留著10月25日舊圖，中文版也仍快取舊`20260522`圖片。以既有登入執行「再次抓取」，根網址及`?lang=zh`改為`aipoger-og-card-dark-20261027.png`，回應200；真實分享視窗確認黑底白Logo，測試視窗已關閉且沒有新增發文。
+
+再對使用者指定的原貼文使用Facebook「更新分享的附件」並儲存，原貼文現已實際顯示黑底白Logo；沒有重寫文字、刪文、重貼或發送留言。私人證據為`facebook-debugger-zh.txt`、`facebook-composer-verified.png`及`facebook-existing-post-fixed.png`。網站應用仍為`4acfd8b`，本次無改碼或重新部署。
