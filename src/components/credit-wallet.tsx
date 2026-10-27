@@ -18,8 +18,8 @@ export default function CreditWallet({ lang, balance, debt = 0, entries = EMPTY_
   const toggle = (next: "earn" | "history") => { setPanel(current => current === next ? null : next); setHistoryPage(0); };
   const t = (zh: string, en: string, ja: string, ko: string) => ({ zh, en, ja, ko })[lang];
   const tasks = [
-    { title: t("盲聽評測", "Blind comparison", "ブラインド比較", "블라인드 비교"), value: "+3", href: "/battle/listen", detail: t("兩首各聽至少 8 秒後完成選擇，同一配對領一次。", "Listen to both tracks for at least 8 seconds and choose. Once per pair.", "両曲を8秒以上聴いて選択。同じペアで1回。", "두 곡을 각각 8초 이상 듣고 선택하세요. 같은 곡 쌍당 한 번입니다.") },
     { title: t("評分與評論", "Rate & review", "評価とレビュー", "평점과 리뷰"), value: "+10", href: "/ai-music#works", detail: t("為他人作品評分，留下至少 20 字且通過基本反灌水的評論；每作品一次。", "Rate another creator's work with at least 20 letters/numbers and basic spam checks. Once per work.", "他の作者を評価し、20文字以上・基本スパム確認済みのレビュー。作品ごとに1回。", "다른 창작자의 작품에 평점과 20자 이상 리뷰를 남기고 기본 스팸 검사를 통과하세요. 작품당 한 번입니다.") },
+    { title: t("盲聽評測", "Blind comparison", "ブラインド比較", "블라인드 비교"), value: "+3", href: "/battle/listen", detail: t("兩首各聽至少 8 秒後完成選擇，同一配對領一次。", "Listen to both tracks for at least 8 seconds and choose. Once per pair.", "両曲を8秒以上聴いて選択。同じペアで1回。", "두 곡을 각각 8초 이상 듣고 선택하세요. 같은 곡 쌍당 한 번입니다.") },
     { title: t("每日登入回訪", "Daily visit", "毎日のログイン訪問", "매일 로그인 방문"), value: "+15", href: "/", detail: t("登入後造訪網站自動計入，台灣時間每天一次。", "Automatically counted when you visit while signed in. Once per Taiwan day.", "ログインして訪問すると自動付与。台湾時間で1日1回。", "로그인 상태로 방문하면 자동 지급됩니다. 대만 시간 하루 한 번입니다.") },
     { title: t("送出愛心", "Give a Heart", "Heartを送る", "Heart 보내기"), value: "+3", href: "/mv", detail: t("支持他人的歌曲或 MV；同一作品淨獎勵一次，取消會追回。", "Support another creator's song or MV. One net award per work; cancelling reclaims it.", "他の作者の曲・MVを応援。作品ごとに1回、取消で回収。", "다른 창작자의 곡이나 MV를 응원하세요. 작품당 순보상 한 번이며 취소 시 회수됩니다.") },
   ];
@@ -32,7 +32,7 @@ export default function CreditWallet({ lang, balance, debt = 0, entries = EMPTY_
     </div>
     <section className="border-t border-white/10 py-4">
       <h3 className="text-xs font-bold text-zinc-500">{t("使用規則", "How to use", "使い方", "사용 규칙")}</h3>
-      <p className="mt-2 text-sm leading-6 text-zinc-300">{t("表情與氛圍提示詞／對照卡：每次複製 5 點。", "Expression & mood prompts / comparison cards: 5 Credit per copy.", "表情・雰囲気のPrompt／比較カード：コピー1回5点。", "표정·분위기 프롬프트／비교 카드: 복사당 5점.")}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-300">{t("表情與氛圍提示詞／對照卡：每次複製 8 點。", "Expression & mood prompts / comparison cards: 8 Credit per copy.", "表情・雰囲気のPrompt／比較カード：コピー1回8点。", "표정·분위기 프롬프트／비교 카드: 복사당 8점.")}</p>
       <p className="mt-1 text-sm leading-6 text-zinc-300">{t("投稿：每 168 小時（一週）前三件免費，之後每件成功投稿 60 點。", "Submissions: first 3 free per 168 hours (one week), then 60 Credit per successful work.", "投稿：168時間（1週間）ごとに最初の3件無料。その後は投稿成功ごとに60点。", "제출: 168시간(1주일)마다 첫 3건 무료, 이후 제출 성공당 60점.")}</p>
       <p className="mt-1 text-xs leading-5 text-zinc-500">{t("從第一件成功投稿起算；連結與 MP3 共用，刪除不退額度。", "Starts with your first successful submission. Links and MP3s share the allowance; deletion does not refund it.", "最初の投稿成功から起算。リンク・MP3で共有し、削除しても枠は戻りません。", "첫 제출 성공부터 계산합니다. 링크와 MP3가 한도를 공유하며 삭제해도 복구되지 않습니다.")}</p>
     </section>

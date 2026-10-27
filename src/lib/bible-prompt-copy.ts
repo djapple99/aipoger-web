@@ -1,5 +1,5 @@
 // Client-safe pricing. Prompt bodies remain in the member catalog.
-export const BIBLE_EXPRESSION_COPY_COST = 5;
+export const BIBLE_EXPRESSION_COPY_COST = 8;
 export type BiblePaidCopy = { requestId: string; key: string; locale: string; text?: string };
 
 /** Keep one receipt until clipboard success, including an uncertain network result. */
@@ -21,7 +21,7 @@ export async function resolveBiblePaidCopy(operation: BiblePaidCopy, token: stri
   const response = await send("/api/ai-music-bible/copy", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ requestId: operation.requestId, key: operation.key, locale: operation.locale }),
+    body: JSON.stringify({ requestId: operation.requestId, key: operation.key, locale: operation.locale, expectedCost: BIBLE_EXPRESSION_COPY_COST }),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "COPY_UNAVAILABLE");

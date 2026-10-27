@@ -25,6 +25,9 @@ export async function POST(request: Request) {
     const { data, error } = await auth.admin.rpc("bible_expression_copy", {
       p_user: auth.user.id, p_receipt: body.requestId, p_key: body.key, p_locale: body.locale,
       p_text: item.copy[body.locale as "zh" | "en"],
+      // Old tabs advertised 5 Credit. Paid receipts still retry, but new copies
+      // must acknowledge the current price before the database can charge them.
+      p_expected_cost: Number.isInteger(body.expectedCost) ? body.expectedCost : 5,
     });
     if (error) throw error;
     if (data?.error) return NextResponse.json(data, { status: data.error === "INSUFFICIENT_CREDIT" ? 402 : 409, headers });

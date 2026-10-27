@@ -12,7 +12,7 @@ test('wallet starts compact and task/history disclosures are mutually exclusive 
  const ui=await mount(t);
  assert.match(ui.text(),/42/);assert.equal(ui.nodes().filter(n=>n.type==='button').length,2);
  assert.equal(ui.nodes().filter(n=>n.type==='li').length,0);assert.equal(ui.nodes().filter(n=>n.type==='a').length,0);
- await click(ui,'如何賺點數');assert.equal(button(ui,'如何賺點數').props['aria-expanded'],true);
+ await click(ui,'如何賺點數');assert.equal(ui.nodes().find(n=>n.type==='a').props.href,'/ai-music?lang=zh#works');assert.equal(button(ui,'如何賺點數').props['aria-expanded'],true);
  assert.ok(ui.nodes().some(n=>n.type==='a'&&n.props.href==='/battle/listen?lang=zh'));
  assert.ok(ui.nodes().some(n=>n.type==='a'&&n.props.href==='/ai-music?lang=zh#works'));
  assert.equal(entryIds(ui).length,0);
@@ -35,6 +35,6 @@ test('four-language controls, empty history, debt and zero balance remain unders
  for(const [lang,earn,transactions] of [['zh','如何賺點數','查看收支明細'],['en','Earn Credit','View transactions'],['ja','Creditを増やす','収支明細'],['ko','Credit 모으기','내역 보기']]){
  const ui=await mount(t,{lang,balance:0,debt:3,entries:[]});assert.match(ui.text(),/0/);assert.ok(ui.nodes().some(n=>n.props.role==='status'));
  await click(ui,transactions);assert.equal(entryIds(ui).length,0);assert.equal(ui.nodes().filter(n=>n.type==='button').length,2);
- await click(ui,earn);assert.equal(ui.nodes().filter(n=>n.type==='a').length,4);assert.ok(ui.nodes().every(n=>n.type!=='a'||n.props.href.includes(`lang=${lang}`)));
+ await click(ui,earn);assert.equal(ui.nodes().find(n=>n.type==='a').props.href,`/ai-music?lang=${lang}#works`);assert.equal(ui.nodes().filter(n=>n.type==='a').length,4);assert.ok(ui.nodes().every(n=>n.type!=='a'||n.props.href.includes(`lang=${lang}`)));
  }
 });

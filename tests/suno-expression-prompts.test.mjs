@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {SUNO_EXPRESSION_MOVES, SUNO_EXPRESSION_TERMS, SUNO_EXPRESSION_BASE_STYLE, SUNO_EXPRESSION_COMPARISON_MOVES} from '../src/lib/suno-expression-prompts.ts';
 import {SUNO_PROMPT_MOVES} from '../src/lib/suno-practice-library.ts';
 import {SUNO_STUDIO_MASTERING_AUDIO_PREVIEWS} from '../src/lib/suno-studio-mastering-audio-previews.ts';
-import {resolveBiblePaidCopy} from '../src/lib/bible-prompt-copy.ts';
+import {BIBLE_EXPRESSION_COPY_COST,resolveBiblePaidCopy} from '../src/lib/bible-prompt-copy.ts';
 import {loadTs, USER, uuid, request} from './helpers/choice-runtime.mjs';
 const KEY='expression-sotto-voce';
 test('all 46 screenshot terms and three controls have stable unique IDs and working taxonomy, without new audio',()=>{
@@ -19,7 +19,7 @@ test('all 46 screenshot terms and three controls have stable unique IDs and work
  assert.match(SUNO_EXPRESSION_MOVES.find(x=>x.key==='expression-slancio').copy.zh,/^Con slancio,/);
  assert.deepEqual(SUNO_EXPRESSION_COMPARISON_MOVES.map(x=>x.copy.en),[SUNO_EXPRESSION_BASE_STYLE,`Vocal delivery: sotto voce. ${SUNO_EXPRESSION_BASE_STYLE}`,`Vocal delivery: sotto voce, soft, understated vocal delivery. ${SUNO_EXPRESSION_BASE_STYLE}`]);
 });
-function fixture({auth=true,dbResult={charged:5,text:'server prompt',balance:10,debt:0},dbError=null}={}){
+function fixture({auth=true,dbResult={charged:8,text:'server prompt',balance:10,debt:0},dbError=null}={}){
  const calls=[];
  const admin={from:()=>({select:()=>({eq:()=>({eq:async()=>({data:[],error:null})})})}),rpc:async(name,args)=>{calls.push({name,args});return{data:dbResult,error:dbError};}};
  const route=loadTs('src/app/api/ai-music-bible/copy/route.ts',{'@/lib/server-creator-auth':{creatorAuth:async()=>auth?{admin,user:{id:USER}}:null},'next/server':{NextResponse:{json:(body,init)=>new Response(JSON.stringify(body),init)}}});return{route,calls};
@@ -27,8 +27,9 @@ function fixture({auth=true,dbResult={charged:5,text:'server prompt',balance:10,
 test('copy API verifies member and whitelist; client cannot select an amount, identity or free item',async()=>{
  const no=fixture({auth:false});assert.equal((await no.route.POST(request({}))).status,401);assert.equal(no.calls.length,0);
  const x=fixture();for(const bad of [{key:'prompt-focus',locale:'zh',requestId:uuid(2)},{key:KEY,locale:'ko',requestId:uuid(2)},{key:KEY,locale:'zh',requestId:'bad'}])assert.equal((await x.route.POST(request(bad))).status,400);
- const r=await x.route.POST(request({key:KEY,locale:'zh',requestId:uuid(2),userId:uuid(99),amount:0,text:'forged'}));
- assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(x.calls[0].args.p_user,USER);assert.notEqual(x.calls[0].args.p_text,'forged');assert.equal(x.calls[0].args.p_key,KEY);
+ const r=await x.route.POST(request({key:KEY,locale:'zh',requestId:uuid(2),userId:uuid(99),amount:0,expectedCost:8,text:'forged'}));
+ assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(x.calls[0].args.p_user,USER);assert.notEqual(x.calls[0].args.p_text,'forged');assert.equal(x.calls[0].args.p_key,KEY);assert.equal(x.calls[0].args.p_expected_cost,8);
+ const legacy=fixture({dbResult:{error:'COPY_PRICE_CHANGED',cost:8}});assert.equal((await legacy.route.POST(request({key:KEY,locale:'zh',requestId:uuid(3)}))).status,409);assert.equal(legacy.calls[0].args.p_expected_cost,5);
 });
 test('insufficient balance, conflicts and unavailable DB are never reported as success',async()=>{
  for(const [options,status] of [[{dbResult:{error:'INSUFFICIENT_CREDIT',balance:4}},402],[{dbResult:{error:'COPY_CONFLICT'}},409],[{dbError:{message:'offline'}},503]]){
@@ -38,7 +39,7 @@ test('lost network response retries same receipt; clipboard retry reuses paid sn
  const operation={key:KEY,locale:'zh',requestId:uuid(2)};const sent=[];
  const send=async(_url,init)=>{sent.push(JSON.parse(init.body));if(sent.length===1)throw Error('response lost');return new Response(JSON.stringify({text:'paid snapshot'}));};
  await assert.rejects(resolveBiblePaidCopy(operation,'verified',send));
- assert.equal(await resolveBiblePaidCopy(operation,'verified',send),'paid snapshot');assert.deepEqual(sent[0],sent[1]);
+ assert.equal(await resolveBiblePaidCopy(operation,'verified',send),'paid snapshot');assert.deepEqual(sent[0],sent[1]);assert.equal(sent[0].expectedCost,8);assert.equal(BIBLE_EXPRESSION_COPY_COST,8);
  assert.equal(await resolveBiblePaidCopy(operation,'verified',send),'paid snapshot');assert.equal(sent.length,2);
 });
 const modulePath=process.env.AIPOGER_CREDIT_PGLITE_MODULE;
@@ -91,13 +92,14 @@ test('prompt UI filters families and aliases, routes paid copies, retries clipbo
  '@/lib/suno-studio-mastering-audio-previews':audio,
  '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{user:{id:USER},access_token:'verified'}}})}}},
  '@/lib/bible-prompt-copy':{
+ BIBLE_EXPRESSION_COPY_COST,
  createBibleCopyOperation:(key,locale)=>{const op={key,locale,requestId:uuid(100+operations.length)};operations.push(op);return op;},
  completeBibleCopyOperation:()=>{},
  resolveBiblePaidCopy:(op,token)=>resolveBiblePaidCopy(op,token,async()=>{requests++;return new Response(JSON.stringify({text:'paid server snapshot'}));}),
  },
  },{window:{location:{hash:''},addEventListener(){},removeEventListener(){},setTimeout:fn=>timers.push(fn),dispatchEvent(){}},document:{getElementById:()=>null},navigator:{clipboard:{writeText:async value=>{if(blocked)throw Error('blocked');copied.push(value);}}}});
  const click=async label=>{const button=ui.nodes().find(x=>x.type==='button'&&nodeText(x)===label);assert.ok(button,label);button.props.onClick();await ui.flush();};
- await click('表情與氛圍');assert.match(ui.text(),/找到 49 招/);
+ await click('表情與氛圍');assert.match(ui.text(),/找到 49 招/);assert.match(ui.text(),/每次複製 8 點/);
  await click('人聲與樂句');assert.match(ui.text(),/找到 7 招/);
  await click('情緒與氛圍');assert.match(ui.text(),/找到 12 招/);
  await click('A／B／C 對照練習');assert.match(ui.text(),/找到 3 招/);
@@ -120,7 +122,7 @@ test('wallet defaults to balance, usage and two collapsed actions in four langua
  const {default:Wallet}=loadTs('src/components/credit-wallet.tsx',{'next/link':{default:({children,...props})=>React.createElement('a',props,children)}});
  for(const lang of ['zh','en','ja','ko']){
  const html=renderToStaticMarkup(React.createElement(Wallet,{lang,balance:42,debt:0}));
- assert.match(html,/>42<\/strong>/);assert.match(html,/168/);assert.match(html,/60/);assert.match(html,/5/);assert.equal((html.match(/aria-expanded="false"/g)||[]).length,2);assert.doesNotMatch(html,/<ul|href=|<section id="credit-wallet-earn"/);
+ assert.match(html,/>42<\/strong>/);assert.match(html,/168/);assert.match(html,/60/);assert.match(html,/8/);assert.equal((html.match(/aria-expanded="false"/g)||[]).length,2);assert.doesNotMatch(html,/<ul|href=|<section id="credit-wallet-earn"/);
  assert.notEqual(creditReason(lang,'bible_prompt_copy'),'bible_prompt_copy');
  }
  assert.match(creditCopy('zh').allowance,/168小時（一週）/);
