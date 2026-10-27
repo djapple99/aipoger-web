@@ -211,3 +211,13 @@
   .newest .cardStats { margin-top: 2px; line-height: 1.4; }
   .catalog { margin-top: 20px; padding-top: 15px; }
 }
+
+.promotion { margin: 6px 0 30px; padding-bottom: 26px; border-bottom: 1px solid #ffffff26; }
+.promotionActions { display: flex; gap: 12px; margin-top: 10px; }
+.promotionActions button { min-width: 44px; min-height: 44px; }
+.promotion :global(h2) { font-size: clamp(25px, 2.8vw, 40px); }
+.promotion :global(button) { cursor: pointer; }
+.promotion :global(p) + :global(button) { margin-top: 18px; }
+@media (max-width: 700px) {
+  .promotion { gap: 16px; }
+}

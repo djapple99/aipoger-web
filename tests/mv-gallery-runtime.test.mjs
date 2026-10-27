@@ -28,6 +28,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  const player={playing:true,session:null}; const window=new EventTarget();const document=new EventTarget();document.hidden=false;
  window.location={search:sharedId?'?lang='+lang+'&track='+encodeURIComponent(sharedId):''};
  window.setInterval=()=>1;window.clearInterval=()=>{};
+ const deadlines=[];window.setTimeout=(fn,delay)=>{deadlines.push({fn,delay});return deadlines.length;};window.clearTimeout=()=>{};
  const modules={
   '@/lib/music-news':{musicNewsCopy}, '@/components/latest-music-news':{__esModule:true,default:'latest-news'},
   react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
@@ -50,7 +51,7 @@ async function mount(t,lang='zh',payload={featureKind:'community',featured:[work
  function render(){cursor=0;dirty=false;tree=loaded.exports.default();}
  async function flush(){for(let i=0;i<5;i++){await new Promise(setImmediate);if(dirty)render();}}
  render(); await flush(); t.after(()=>effects.forEach(e=>e?.cleanup?.()));
- return {player,support,navigations,nodes:()=>nodes(tree),catalogCards:()=>nodes(nodes(tree).find(x=>x.props?.id==='mv-catalog')).filter(x=>x.type==='article'),newestCards:()=>nodes(nodes(tree).find(x=>x.props?.['aria-labelledby']==='mv-newest-title')).filter(x=>x.type==='article'),text:()=>text(tree),starts,toggles:()=>toggles,flush,rerender:render,async refresh(event){window.dispatchEvent(new Event(event));await flush();},setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
+ return {deadlines,setPayload(next){payload=next;},player,support,navigations,nodes:()=>nodes(tree),catalogCards:()=>nodes(nodes(tree).find(x=>x.props?.id==='mv-catalog')).filter(x=>x.type==='article'),newestCards:()=>nodes(nodes(tree).find(x=>x.props?.['aria-labelledby']==='mv-newest-title')).filter(x=>x.type==='article'),text:()=>text(tree),starts,toggles:()=>toggles,flush,rerender:render,async refresh(event){window.dispatchEvent(new Event(event));await flush();},setAvailable(){fail=false;},button(label){const match=nodes(tree).find(x=>x.type==='button'&&(x.props['aria-label']===label||text(x)===label));assert.ok(match,label);return match.props;}};
 }
 
 for(const lang of ['zh','en','ja','ko']) test(`MV catalog localizes actions and preserves original work links (${lang})`,async t=>{
@@ -216,4 +217,21 @@ test('a failed rank refresh switches an active popularity view and queue back to
  assert.equal(ui.button('最新上架')['aria-pressed'],true);assert.equal(ui.button('人氣排序')['aria-pressed'],false);
  assert.equal(ui.catalogCards()[0].props['data-work-id'],'fresh');
  ui.button(mvCopy('zh').continuous).onClick();await ui.flush();assert.equal(ui.nodes().find(x=>x.type==='feedback').props.work.id,'fresh');
+});
+
+
+test('seasonal hero precedes discovery, opens original player, and expires without closing playback',async t=>{
+ const payload={featureKind:'new',featured:[work],works:[work],channels:[],promotion:{work,endsAt:'2026-11-01T00:00:00+08:00'}};
+ const ui=await mount(t,'zh',payload);
+ const all=ui.nodes();
+ const promo=all.find(n=>n.props['data-promoted-work']===work.id);
+ assert.ok(promo);assert.ok(all.indexOf(promo)<all.findIndex(n=>n.props['aria-labelledby']==='mv-newest-title'));
+ assert.match(text(promo),/萬聖節精選/);
+ ui.button('觀看 MV · Real Song').onClick();await ui.flush();
+ assert.equal(ui.nodes().find(n=>n.type==='feedback').props.work.id,work.id);
+ assert.equal(ui.deadlines.length,1);
+ ui.setPayload({...payload,promotion:null});await ui.deadlines[0].fn();await ui.flush();
+ assert.ok(!ui.nodes().some(n=>'data-promoted-work' in n.props));
+ assert.equal(ui.nodes().find(n=>n.type==='feedback').props.work.id,work.id);
+ assert.equal(ui.newestCards().length,1);
 });

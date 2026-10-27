@@ -54,6 +54,13 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
   }, []);
 
   useEffect(() => {
+    const endsAt = data?.promotionEndsAt;
+    if (!endsAt) return;
+    const timer = window.setTimeout(() => void load(), Math.max(0, Date.parse(endsAt) - Date.now()) + 50);
+    return () => window.clearTimeout(timer);
+  }, [data?.promotionEndsAt, load]);
+
+  useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
     const refresh = () => { if (!document.hidden) void load(controller.signal); };
@@ -115,7 +122,7 @@ export default function HomeEditorial({ initialData }: { initialData?: HomeDisco
               </button>}
             </div>
             <div className={styles.workInfo}>
-              <p className={styles.workLabel}>{selected.discoveryReason === "community" || (!selected.discoveryReason && data?.featureKind === "community") ? copy.community : selected.discoveryReason === "discovery" ? copy.rotatingWork : copy.newWork}</p>
+              <p className={styles.workLabel}>{selected.discoveryReason === "seasonal" ? copy.seasonal : selected.discoveryReason === "community" || (!selected.discoveryReason && data?.featureKind === "community") ? copy.community : selected.discoveryReason === "discovery" ? copy.rotatingWork : copy.newWork}</p>
               <h2 title={selected.title}><Link prefetch={false} href={workHref(selected)}>{selected.title}</Link></h2>
               <p className={styles.artist}>{selected.artist}</p>
               {selected.supporterCount > 0 ? <div className={styles.support}>

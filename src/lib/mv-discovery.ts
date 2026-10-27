@@ -1,8 +1,9 @@
+import { activeMvPromotion } from "./mv-promotion.ts";
 import { buildPublicHomeWorks, taipeiHomeWeek, weeklyMvPicks, type HomeDiscovery, type HomeHeartRow, type HomeTrackRow, type HomeWork } from "./home-discovery.ts";
 
 export type MvChannel = HomeWork & { channelUrl: string };
 export type MvWork = HomeWork & { favoriteCount?: number | null };
-export type MvDiscovery = Omit<HomeDiscovery, "singles"> & { works: MvWork[]; channels: MvChannel[]; rankedIds?: string[] | null; generatedAt?: string };
+export type MvDiscovery = Omit<HomeDiscovery, "singles"> & { works: MvWork[]; channels: MvChannel[]; rankedIds?: string[] | null; generatedAt?: string; promotion?: { work: MvWork; endsAt: string } | null };
 export type MvSort = "rated" | "latest" | "support" | "popular";
 
 export function mvChannelUrl(value: string | null | undefined) {
@@ -22,7 +23,7 @@ export function buildMvDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
   const works = buildPublicHomeWorks(rows, hearts, mediaUrl, now);
   const home = weeklyMvPicks(works.filter(work => work.workKind !== "album"));
   const channelById = new Map(rows.map(row => [row.id, mvChannelUrl(row.youtube_url)]));
-  return { week: taipeiHomeWeek(now), featured: home.featured, featureKind: home.featureKind,
+  return { promotion: activeMvPromotion(works, now), week: taipeiHomeWeek(now), featured: home.featured, featureKind: home.featureKind,
     // Preserve work IDs: separate submissions may legitimately share one video.
     works: works.filter(work => work.videoId),
     channels: works.flatMap(work => !work.videoId && channelById.get(work.id)

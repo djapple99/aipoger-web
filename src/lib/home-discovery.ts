@@ -1,3 +1,4 @@
+import { activeMvPromotion } from "./mv-promotion.ts";
 import { externalMusicFromRow, type ExternalMusic } from "./external-music.ts";
 import { isPublicMusicWork } from "./listen-bar-airplay.ts";
 import { isCurrentMusicGenre } from "./music-genres.ts";
@@ -11,12 +12,13 @@ export type HomeWork = {
   comment?: { name: string; text: string };
   ratingAverage?: number | null; ratingCount?: number; ratingTotal?: number;
   externalMedia?: ExternalMusic;
-  discoveryReason?: "new" | "community" | "discovery";
+  discoveryReason?: "new" | "community" | "discovery" | "seasonal";
 };
 export type HomeDiscovery = {
   week: { startDate: string; endDate: string };
   featured: HomeWork[]; featureKind: "community" | "new" | "empty"; singles: HomeWork[];
   rotationKey?: string;
+  promotionEndsAt?: string;
 };
 export type HomeTrackRow = {
   work_kind?: "single" | "album";
@@ -162,12 +164,17 @@ export function buildHomeDiscovery(rows: HomeTrackRow[], hearts: HomeHeartRow[],
     addDiverse(community, rotationCandidates(weekly.featured), labelled.length + 1);
     for (const work of community.slice(labelled.length)) labelled.push({ ...work, discoveryReason: "community" });
   }
+  const promotion = activeMvPromotion(works, now);
+  if (promotion) {
+    const remaining = labelled.filter(work => work.id !== promotion.work.id);
+    labelled.splice(0, labelled.length, { ...promotion.work, discoveryReason: "seasonal" }, ...remaining.slice(0, 3));
+  }
   const candidates = excludeFeaturedWorks(works, labelled)
     .filter(work => (work.audioUrl || work.externalMedia) && isInMusicPool(work.publishedAt, now.getTime()));
   const singles: HomeWork[] = candidates.slice(0, 1);
   const recentSingles = recent(candidates);
   addDiverse(singles, rotationCandidates(recentSingles.length ? recentSingles : candidates), 3);
-  return { week, rotationKey: String(slot), featured: labelled,
+  return { week, rotationKey: String(slot), ...(promotion ? { promotionEndsAt: promotion.endsAt } : {}), featured: labelled,
     featureKind: labelled.some(work => work.discoveryReason === "community") ? "community" : labelled.length ? "new" : "empty", singles };
 }
 

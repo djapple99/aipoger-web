@@ -53,6 +53,7 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
   const [chartExpanded, setChartExpanded] = useState(false);
   const effectiveSort = sort === "popular" && data?.rankedIds == null ? "latest" : sort;
   const works = filterMvWorks(data?.works ?? [], query, genre, effectiveSort, data?.rankedIds);
+  const promoted = data?.promotion?.work;
   const newest = filterMvWorks(data?.works ?? [], query, genre, "latest").slice(0, 4);
   const rankById = new Map((data?.rankedIds ?? []).map((id, index) => [id, index + 1]));
   const chart = filterMvWorks(data?.works ?? [], query, genre, "popular", data?.rankedIds).filter(work => rankById.has(work.id)).slice(0, 50);
@@ -72,6 +73,13 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
     } catch { if (!signal?.aborted) setFailed(true); }
     finally { if (!signal?.aborted) setLoading(false); }
   }, []);
+  useEffect(() => {
+    const endsAt = data?.promotion?.endsAt;
+    if (!endsAt) return;
+    const timer = window.setTimeout(() => void load(), Math.max(0, Date.parse(endsAt) - Date.now()) + 50);
+    return () => window.clearTimeout(timer);
+  }, [data?.promotion?.endsAt, load]);
+
   useEffect(() => {
     const controller = new AbortController(); void load(controller.signal);
     const refresh = () => { if (!document.hidden) void load(controller.signal); };
@@ -162,6 +170,21 @@ export default function MvGallery({ initialData }: { initialData?: MvDiscovery }
       {failed && data ? <div className={base.refreshError} role="status">{copy.error}<button onClick={() => void load()}>{copy.retry}</button></div> : null}
       {support.error ? <div role="alert" className={styles.supportError}>{support.error === "read" ? mv.heartReadError : mv.heartWriteError}{support.error === "read" ? <button onClick={() => void support.reload()}>{copy.retry}</button> : null}</div> : null}
       {data ? <>
+        {promoted ? <section className={`${base.hero} ${styles.promotion}`} aria-label={copy.seasonal} data-promoted-work={promoted.id}>
+          <div className={base.video}>
+            <button className={base.poster} onClick={() => watch(promoted)} aria-label={`${copy.watch} · ${promoted.title}`}>
+              <WorkImage work={promoted} video priority />
+              <span className={base.posterPlay}><Play size={27} fill="currentColor" /></span><span className={base.videoSource}>{copy.source}</span>
+            </button>
+          </div>
+          <div className={base.workInfo}>
+            <p className={base.workLabel}>{copy.seasonal}</p>
+            <h2 title={promoted.title}><Link prefetch={false} href={`/works/${encodeURIComponent(promoted.id)}?lang=${lang}`}>{promoted.title}</Link></h2>
+            <p className={base.artist}>{promoted.artist}</p>
+            <button className={base.primary} onClick={() => watch(promoted)}><Play size={21} fill="currentColor" />{copy.watch}</button>
+            <div className={styles.promotionActions}>{heartButton(promoted)}<button className={styles.cardComments} onClick={() => openFeedback(promoted)} aria-label={`${mv.readComments} · ${promoted.title}`}><MessageCircleMore size={28} /></button><MvShare work={promoted} className={styles.cardShare} /></div>
+          </div>
+        </section> : null}
         <div className={styles.discoveryStage}>
           <aside className={`${styles.chart} ${chartExpanded ? styles.chartExpanded : ""}`} aria-labelledby="mv-chart-title">
             <div className={styles.sectionHeading}><h2 id="mv-chart-title">{mv.ranking}</h2><button className={styles.chartToggle} aria-expanded={chartExpanded} aria-controls="mv-chart-rows" onClick={() => setChartExpanded(value => !value)}>{chartExpanded ? mv.collapseChart : mv.expandChart}</button></div>
