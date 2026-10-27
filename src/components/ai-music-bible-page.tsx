@@ -507,6 +507,7 @@ export default function AiMusicBiblePage() {
 
         <BibleChapter name="library" title={isZh ? "Prompt、風格與歌詞" : "Prompts, styles & lyrics"} description={isZh ? "完整招式庫、聲音 DNA、曲風與製作流程" : "Full move library, sonic DNA, genres & production workflow"} targets={["suno-prompt-library", "suno-inspiration-index", "lyric-control-library", "bible-genres", "bible-knowledge", "bible-production-flow", "bible-workflows", "bible-move-*", "vocal-starter-*"]}>
           <SunoPracticeLibrarySection
+          navigationLang={lang}
           locale={isZh ? "zh" : "en"}
           promptMoves={bibleContent.promptMoves}
           lyricMoves={bibleContent.lyricMoves}

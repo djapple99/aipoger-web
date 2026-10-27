@@ -20,6 +20,7 @@ import ShowtimeQueuePlayer, {
   type ShowtimeQueuePlayerHandle,
 } from "@/components/showtime-queue-player";
 import { fontRighteous } from "@/lib/fonts";
+import type { Lang } from "@/lib/locale";
 import type {
   SunoEvidence,
   SunoGenreGroup,
@@ -115,6 +116,7 @@ function techniqueMatches(item: AnyTechnique, search: string) {
 function TechniqueCard({
   item,
   locale,
+  navigationLang = locale,
   copied,
   onCopy,
   copyBusy = false,
@@ -124,6 +126,7 @@ function TechniqueCard({
 }: {
   item: AnyTechnique;
   locale: SunoLibraryLocale;
+  navigationLang?: Lang;
   copied: boolean;
   onCopy: () => void;
   copyBusy?: boolean;
@@ -204,7 +207,7 @@ function TechniqueCard({
           </button>
         </div>
         {copyIssue && <p role="status" className="mt-3 text-xs font-bold leading-6 text-orange-200">
-          {copyIssue === "INSUFFICIENT_CREDIT" ? <>{isZh ? "目前點數不足，" : "Not enough Credit. "}<Link className="underline underline-offset-4" href={`/profile?lang=${locale}#my-credit`}>{isZh ? "查看我的點數" : "View my Credit"}</Link></> : copyIssue === "AUTH_REQUIRED" ? <Link href={`/auth?lang=${locale}&next=${encodeURIComponent(`/ai-music-bible?lang=${locale}#bible-move-${item.key}`)}`}>{isZh ? "請重新登入後複製" : "Sign in again to copy"}</Link> : copyIssue === "clipboard" ? (isZh ? "已扣 5 點，但瀏覽器未允許複製。請按重試，同次操作不再扣點。" : "5 Credit spent; clipboard access was blocked. Retry this copy at no extra cost.") : (isZh ? "暫時無法確認結果，請重試；同次請求不會重複扣點。" : "Result unavailable. Retry this request without a duplicate charge.")}
+          {copyIssue === "INSUFFICIENT_CREDIT" ? <>{isZh ? "目前點數不足，" : "Not enough Credit. "}<Link className="underline underline-offset-4" href={`/profile?lang=${navigationLang}#my-credit`}>{isZh ? "查看我的點數" : "View my Credit"}</Link></> : copyIssue === "AUTH_REQUIRED" ? <Link href={`/auth?lang=${navigationLang}&next=${encodeURIComponent(`/ai-music-bible?lang=${navigationLang}#bible-move-${item.key}`)}`}>{isZh ? "請重新登入後複製" : "Sign in again to copy"}</Link> : copyIssue === "clipboard" ? (isZh ? "已扣 5 點，但瀏覽器未允許複製。請按重試，同次操作不再扣點。" : "5 Credit spent; clipboard access was blocked. Retry this copy at no extra cost.") : (isZh ? "暫時無法確認結果，請重試；同次請求不會重複扣點。" : "Result unavailable. Retry this request without a duplicate charge.")}
         </p>}
       </div>
       {expanded && (
@@ -224,6 +227,7 @@ function TechniqueCard({
 
 export default function SunoPracticeLibrarySection({
   locale,
+  navigationLang = locale,
   promptMoves,
   lyricMoves,
   genreGroups,
@@ -235,6 +239,7 @@ export default function SunoPracticeLibrarySection({
   recipeGenres,
 }: {
   locale: SunoLibraryLocale;
+  navigationLang?: Lang;
   promptMoves: SunoTechnique<SunoPromptCategory>[];
   lyricMoves: SunoTechnique<SunoLyricCategory>[];
   genreGroups: SunoGenreGroup[];
@@ -393,7 +398,7 @@ export default function SunoPracticeLibrarySection({
           <div className="rounded-xl border border-yellow-300/18 bg-yellow-300/[0.055] p-4 text-sm font-bold leading-6 text-yellow-50/85">
             <BadgeCheck className="mb-3 h-5 w-5 text-yellow-200" />
             {isZh
-              ? "依照歌曲目標挑選 Prompt，複製後調整曲風、人聲與編曲。標籤是生成提示，不是命令保證；可比較不同設定的結果，找到適合你的做法。"
+              ? "依照歌曲目標挑選 Prompt，複製後調整曲風、人聲與編曲。先選一個清楚的方向，再比較不同設定的起音、樂句與情緒。"
               : "Choose a prompt for your song, then adapt its genre, vocals, and arrangement. Tags are generation signals, not guaranteed commands; compare settings to find what works for you."}
           </div>
         </div>
@@ -479,6 +484,7 @@ export default function SunoPracticeLibrarySection({
               key={item.key}
               item={item}
               locale={locale}
+              navigationLang={navigationLang}
               copied={copiedKey === item.key}
               onCopy={() => item.expressionFamily ? void copyPaid(item.key) : void copyValue(item.key, sunoLibraryText(item.copy, locale))}
               copyBusy={Boolean(item.expressionFamily && paidCopyBusy)}

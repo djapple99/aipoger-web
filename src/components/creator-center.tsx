@@ -903,7 +903,7 @@ export function CreatorCenterLayout({
             />
           ) : dialog === "credit" ? (
             <div>
-              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} /> : <p>{loading ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : tx("目前無法讀取點數，請重試。", "Credit unavailable. Please retry.", "Creditを読み込めません。再試行してください。", "Credit을 불러올 수 없습니다. 다시 시도해 주세요.")}</p>}
+              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} /> : <p>{!error ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : <button type="button" onClick={onRefresh}>{tx("無法讀取點數，按此重試", "Credit unavailable. Retry", "Creditを再読み込み", "Credit 다시 불러오기")}</button>}</p>}
               {data?.credits.entries?.length ? <ul>{data.credits.entries.map(entry => <li key={entry.id} style={{display:"flex",justifyContent:"space-between",gap:16,padding:"12px 0",borderBottom:"1px solid #34434b"}}>
                 <span>{creditReason(lang, entry.reason)} · {new Date(entry.created_at).toLocaleDateString()}</span><strong>{entry.delta > 0 ? "+" : ""}{entry.delta}</strong>
               </li>)}</ul> : data?.credits.enabled ? <p>{tx("尚無點數紀錄，回訪、愛心、有效評論與盲聽都會累積。", "No transactions yet. Visits, Hearts, qualifying reviews and blind comparisons earn Credit.")}</p> : null}
