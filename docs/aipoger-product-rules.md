@@ -113,6 +113,8 @@ This document is the product-rule source of truth for AIPOGER. Use it before cha
 
 ## 首頁 MV 社群曝光
 
+2026-10-27使用者指定萬聖節限時推薦：Eve《The Boo Crew｜Boop! Monster Mode》（原作品ID `fda62063-417c-4d81-b3d7-b7d2d58f15f7`）至台灣時間2026-10-31全天結束，固定為首頁精選預設第一支，並在MV主頁最上方大幅推薦。這段期間不因一般新作輪替、週支持或人氣變動撤下推薦；其他作品仍按既有規則曝光。2026-11-01 00:00（Asia/Taipei）自動結束例外，恢復原首頁選片與MV主頁布局。只調整推薦位置，不改投稿時間、排行分數、評分、留言、Heart或Credit；作品仍須公開可播放，主動刪除或隱藏不會被強制重新上架。驗證見[萬聖節限時推薦report](releases/2026-10-27-halloween-mv.md)。
+
 2026-10-13 首頁第一階段，限定展示推薦，不產生正式 Battle 戰果或 Showtime 月榜名次。頁面、支援計數與評論共用既有作品 ID。
 
 - 候選來源：現有 community 投稿，需啟用、公開審核狀態、可播音訊或已驗證可播放的外站來源單曲、現行曲風，且未隱藏、撤下或退出 Explore；排除官方示意曲。MV 需有效 YouTube 影片連結，來源以既有投稿資料為準，不開放新的任意連結投稿資格。
