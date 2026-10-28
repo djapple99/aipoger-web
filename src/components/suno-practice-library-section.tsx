@@ -34,7 +34,7 @@ import type {
 } from "@/lib/suno-practice-library";
 import { SUNO_STUDIO_MASTERING_FAMILY_OPTIONS, SUNO_EXPRESSION_FAMILY_OPTIONS } from "@/lib/suno-practice-taxonomy";
 import { supabase } from "@/lib/supabase";
-import { BIBLE_EXPRESSION_COPY_COST, createBibleCopyOperation, completeBibleCopyOperation, resolveBiblePaidCopy, type BiblePaidCopy } from "@/lib/bible-prompt-copy";
+import { BIBLE_EXPRESSION_COPY_COST, bibleMoveKeyFromHash, createBibleCopyOperation, completeBibleCopyOperation, resolveBiblePaidCopy, type BiblePaidCopy } from "@/lib/bible-prompt-copy";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
 import {
   getSunoStudioMasteringAudioPreview,
@@ -113,7 +113,7 @@ function techniqueMatches(item: AnyTechnique, search: string) {
   ].join(" ").toLowerCase().includes(query);
 }
 
-function TechniqueCard({
+export function TechniqueCard({
   item,
   locale,
   navigationLang = locale,
@@ -121,6 +121,7 @@ function TechniqueCard({
   onCopy,
   copyBusy = false,
   copyIssue,
+  revealedText,
   hasAudioPreview = false,
   onPlayAudioPreview,
 }: {
@@ -131,13 +132,14 @@ function TechniqueCard({
   onCopy: () => void;
   copyBusy?: boolean;
   copyIssue?: string;
+  revealedText?: string;
   hasAudioPreview?: boolean;
   onPlayAudioPreview?: () => void;
 }) {
   const isZh = locale === "zh";
   const [expanded, setExpanded] = useState(false);
   useEffect(() => {
-    const reveal = () => { if (window.location.hash === `#bible-move-${item.key}`) setExpanded(true); };
+    const reveal = () => { if (window.location.hash.startsWith("#bible-move-") && bibleMoveKeyFromHash(window.location.hash) === item.key) setExpanded(true); };
     reveal(); window.addEventListener("hashchange", reveal);
     return () => window.removeEventListener("hashchange", reveal);
   }, [item.key]);
@@ -195,15 +197,15 @@ function TechniqueCard({
           </div>
         ) : null}
         <div className="mt-4 overflow-hidden rounded-xl border border-white/9 bg-[#050707]">
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-xs font-bold leading-6 text-cyan-50/88">{sunoLibraryText(item.copy, locale)}</pre>
+          {(!item.expressionFamily || revealedText !== undefined) && <pre className="overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-xs font-bold leading-6 text-cyan-50/88">{item.expressionFamily ? revealedText : sunoLibraryText(item.copy, locale)}</pre>}
           <button
             type="button"
             onClick={onCopy}
             disabled={copyBusy}
-            className="flex min-h-11 disabled:opacity-50 w-full items-center justify-center gap-2 border-t border-white/8 bg-white/[0.025] px-4 text-xs font-black text-zinc-400 transition hover:bg-white/[0.055] hover:text-white"
+            className={`flex min-h-11 disabled:opacity-50 w-full items-center justify-center gap-2 bg-white/[0.025] px-4 text-xs font-black text-zinc-400 transition hover:bg-white/[0.055] hover:text-white ${!item.expressionFamily || revealedText !== undefined ? "border-t border-white/8" : ""}`}
           >
             {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4" />}
-            {copyBusy ? (isZh ? "處理中…" : "Processing…") : copied ? (isZh ? "已複製" : "Copied") : item.expressionFamily ? (copyIssue === "clipboard" ? (isZh ? "重試複製・不再扣點" : "Retry copy · already paid") : (isZh ? `複製・${BIBLE_EXPRESSION_COPY_COST} 點` : `Copy · ${BIBLE_EXPRESSION_COPY_COST} Credit`)) : (isZh ? "複製這一招" : "Copy move")}
+            {copyBusy ? (isZh ? "處理中…" : "Processing…") : copied ? (isZh ? "已複製" : "Copied") : item.expressionFamily ? (copyIssue === "clipboard" ? (isZh ? "重試複製・不再扣點" : "Retry copy · already paid") : (isZh ? `複製並顯示・${BIBLE_EXPRESSION_COPY_COST} 點` : `Copy & reveal · ${BIBLE_EXPRESSION_COPY_COST} Credit`)) : (isZh ? "複製這一招" : "Copy move")}
           </button>
         </div>
         {copyIssue && <p role="status" className="mt-3 text-xs font-bold leading-6 text-orange-200">
@@ -256,6 +258,7 @@ export default function SunoPracticeLibrarySection({
   const [promptExpressionFamily, setPromptExpressionFamily] = useState<SunoExpressionFamily | "all">("all");
   const [paidCopyBusy, setPaidCopyBusy] = useState<string | null>(null);
   const [copyIssues, setCopyIssues] = useState<Record<string, string>>({});
+  const [revealedCopies, setRevealedCopies] = useState<Record<string, string>>({});
   const paidOperations = useRef(new Map<string, BiblePaidCopy>());
   const copying = useRef(false);
   const [lyricCategory, setLyricCategory] = useState<SunoLyricCategory | "all">("all");
@@ -274,7 +277,7 @@ export default function SunoPracticeLibrarySection({
   useEffect(() => {
     const openForHash = () => {
       if (window.location.hash === "#suno-prompt-library") { setPromptCategory("all"); setPromptStudioFamily("all"); setPromptExpressionFamily("all"); setPromptSearch(""); setShowAllPrompt(false); }
-      const key = window.location.hash.replace(/^#bible-move-/, "");
+      const key = bibleMoveKeyFromHash(window.location.hash);
       if (window.location.hash.startsWith("#bible-move-")) {
         if (promptMoves.some(item => item.key === key)) { setPromptCategory(promptMoves.find(item => item.key === key)?.expressionFamily ? "expression" : "all"); setPromptStudioFamily("all"); setPromptExpressionFamily("all"); setPromptSearch(""); setShowAllPrompt(true); }
         if (lyricMoves.some(item => item.key === key)) { setLyricCategory("all"); setLyricSearch(""); setShowAllLyric(true); setLyricLibraryOpen(true); }
@@ -339,6 +342,7 @@ export default function SunoPracticeLibrarySection({
       let value: string;
       try { value = await resolveBiblePaidCopy(operation, data.session.access_token); }
       finally { window.dispatchEvent(new CustomEvent("aipoger:credit")); }
+      setRevealedCopies(current => ({ ...current, [`${locale}:${key}`]: value }));
       try { await navigator.clipboard.writeText(value); }
       catch { setCopyIssues(current => ({ ...current, [key]: "clipboard" })); return; }
       paidOperations.current.delete(operationKey);
@@ -457,7 +461,7 @@ export default function SunoPracticeLibrarySection({
           {promptCategory === "expression" && <fieldset className="mt-4 border-t border-violet-200/15 pt-4">
             <legend className="text-xs font-black tracking-[0.12em] text-violet-100">{isZh ? "表情與氛圍・46 個詞＋3 張對照卡" : "EXPRESSION & MOOD · 46 TERMS + 3 COMPARISON CARDS"}</legend>
             <div className="mt-2.5 flex flex-wrap gap-2">{SUNO_EXPRESSION_FAMILY_OPTIONS.map(family => <button type="button" key={family.key} aria-pressed={promptExpressionFamily === family.key} onClick={() => { setPromptExpressionFamily(family.key); setShowAllPrompt(false); }} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-black ${promptExpressionFamily === family.key ? "border-violet-200 bg-violet-300/15 text-white" : "border-white/20 text-zinc-300 hover:border-violet-200/50"}`}>{sunoLibraryText(family.label, locale)}</button>)}</div>
-            <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{isZh ? `先挑一個詞放進 Style，搭配曲風、人聲與編曲。每次複製 ${BIBLE_EXPRESSION_COPY_COST} 點。` : `Choose a term for Style alongside your genre, voice and arrangement. Each copy costs ${BIBLE_EXPRESSION_COPY_COST} Credit.`}</p>
+            <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{isZh ? `先選想要的唱法或氛圍；完整 Prompt 在複製後顯示，每次複製 ${BIBLE_EXPRESSION_COPY_COST} 點。` : `Choose the delivery or atmosphere you want. Copy to reveal the complete prompt; each copy costs ${BIBLE_EXPRESSION_COPY_COST} Credit.`}</p>
             <details className="mt-2 text-sm leading-7 text-zinc-300"><summary className="min-h-11 cursor-pointer py-2 font-black text-violet-100">{isZh ? "怎麼比較唱法與氛圍？" : "Compare delivery and atmosphere"}</summary><p>{isZh ? "A 不加表情詞；B 只加原詞；C 再補英文描述。三組維持同一段歌詞、模型、速度、調性與人聲設定，各留幾個版本，輪流聽起音、樂句、情緒和重音。比較 C 時，也把英文描述帶來的變化一起記下來。" : "A has no expression term; B adds only the term; C adds English direction. Keep lyrics, model, tempo, key and vocal settings the same. Save several versions and compare attacks, phrasing, mood and accents. Note the English direction's contribution in C."}</p><button type="button" onClick={() => { setPromptExpressionFamily("comparison"); setPromptSearch(""); setShowAllPrompt(false); }} className="my-3 min-h-11 rounded-full border border-violet-200/35 px-4 font-black">{isZh ? "查看 A／B／C 對照卡" : "Open A/B/C cards"}</button></details>
           </fieldset>}
           {promptCategory === "mastering" && (
@@ -489,6 +493,7 @@ export default function SunoPracticeLibrarySection({
               onCopy={() => item.expressionFamily ? void copyPaid(item.key) : void copyValue(item.key, sunoLibraryText(item.copy, locale))}
               copyBusy={Boolean(item.expressionFamily && paidCopyBusy)}
               copyIssue={copyIssues[item.key]}
+              revealedText={revealedCopies[`${locale}:${item.key}`]}
               hasAudioPreview={Boolean(getSunoStudioMasteringAudioPreview(item.key))}
               onPlayAudioPreview={() => playMasteringPreview(item.key)}
             />

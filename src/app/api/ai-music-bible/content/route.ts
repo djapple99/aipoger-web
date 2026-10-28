@@ -18,6 +18,7 @@ import {
   SUNO_RECIPE_GENRES,
 } from "@/lib/suno-inspiration-index";
 import { STEM_ENGINES, STEM_GOALS } from "@/lib/stem-separation-guide";
+import { previewBibleCatalog } from "@/lib/bible-expression-preview";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (!token) return NextResponse.json({ error: "請先登入。" }, { status: 401 });
     const admin = serviceClient();
     const { data, error: authError } = await admin.auth.getUser(token);
-    if (authError || !data.user) return NextResponse.json({ error: "登入狀態已過期。" }, { status: 401 });
+    if (authError || !data.user || data.user.is_anonymous) return NextResponse.json({ error: "登入狀態已過期。" }, { status: 401 });
 
     const result = await admin
       .from("ai_music_bible_content_overrides")
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
     const rows = result.error ? [] : (result.data ?? []) as unknown as BibleOverrideRow[];
     return NextResponse.json({
       schemaReady: !result.error,
-      ...mergeBibleCatalog(rows),
+      ...previewBibleCatalog(mergeBibleCatalog(rows)),
       genreGroups: SUNO_GENRE_GROUPS,
       productionFlow: AI_PRODUCTION_FLOW,
       promptCategories: SUNO_PROMPT_CATEGORIES,
