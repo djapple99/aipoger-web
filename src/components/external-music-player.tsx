@@ -11,15 +11,17 @@ export default function ExternalMusicPlayer({
   title,
   onPlaying,
   onError,
+  onEnded,
 }: {
   media: ExternalMusic;
   title: string;
   onPlaying?: () => void;
   onError?: () => void;
+  onEnded?: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onPlaying, onError });
-  callbacks.current = { onPlaying, onError };
+  const callbacks = useRef({ onPlaying, onError, onEnded });
+  callbacks.current = { onPlaying, onError, onEnded };
   const { lang } = useI18n();
   const { provider, mediaId } = media;
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function ExternalMusicPlayer({
             },
             onStateChange: (event: { data: number }) => {
               if (active && event.data === 1) callbacks.current.onPlaying?.();
+              if (active && event.data === 0) callbacks.current.onEnded?.();
             },
             onError: () => {
               if (active) callbacks.current.onError?.();

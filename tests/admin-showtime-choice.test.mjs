@@ -55,7 +55,7 @@ test("historical official schema remains; personal publishing preserves bounded 
   assert.ok(choiceHelper.includes("AIPOGER_CHOICE_MAX_ITEMS = 10"));
   assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MIN_ITEMS/);
   assert.match(creatorChoiceRoute, /AIPOGER_CHOICE_MAX_ITEMS/);
-  assert.match(creatorChoiceProfilePage, /musicPlayer/);
+  assert.match(creatorChoiceProfilePage, /ShowtimeQueuePlayer/);
   assert.match(choiceCatalog, /loadCreatorChoicePlaybackCatalog/);
   assert.match(playbackCatalog, /full_audio_public === true/);
 });

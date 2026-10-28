@@ -1,3 +1,5 @@
+
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import { loadCreatorChoicePlaybackCatalog } from "@/lib/server-creator-choice-catalog";
@@ -14,7 +16,7 @@ export async function loadChoiceSelectionCatalog(admin: SupabaseClient): Promise
   return {
     schemaReady: catalog.schemaReady,
     items: catalog.items.map((item) => {
-      const source = { ...item, selectable: item.isPublic && Boolean(item.audioUrl) };
+      const source = { ...item, selectable: item.isPublic && choiceHasPlayback(item) };
       delete source.favoriteAliases;
       return source;
     }),

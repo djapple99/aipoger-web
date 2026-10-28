@@ -1,5 +1,7 @@
 "use client";
 
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
+
 import { RotateCw } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import ShowtimeChoiceShelf, {
@@ -229,7 +231,7 @@ export default function PublicChoiceGallery({ lang, chart, commentCounts, initia
           .then((records) => {
             if (!current()) return;
             scope.hearts = Object.fromEntries(records.map((record) => [record.recordKey, {
-              heartCount: count(record.heartCount), myHeart: Boolean(record.myHeart),
+              heartCount: count(record.heartCount), popularCount: count(record.popularCount ?? 0), myHeart: Boolean(record.myHeart),
             }]));
             scope.choiceReady = true;
             setHearts(scope.hearts);
@@ -292,7 +294,7 @@ export default function PublicChoiceGallery({ lang, chart, commentCounts, initia
       if (entry) {
         const record = payload.interaction;
         if (!record || record.recordKey !== key) throw new Error("Invalid Choice save");
-        scope.hearts = { ...scope.hearts, [key]: { heartCount: count(record.heartCount), myHeart: Boolean(record.myHeart) } };
+        scope.hearts = { ...scope.hearts, [key]: { heartCount: count(record.heartCount), popularCount: count(record.popularCount ?? 0), myHeart: Boolean(record.myHeart) } };
         setHearts(scope.hearts);
       } else {
         const record = payload.record;
@@ -311,10 +313,10 @@ export default function PublicChoiceGallery({ lang, chart, commentCounts, initia
   const play = async (entry: ShowtimeChoiceShelfEntry, itemId?: string) => {
     const request = ++playbackRequest.current;
     setActionError("");
-    const items = entry.items.filter((item) => Boolean(item.audioUrl?.trim()));
+    const items = entry.items.filter((item) => choiceHasPlayback(item));
     const tracks = items.map<ShowtimePlayerTrack>((item) => ({
       id: `${item.sourceKind}:${item.id}`, title: item.title, artist: item.artist,
-      coverUrl: item.coverUrl?.trim() || AIPOGER_BRAND_LOGO, audioUrl: item.audioUrl!, genre: item.genre,
+      coverUrl: item.coverUrl?.trim() || AIPOGER_BRAND_LOGO, audioUrl: item.audioUrl || "", externalUrl: item.externalUrl, genre: item.genre,
     }));
     const index = itemId ? items.findIndex((item) => item.itemId === itemId) : 0;
     if (!tracks.length || index < 0) return;

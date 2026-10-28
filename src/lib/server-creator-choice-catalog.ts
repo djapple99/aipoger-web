@@ -2,14 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AipogerChoiceCatalogItem } from "@/lib/aipoger-choice";
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { LISTEN_BAR_AUDIO_BUCKET, LISTEN_BAR_COVER_BUCKET } from "@/lib/listen-bar";
-import { isPublicBarAirplayTrack } from "@/lib/listen-bar-airplay";
+import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 import { signedBattleAudioUrl } from "@/lib/official-gatekeeper-media";
+import { externalMusicFromRow } from "@/lib/external-music";
 import { favoriteSavedTime } from "@/lib/favorite-recency";
 
 type TrackRow = {
   work_kind?: "single" | "album";
   id: string; title: string | null; artist: string | null; genre: string | null;
-  audio_path: string | null; cover_path: string | null; created_at: string | null;
+  audio_path: string | null; external_url?: string | null; cover_path: string | null; created_at: string | null;
   is_active: boolean | null; review_status: string | null; hidden_at: string | null;
   removed_at: string | null; ai_music_showtime_public_removed_at: string | null;
 };
@@ -35,18 +36,19 @@ export async function loadCreatorChoicePlaybackCatalog(admin: SupabaseClient) {
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
     const result = await admin.from("listen_bar_tracks")
-      .select("id,work_kind,title,artist,genre,audio_path,cover_path,created_at,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at")
+      .select("id,work_kind,title,artist,genre,audio_path,external_url,cover_path,created_at,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at")
       .eq("is_active", true).order("id").range(offset, offset + pageSize - 1);
     if (result.error) throw result.error;
     const rows = (result.data ?? []) as TrackRow[];
     for (const row of rows) {
       const status = row.review_status?.trim().toLowerCase().replace(/[ _-]+/g, "_");
-      if (!isPublicBarAirplayTrack(row) || ["hidden", "removed", "completed", "rejected", "moderation_hold", "pending"].includes(status ?? "")) continue;
+      if (!isPublicDiscoveryTrack(row) || ["hidden", "removed", "completed", "rejected", "moderation_hold", "pending"].includes(status ?? "")) continue;
       items.push({
         id: row.id, sourceKind: "listen_bar_track", title: row.title?.trim() || "未命名作品",
         artist: row.artist?.trim() || "AIPOGER 創作者", genre: row.genre?.trim() || "AI Music",
         coverUrl: mediaUrl(admin, LISTEN_BAR_COVER_BUCKET, row.cover_path) || AIPOGER_BRAND_LOGO,
         audioUrl: mediaUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
+        externalUrl: externalMusicFromRow(row)?.url ?? null,
         recognition: "", certifiedAt: row.created_at || new Date(0).toISOString(),
         isPublic: true, selectable: false,
       });

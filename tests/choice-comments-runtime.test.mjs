@@ -24,11 +24,11 @@ function mount(t, { guest = false, inline = true, lang = 'zh' } = {}) {
     '@/lib/supabase': { supabase: { auth: { getSession: async () => ({ data: { session } }), onAuthStateChange: fn => { authChange = fn; return { data: { subscription: { unsubscribe() {} } } }; } } } },
   };
   const document = { body: { style: { overflow: 'auto' } } };
-  const window = { addEventListener() {}, removeEventListener() {}, location: { pathname: '/choice/id', search: '?lang=zh', hash: '#choice-comments', assign: url => requests.push({ redirect: url }) } };
+  const window = { dispatchEvent() {}, addEventListener() {}, removeEventListener() {}, location: { pathname: '/choice/id', search: '?lang=zh', hash: '#choice-comments', assign: url => requests.push({ redirect: url }) } };
   const fetch = async (url, init = {}) => {
     requests.push({ url, ...init });
     if (init.method === 'POST' && failPost) throw new Error('offline');
-    return { ok: true, json: async () => init.method === 'POST' ? { comment: { ...comment, id: 'mine', isMine: true, body: JSON.parse(init.body).body } } : { schemaReady: true, comments: [comment] } };
+    return { ok: true, json: async () => init.method === 'POST' ? { awarded: 10, comment: { ...comment, id: 'mine', isMine: true, body: JSON.parse(init.body).body } } : { schemaReady: true, comments: [comment] } };
   };
   const loaded = { exports: {} };
   new Function('require', 'module', 'exports', 'fetch', 'document', 'window', code)(name => { assert.ok(name in modules, name); return modules[name]; }, loaded, loaded.exports, fetch, document, window);
@@ -66,6 +66,9 @@ test('reply prepares a named comment, does not post while typing, and failed pos
   ui.setFail(false); await ui.find('form').onSubmit({ preventDefault() {} }); await ui.flush();
   assert.equal(ui.find('textarea').value, ''); assert.match(ui.text(), /很喜歡這份歌單/);
   assert.ok(ui.find('button', '刪除自己的評論'));
+  const sends=ui.requests.filter(r=>r.method==='POST').map(r=>JSON.parse(r.body));
+  assert.equal(sends[0].requestId,sends[1].requestId); assert.match(sends[0].requestId,/^[a-f0-9-]{36}$/);
+  assert.match(ui.text(),/\+10 Credit/);
 });
 
 test('signing out clears the draft and replaces the composer with sign-in', async t => {

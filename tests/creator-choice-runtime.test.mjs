@@ -173,3 +173,27 @@ test("batch editor validates owner, favorites, duplicates and publication before
   admin.tables.aipoger_creator_choice_collections[0].creator_id=uuid(2);
   assert.equal((await patch('save_editor',fields)).status,404);assert.equal(calls.length,1);
 });
+
+test("newly saved YouTube, Suno and Spotify singles appear, can be selected and survive public Choice playback", async () => {
+  const { admin, patch, route, mocks } = setup(5);
+  const links = ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://suno.com/song/'+uuid(88), 'https://open.spotify.com/track/1234567890123456789012'];
+  links.forEach((external_url,i)=> { Object.assign(admin.tables.listen_bar_tracks[i],{audio_path:null,external_url}); favorite(admin,10+i); });
+  const payload=await (await route.GET(request())).json();
+  assert.equal(payload.catalog.length,3);
+  assert.deepEqual(payload.catalog.map(item=>item.externalUrl),links);
+  assert.ok(payload.catalog.every(item=>item.selectable && item.isPublic && !item.audioUrl));
+  const {toggleChoiceSelection}=loadTs('src/lib/creator-choice-editor.ts');
+  assert.equal(toggleChoiceSelection([],payload.catalog[0]).length,1);
+  assert.equal((await patch('set_published',{isPublished:true})).status,200);
+  const publicRoute=loadTs('src/app/api/creator-choice/[id]/route.ts',mocks);
+  const published=await (await publicRoute.GET(request(),{params:Promise.resolve({id:collectionId})})).json();
+  assert.equal(published.collection.items.length,5);
+  assert.deepEqual(published.collection.items.slice(0,3).map(item=>item.externalUrl),links);
+  // Refresh includes a later save; unavailable, album and non-whitelisted URLs stay out.
+  Object.assign(admin.tables.listen_bar_tracks[5],{audio_path:null,external_url:links[0]}); favorite(admin,15);
+  assert.equal((await (await route.GET(request())).json()).catalog.length,4);
+  admin.tables.listen_bar_tracks[5].hidden_at='hidden';
+  admin.tables.listen_bar_tracks[0].work_kind='album';
+  admin.tables.listen_bar_tracks[1].external_url='https://malicious.example/audio';
+  assert.equal((await (await route.GET(request())).json()).catalog.length,1);
+});

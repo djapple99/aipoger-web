@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { loadTs } from "./helpers/choice-runtime.mjs";
 
 const source = readFileSync(new URL("../src/components/public-choice-gallery.tsx", import.meta.url), "utf8");
 const shelfSource = readFileSync(new URL("../src/components/showtime-choice-shelf.tsx", import.meta.url), "utf8");
@@ -9,11 +10,7 @@ const transpile = (value) => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
 }).outputText;
 
-function loadModel(path) {
-  const loaded = { exports: {} };
-  new Function("exports", "module", transpile(readFileSync(new URL(path, import.meta.url), "utf8")))(loaded.exports, loaded);
-  return loaded.exports;
-}
+function loadModel(path) { return loadTs(path.replace("../", "")); }
 
 const choiceModel = loadModel("../src/lib/aipoger-choice.ts");
 const creatorModel = loadModel("../src/lib/creator-choice.ts");

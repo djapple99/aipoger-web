@@ -70,6 +70,10 @@ export default function ChoiceCommentsDialog({
   const [schemaReady, setSchemaReady] = useState(true);
   const [error, setError] = useState("");
   const loadVersion = useRef(0);
+  const posting = useRef(false);
+  const pendingPost = useRef<{ identity: string; body: string; id: string } | null>(null);
+  const [reward, setReward] = useState(0);
+  const rewardHint = { zh: "評論他人的歌單：至少20字並通過基本反灌水，每份歌單可領一次10點。", en: "Review another curator’s playlist: 20+ letters/numbers and basic spam checks. 10 Credit once per playlist.", ja: "他の人のプレイリストに20文字以上・スパム確認済みの感想を書くと、プレイリストごとに1回10点。", ko: "다른 사람의 플레이리스트에 20자 이상 유효한 리뷰를 남기면 플레이리스트당 한 번 10점." }[lang];
   const identityRef = useRef("");
   const [retry, setRetry] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -91,7 +95,7 @@ export default function ChoiceCommentsDialog({
       controller?.abort();
       controller = new AbortController();
       const identity = `${query}:${nextUserId ?? "guest"}`;
-      if (identityRef.current !== identity) { setCommentBody(""); setComments([]); }
+      if (identityRef.current !== identity) { setCommentBody(""); setComments([]); setReward(0); pendingPost.current = null; }
       identityRef.current = identity;
       setAccessToken(token); setLoading(true); setError(""); setBusy(false); setDeletingId("");
       try {
@@ -146,13 +150,19 @@ export default function ChoiceCommentsDialog({
   async function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = commentBody.trim();
-    if (!body || busy) return;
+    if (!body || busy || posting.current) return;
     if (!accessToken) {
       goToSignIn();
       return;
     }
+    posting.current = true;
     setBusy(true);
+    setReward(0);
     setError("");
+    if (!pendingPost.current || pendingPost.current.identity !== identityRef.current || pendingPost.current.body !== body) {
+      pendingPost.current = { identity: identityRef.current, body, id: crypto.randomUUID() };
+    }
+    const requestId = pendingPost.current.id;
     const version = loadVersion.current;
     try {
       const response = await fetch("/api/choice/comments", {
@@ -161,19 +171,22 @@ export default function ChoiceCommentsDialog({
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ collectionKind, collectionId, body }),
+        body: JSON.stringify({ collectionKind, collectionId, body, requestId }),
       });
-      const payload = (await response.json().catch(() => null)) as { comment?: ChoiceComment; error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as { comment?: ChoiceComment; awarded?: number; error?: string } | null;
       if (version !== loadVersion.current) return;
       if (!response.ok || !payload?.comment) {
         setError(payload?.error || copy.postFailed);
         return;
       }
-      setComments((current) => [...current, payload.comment as ChoiceComment]);
+      setComments((current) => current.some(item => item.id === payload.comment?.id) ? current : [...current, payload.comment as ChoiceComment]);
+      pendingPost.current = null;
+      setReward(payload.awarded ?? 0);
+      window.dispatchEvent(new CustomEvent("aipoger:credit"));
       setCommentBody("");
       textareaRef.current?.focus();
     } catch { if (version === loadVersion.current) setError(copy.postFailed); }
-    finally { if (version === loadVersion.current) setBusy(false); }
+    finally { posting.current = false; if (version === loadVersion.current) setBusy(false); }
   }
 
   async function deleteComment(commentId: string) {
@@ -211,6 +224,8 @@ export default function ChoiceCommentsDialog({
           {!inline ? <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition hover:border-white/30 hover:text-white" aria-label={copy.close}><X className="h-4 w-4" /></button> : null}
         </header>
 
+        <p className="px-4 pt-3 text-xs leading-5 text-zinc-400 sm:px-5">{rewardHint}</p>
+        {reward > 0 && <p role="status" className="px-4 pt-2 text-sm text-orange-200 sm:px-5">+{reward} Credit</p>}
         <div className={inline ? "min-h-24 px-4 py-3 sm:px-5" : "min-h-36 flex-1 overflow-y-auto px-4 py-3 sm:px-5"}>
           {loading ? <p className="py-12 text-center text-sm font-bold text-zinc-500">{copy.loading}</p> : null}
           {!loading && !schemaReady ? <p className="border-l-2 border-orange-300 pl-3 text-sm font-bold text-zinc-400">{copy.preparing}</p> : null}

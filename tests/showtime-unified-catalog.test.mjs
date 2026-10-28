@@ -133,7 +133,7 @@ test("collection saves and HUD favorites remain independent from monthly song He
 test("charts and Choice share the existing global sequential bottom player with mobile volume", () => {
   assert.match(gallery, /<ShowtimeQueuePlayer ref=\{playerRef\}/);
   assert.match(gallery, /playerRef\.current\?\.start\(tracks, index/);
-  assert.match(adapter, /musicPlayer\?\.start\(\.\.\.args\)/);
+  assert.match(adapter, /musicPlayer\?\.start\(queue.map/);
   assert.match(adapter, /return null/);
   assert.match(chart, /musicPlayer\?\.start\(queue, index/);
   assert.doesNotMatch(gallery, /<audio|new Audio|\.close\(/);
@@ -146,7 +146,7 @@ test("charts and Choice share the existing global sequential bottom player with 
 
 test("current rules retire certification and preserve history without mixing curation into monthly ranks", () => {
   assert.match(rules, /There is no active Showtime certification/);
-  assert.match(rules, /Choice stays non-ranked and separate from monthly song ranks/);
+  assert.match(rules, /Choice browsing remains separate from monthly song ranks/);
   assert.match(rules, /The only score is distinct signed-in non-author accounts with an effective song Heart/);
   assert.match(rules, /Collection interactions do not change song Hearts, monthly scores/);
   assert.match(rules, /Preserve every historical song and audio asset, stable IDs, existing favorites/);

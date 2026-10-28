@@ -1,5 +1,7 @@
 "use client";
 
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
+
 import Link from "next/link";
 import { Check, Copy, Eye, ExternalLink, Pencil, Play, Plus, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +11,7 @@ import { creatorChoicePublicPath, creatorChoiceWeekStart, type AipogerCreatorCho
 import { AIPOGER_BRAND_LOGO } from "@/lib/brand";
 import { rememberAuthNextPath } from "@/lib/auth-urls";
 import { supabase } from "@/lib/supabase";
-import { musicPlayer } from "@/lib/music-player-store";
+import ShowtimeQueuePlayer, { type ShowtimeQueuePlayerHandle } from "@/components/showtime-queue-player";
 import { AipogerChoiceCover } from "@/components/aipoger-choice-cover";
 import { useI18n } from "@/lib/i18n";
 import { creatorChoiceCopy, creatorChoiceError } from "@/lib/creator-choice-copy";
@@ -57,6 +59,8 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
   const scopeRef = useRef<CreatorChoiceRequestScope | null>(null);
   const [retry, setRetry] = useState(0);
   const mutationLock = useRef(false);
+  const playerRef = useRef<ShowtimeQueuePlayerHandle>(null);
+  const refreshingFavorites = useRef(false);
   const activeId = useRef<string | null | undefined>(undefined);
   const editorSnapshot = useRef<ReturnType<typeof choiceEditorSnapshot> | null>(null);
   const selected = collections.find((collection) => collection.id === selectedId) ?? null;
@@ -66,7 +70,7 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
     || draft.title !== (selected?.title ?? "") || draft.intro !== (selected?.intro ?? "")
     || JSON.stringify(choiceEditorItems(selectedItems)) !== JSON.stringify(choiceEditorItems(selected?.items ?? []));
   const count = selectedItems.length;
-  const canPublish = count >= 5 && count <= 10 && selectedItems.every((item) => item.isPublic && item.audioUrl);
+  const canPublish = count >= 5 && count <= 10 && selectedItems.every((item) => item.isPublic && choiceHasPlayback(item));
   const nextPath = `/profile/choice?lang=${lang}${requestedId ? `&collection=${encodeURIComponent(requestedId)}` : ""}`;
   const signIn = useCallback(() => {
     rememberAuthNextPath(nextPath);
@@ -154,6 +158,25 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
     return () => { alive = false; };
   }, [copy.loadFailed, loadData, requestedId, retry, scope, signIn]);
 
+  // Returning from another tab refreshes membership without replacing unsaved
+  // text, selections, ordering or the optimistic save baseline.
+  const refreshFavorites = useCallback(async () => {
+    if (!scope || refreshingFavorites.current) return;
+    refreshingFavorites.current = true;
+    try {
+      const payload = await scope.request<ChoicePayload>("/api/creator-choice");
+      setCatalog(payload.catalog ?? []);
+    } catch {
+      if (!scope.controller.signal.aborted) setError(copy.loadFailed);
+    } finally { refreshingFavorites.current = false; }
+  }, [scope, copy.loadFailed]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") void refreshFavorites(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [refreshFavorites]);
+
   useEffect(() => {
     if (!dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -200,6 +223,7 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
   }
 
   async function saveCollection(isPublished?: boolean) {
+    if ((isPublished === true || (isPublished === undefined && selected?.isPublished)) && (!draft.title.trim() || !draft.intro.trim())) { setError(copy.publishRequired); return; }
     if (pendingSelection) { setError(copy.confirmFirst); return; }
     await runOperation(async () => {
       const result = await requestAction("save_editor", {
@@ -219,6 +243,7 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
           throw cause;
         }
       }
+      window.dispatchEvent(new CustomEvent("aipoger:credit"));
       return result.collectionId;
     }, isPublished === undefined ? copy.saved : isPublished ? copy.publishSuccess : copy.withdrawn);
   }
@@ -243,10 +268,10 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
   }
 
   function play(items: AipogerChoiceCatalogItem[], item?: AipogerChoiceCatalogItem) {
-    const queue = items.filter((track): track is AipogerChoiceCatalogItem & { audioUrl: string } => Boolean(track.audioUrl && track.isPublic))
-      .map((track) => ({ ...track, id: itemKey(track) }));
+    const queue = items.filter((track) => track.isPublic && choiceHasPlayback(track))
+      .map((track) => ({ ...track, audioUrl: track.audioUrl || "", id: itemKey(track) }));
     if (!queue.length) return;
-    void musicPlayer?.start(queue, item ? Math.max(0, queue.findIndex((track) => track.id === itemKey(item))) : 0, draft.title.trim() || copy.workspace);
+    void playerRef.current?.start(queue, item ? Math.max(0, queue.findIndex((track) => track.id === itemKey(item))) : 0, draft.title.trim() || copy.workspace);
   }
 
   function onCoverChange(file: File | null) {
@@ -297,18 +322,18 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
                   <select aria-label={copy.genre} value={genre} onChange={(event) => setGenre(event.target.value)} className={fieldClass}><option value="">{copy.allGenres}</option>{genres.map((value) => <option key={value} value={value}>{value}</option>)}</select>
                 </div>
                 <div className="sticky top-20 z-20 mt-4 flex flex-wrap items-center justify-between gap-2 border border-orange-400/30 bg-black/95 p-3">
-                  <span className="text-xs text-zinc-300">{copy.selectionHint} · {pendingItems.length} / 10</span>
+                  <span className="text-xs text-zinc-300">{copy.selectionHint} · {pendingItems.length} / 10</span><button type="button" onClick={() => void refreshFavorites()} className={buttonClass}>{copy.refreshFavorites}</button>
                   <button type="button" disabled={busy || !pendingSelection} onClick={confirmSelection} className={`${buttonClass} border-orange-400 text-orange-200`}><Check size={16} />{copy.confirmSelection}</button>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
                   {filteredCatalog.map((item) => {
                     const added = selectedByKey.has(itemKey(item));
-                    const disabled = busy || (!added && (pendingItems.length >= 10 || !item.selectable || !item.audioUrl));
+                    const disabled = busy || (!added && (pendingItems.length >= 10 || !item.selectable || !choiceHasPlayback(item)));
                     return <article key={itemKey(item)} className="min-w-0 overflow-hidden border border-white/10 bg-zinc-950">
                       <div className="relative aspect-square">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
-                        <button type="button" disabled={!item.audioUrl || !item.isPublic} onClick={() => play(sourceItems, item)} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`} title={item.audioUrl ? copy.play : copy.unavailable} className="absolute bottom-1 left-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/85 text-white disabled:opacity-35"><Play size={18} /></button>
+                        <button type="button" disabled={!choiceHasPlayback(item) || !item.isPublic} onClick={() => play(sourceItems, item)} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`} title={choiceHasPlayback(item) ? copy.play : copy.unavailable} className="absolute bottom-1 left-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/85 text-white disabled:opacity-35"><Play size={18} /></button>
                         <label className={`absolute right-1 top-1 flex h-11 w-11 items-center justify-center bg-black/85 ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                           <input type="checkbox" checked={added} disabled={disabled} onChange={() => toggleChoiceItem(item)} aria-label={`${copy.checkSong}: ${item.isPublic ? item.title : copy.unavailable}`} className="h-5 w-5 accent-orange-400" />
                         </label>
@@ -334,13 +359,14 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
                     }}><X size={16} /></button> : null}</div>
                   </>}
                   <div className="flex flex-wrap gap-2"><button type="button" disabled={pendingSelection} onClick={() => void saveCollection()} className={buttonClass}><Save size={16} />{busy ? copy.busy : selected?.isPublished ? copy.saveUpdate : copy.saveDraft}</button><button type="button" disabled={pendingSelection || (!selected?.isPublished && !canPublish)} onClick={() => void saveCollection(!selected?.isPublished)} className={`${buttonClass} border-orange-300 bg-orange-400 text-black`}><Check size={16} />{selected?.isPublished ? copy.withdraw : copy.publish}</button></div>
+                  <p className="text-xs leading-5 text-orange-200/80">{copy.rewardHint}</p>
                 </fieldset>
                 {dirty ? <p role="status" className="mt-3 text-xs text-orange-200">{pendingSelection ? copy.confirmFirst : copy.unsaved}</p> : null}
                 <p className="mt-3 text-xs text-zinc-400">{(count < 5 ? copy.needCount.replace("{count}", String(5 - count)) : count > 10 ? copy.maxCount : copy.readyCount.replace("{count}", String(count)))}</p>
-                <div className="mt-6 flex items-center justify-between gap-2"><h3 className="text-sm font-bold">{copy.order}</h3><button type="button" disabled={!selectedItems.some((item) => item.audioUrl)} onClick={() => play(selectedItems)} className={buttonClass}><Play size={14} />{copy.playAll}</button></div>
+                <div className="mt-6 flex items-center justify-between gap-2"><h3 className="text-sm font-bold">{copy.order}</h3><button type="button" disabled={!selectedItems.some((item) => choiceHasPlayback(item))} onClick={() => play(selectedItems)} className={buttonClass}><Play size={14} />{copy.playAll}</button></div>
                 <ol className="mt-3 space-y-2">
                   {selectedItems.map((item, index) => <li key={itemKey(item)} className="min-w-0 border-b border-white/10 pb-2">
-                    <div className="flex min-w-0 items-center gap-2"><span className="w-5 shrink-0 text-xs text-orange-200">{index + 1}</span><button type="button" disabled={!item.audioUrl} onClick={() => play(selectedItems, item)} className={iconClass} title={copy.play} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`}><Play size={14} /></button><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{item.isPublic ? item.title : copy.unavailable}</span><span className="block truncate text-xs text-zinc-400">{item.artist}</span></span></div>
+                    <div className="flex min-w-0 items-center gap-2"><span className="w-5 shrink-0 text-xs text-orange-200">{index + 1}</span><button type="button" disabled={!choiceHasPlayback(item)} onClick={() => play(selectedItems, item)} className={iconClass} title={copy.play} aria-label={`${copy.play} ${item.isPublic ? item.title : copy.unavailable}`}><Play size={14} /></button><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{item.isPublic ? item.title : copy.unavailable}</span><span className="block truncate text-xs text-zinc-400">{item.artist}</span></span></div>
                     {!preview ? <div className="mt-1 flex items-center justify-end gap-2"><label className="flex items-center gap-2 text-xs text-zinc-400"><span className="whitespace-nowrap">{copy.position}</span><select className={`${fieldClass} !w-16 shrink-0`} disabled={busy || pendingSelection} value={index + 1} onChange={(event) => moveItem(index, Number(event.target.value))} aria-label={`${copy.position}: ${item.isPublic ? item.title : copy.unavailable}`}>{selectedItems.map((_, position) => <option key={position} value={position + 1}>{position + 1}</option>)}</select></label><button type="button" className={iconClass} disabled={busy || pendingSelection} onClick={() => removeItem(item)} title={copy.remove} aria-label={`${copy.remove}: ${item.isPublic ? item.title : copy.unavailable}`}><X size={16} /></button></div> : null}
                   </li>)}
                 </ol>
@@ -356,6 +382,7 @@ export default function CreatorChoiceWorkbench({ previewScope }: { previewScope?
           </>
         )}
       </div>
+      <ShowtimeQueuePlayer ref={playerRef} isZh={lang === "zh"} />
     </main>
   );
 }

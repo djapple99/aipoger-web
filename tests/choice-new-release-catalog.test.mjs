@@ -13,7 +13,7 @@ const adminPage = read("../src/app/admin/choice/page.tsx");
 
 test("Choice catalog no longer uses age, certification or ownership as selection gates", () => {
   assert.match(catalog, /loadCreatorChoicePlaybackCatalog/);
-  assert.match(playback, /isPublicBarAirplayTrack/);
+  assert.match(playback, /isPublicDiscoveryTrack/);
   assert.match(playback, /moderation_hold/);
   assert.doesNotMatch(catalog + playback, /isAipogerChoiceNewRelease|loadShowtimeAdminCatalog|retiredFromExplore|\.eq\("created_by"/);
   assert.match(creatorRoute, /loadCreatorChoiceSelectionCatalog\(guard.admin, guard.user.id\)/);

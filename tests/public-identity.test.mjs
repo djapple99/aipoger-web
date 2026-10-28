@@ -35,6 +35,7 @@ test('legacy music comment endpoint ignores supplied names and uses same identit
 test('Choice and Bible comments use the public stage identity and retain existing avatar behavior',async()=>{
  for(const kind of ['choice','ai-music-bible']) {
   const id=uuid(9),admin=adminFor({aipoger_choice_collections:[{id,is_published:true}]});
+  if(kind==='choice') admin.rpc=async(_name,args)=>({error:null,data:{comment:{id:uuid(90),user_id:USER,display_name:args.p_name,avatar_url:args.p_avatar,body:args.p_body,created_at:'2026-10-29'},awarded:0}});
   const from=admin.from;admin.from=table=>{const q=from(table);q.gte=()=>q;return q;};
   const route=loadTs(`src/app/api/${kind}/comments/route.ts`,{...mocksFor(admin),'@/lib/suno-inspiration-index':{isSunoInspirationEntry:()=>true}});
   const body=kind==='choice'?{collectionKind:'official',collectionId:id,body:'Comment'}:{entryKind:'prompt_recipe',entryKey:'recipe',body:'Comment'};

@@ -679,3 +679,9 @@ Check:
 - 本輪沒有schema／grants／Auth設定變更。Credit仍用既有正式參與遷移，原12筆／36Credit盲聽流水保留。一般登入與Storage／RLS／API驗收不等於iOS真機或Email/OAuth投遞驗收。
 
 - 額度parser保留一般會員在Credit啟用後的實際投稿件數，不套舊的used≤3驗證；僅接受帶正確Credit欄位的超額資料，舊／畸形quota仍拒绝。UI免費件數最高3/3；音檔及連結的60點確認條件為used≥3，音檔重讀伺服器額度後亦再次核對，不只擋第四件。
+
+## Choice獎勵與收藏連結修復（2026-10-29，SQL已套用／應用待發布）
+
+使用者已確認每週發布50點、有效評論10點、全選自己歌曲可行。新增migration `20261028230113_choice_rewards_popularity.sql`，以私有首次發布／首次收藏／文字去重紀錄及追加式Choice流水，與既有Credit共用會員鎖；不更新舊流水。`post_choice_comment`為service-only、request UUID冪等，公開資料只輸出署名與聚合。新增熱門30天RPC及既有Showtime人物榜的歌單評論來源。收藏漏歌根因為Choice catalog沿音檔專用airplay篩選，未讀external_url；改共用公開單曲資格與來源白名單，選曲／發布／分享頁／播放同步修正。細節與驗證見[本輪report](releases/2026-10-29-choice-rewards.md)。
+
+正式ledger20261028232710已套用，回滾驗證與舊681筆hash一致；本機965項964通過／1選用略過／0失敗，四語320px無溢出。

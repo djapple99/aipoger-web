@@ -1,3 +1,5 @@
+
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin-emails";
@@ -254,7 +256,7 @@ export async function PATCH(request: NextRequest) {
         if (error) throw error;
         const items = (data as unknown as Record<string, Array<{ source_kind: string; source_id: string }>> | null)?.[itemsTable] ?? [];
         const catalog = await loadChoiceSelectionCatalog(guard.admin);
-        if (!data || !items.some((item) => catalog.items.some((source) => source.sourceKind === item.source_kind && source.id === item.source_id && source.isPublic && source.audioUrl))) return jsonError("主推歌單必須已發布，且有公開可播放的歌曲。");
+        if (!data || !items.some((item) => catalog.items.some((source) => source.sourceKind === item.source_kind && source.id === item.source_id && source.isPublic && choiceHasPlayback(source)))) return jsonError("主推歌單必須已發布，且有公開可播放的歌曲。");
       }
       await writeFeaturedChoice(guard.admin, key);
       return NextResponse.json({ message: key ? "Showtime 主推 Choice 已更新。" : "已取消主推 Choice。" });

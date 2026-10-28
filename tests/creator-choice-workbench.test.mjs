@@ -74,7 +74,7 @@ test("creator Choice confirms a local batch before one explicit save", () => {
   assert.match(profileChoicePage, /onClick=\{confirmSelection\}/);
   assert.match(profileChoicePage, /requestAction\("save_editor"/);
   assert.doesNotMatch(profileChoicePage, /requestAction\("(?:add_item|move_item|remove_item|ensure_collection)"/);
-  assert.match(profileChoicePage, /musicPlayer\?\.start/);
+  assert.match(profileChoicePage, /playerRef.current\?\.start/);
 });
 
 test("creator Showtime management supports an explanatory external-link label without payment handling", () => {

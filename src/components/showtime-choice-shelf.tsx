@@ -1,5 +1,7 @@
 "use client";
 
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
+
 import Link from "next/link";
 import { Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -29,6 +31,7 @@ export type ShowtimeChoiceShelfEntry = {
 
 export type ShowtimeChoiceHeartState = {
   heartCount: number;
+  popularCount?: number;
   myHeart: boolean;
 };
 
@@ -113,10 +116,10 @@ export default function ShowtimeChoiceShelf({
   const setCommentsEntry = (entry: ShowtimeChoiceShelfEntry | null) => setCommentsKey(entry ? recordKey(entry) : null);
   const editorial = showtimeCopy(lang);
   const [sort, setSort] = useState<"featured" | "latest" | "saved">("featured");
-  const playableEntries = entries.filter((entry) => entry.items.some((item) => Boolean(item.audioUrl)));
+  const playableEntries = entries.filter((entry) => entry.items.some((item) => choiceHasPlayback(item)));
   const ordered = [...playableEntries].sort((a, b) => {
     if (sort === "saved") {
-      const difference = (hearts[recordKey(b)]?.heartCount ?? 0) - (hearts[recordKey(a)]?.heartCount ?? 0);
+      const difference = (hearts[recordKey(b)]?.popularCount ?? 0) - (hearts[recordKey(a)]?.popularCount ?? 0);
       if (difference) return difference;
     }
     return (b.publishedAt || b.weekStart).localeCompare(a.publishedAt || a.weekStart) || recordKey(a).localeCompare(recordKey(b));
@@ -231,7 +234,7 @@ export default function ShowtimeChoiceShelf({
                           onPlay(detail, item.itemId);
                           setDetail(null);
                         }}
-                        disabled={!item.audioUrl}
+                        disabled={!choiceHasPlayback(item)}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30"
                         aria-label={copy.playTrack(item.title)}
                       >
@@ -246,7 +249,7 @@ export default function ShowtimeChoiceShelf({
               <button type="button" onClick={() => {
                 onPlay(detail);
                 setDetail(null);
-              }} disabled={!detail.items.some((item) => Boolean(item.audioUrl))} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35" aria-label={copy.playAll}>
+              }} disabled={!detail.items.some((item) => choiceHasPlayback(item))} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-35" aria-label={copy.playAll}>
                 <Play className="h-4 w-4" fill="currentColor" />{copy.playAll}
               </button>
               {detail.href ? <Link href={detail.href} className="text-xs font-black text-cyan-100 hover:text-white">{copy.openSharePage}</Link> : null}

@@ -12,6 +12,7 @@ type ChoiceHeartRow = {
 type ChoiceInteraction = {
   recordKey: string;
   heartCount: number;
+  popularCount: number;
   myHeart: boolean;
 };
 
@@ -107,11 +108,14 @@ async function interactionRecords(
     heartsByRecord.set(recordKey, [...(heartsByRecord.get(recordKey) ?? []), heart]);
   });
 
+  const popularity = await admin.rpc("choice_popularity_counts", { p_keys: active.map(record => record.recordKey) });
+  if (popularity.error) throw popularity.error;
   return active.map((record) => {
     const hearts = heartsByRecord.get(record.recordKey) ?? [];
     return {
       recordKey: record.recordKey,
       heartCount: hearts.length,
+      popularCount: Number(popularity.data?.[record.recordKey]) || 0,
       myHeart: Boolean(userId && hearts.some((heart) => heart.user_id === userId)),
     };
   });

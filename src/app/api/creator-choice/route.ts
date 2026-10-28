@@ -1,3 +1,5 @@
+
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
 import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -301,8 +303,8 @@ export async function PATCH(request: NextRequest) {
       const retained = new Set(existing.map(item => catalogKey(item.source_kind, item.source_id)));
       for (const key of keys) {
         const source = byKey.get(key);
-        if (!retained.has(key) && (!source?.selectable || !source.isPublic || !source.audioUrl)) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
-        if (published && (!source?.isPublic || !source.audioUrl)) return jsonError("歌單含有無法公開播放的作品，請先移除或替換。");
+        if (!retained.has(key) && (!source?.selectable || !source.isPublic || !choiceHasPlayback(source))) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
+        if (published && (!source?.isPublic || !choiceHasPlayback(source))) return jsonError("歌單含有無法公開播放的作品，請先移除或替換。");
       }
       const { data, error } = await guard.admin.rpc("save_creator_choice_editor", {
         p_user_id: guard.user.id, p_collection_id: collectionId ?? null, p_week_start: weekStart,
@@ -392,7 +394,7 @@ export async function PATCH(request: NextRequest) {
       if (!isAipogerChoiceSourceKind(body?.sourceKind) || !isUuid(body?.sourceId)) return jsonError("Choice 作品資料不完整。");
       const catalog = await loadCreatorChoiceSelectionCatalog(guard.admin, guard.user.id);
       const source = catalog.items.find((item) => item.sourceKind === body.sourceKind && item.id === body.sourceId);
-      if (!source?.isPublic || !source.selectable || !source.audioUrl) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
+      if (!source?.isPublic || !source.selectable || !choiceHasPlayback(source)) return jsonError("只能加入自己已收藏且目前公開可播放的歌曲。");
       const existing = await collectionItems(guard.admin, collectionId);
       if (existing.length >= AIPOGER_CHOICE_MAX_ITEMS) return jsonError("Choice 每期最多 10 首作品。");
       if (existing.some((item) => item.source_kind === source.sourceKind && item.source_id === source.id)) {
@@ -471,7 +473,7 @@ export async function PATCH(request: NextRequest) {
           return jsonError(`發布 Choice 需要 ${AIPOGER_CHOICE_MIN_ITEMS}-${AIPOGER_CHOICE_MAX_ITEMS} 首作品。`);
         }
         const catalog = await loadCreatorChoicePlaybackCatalog(guard.admin);
-        const playable = new Set(catalog.items.filter((item) => item.isPublic && item.audioUrl)
+        const playable = new Set(catalog.items.filter((item) => item.isPublic && choiceHasPlayback(item))
           .map((item) => catalogKey(item.sourceKind, item.id)));
         if (items.some((item) => !playable.has(catalogKey(item.source_kind, item.source_id)))) {
           return jsonError("歌單含有無法公開播放的作品，請先移除或替換。");
@@ -511,6 +513,7 @@ export async function PATCH(request: NextRequest) {
 
     return jsonError("不支援的 Choice 管理操作。");
   } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "22023" && "message" in error) return jsonError(String(error.message));
     if (error && typeof error === "object" && "code" in error && error.code === "23505") {
       return jsonError("這週已有 Choice，或歌單已在其他視窗更新。請重新載入。", 409);
     }

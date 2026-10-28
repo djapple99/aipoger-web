@@ -1,4 +1,4 @@
-import type { AipogerChoiceCatalogItem } from "./aipoger-choice";
+import { choiceHasPlayback, type AipogerChoiceCatalogItem } from "./aipoger-choice.ts";
 
 export const choiceEditorKey = (item: { sourceKind: string; id: string }) => `${item.sourceKind}:${item.id}`;
 export const choiceEditorItems = (items: { sourceKind: string; id: string }[]) => items.map(item => ({ sourceKind: item.sourceKind, sourceId: item.id }));
@@ -11,7 +11,7 @@ export function choiceEditorSnapshot(collection: { weekStart: string; title: str
 export function toggleChoiceSelection<T extends AipogerChoiceCatalogItem>(items: T[], item: T): T[] {
   const key = choiceEditorKey(item);
   if (items.some(value => choiceEditorKey(value) === key)) return items.filter(value => choiceEditorKey(value) !== key);
-  if (items.length >= 10 || !item.selectable || !item.isPublic || !item.audioUrl) return items;
+  if (items.length >= 10 || !item.selectable || !item.isPublic || !choiceHasPlayback(item)) return items;
   return [...items, item];
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { choiceHasPlayback } from "@/lib/aipoger-choice";
+
 import Link from "next/link";
 import { ArrowLeft, Heart, ListMusic, MessageCircle, Play, X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -33,13 +35,14 @@ function choiceRecordKey(kind: CollectionKind, id: string) {
 
 function playableQueue(items: AipogerChoiceItem[]): ShowtimePlayerTrack[] {
   return items
-    .filter((item): item is AipogerChoiceItem & { audioUrl: string } => Boolean(item.audioUrl))
+    .filter(choiceHasPlayback)
     .map((item) => ({
       id: `${item.sourceKind}:${item.id}`,
       title: item.title,
       artist: item.artist,
       coverUrl: item.coverUrl,
-      audioUrl: item.audioUrl,
+      audioUrl: item.audioUrl || "",
+      externalUrl: item.externalUrl,
     }));
 }
 
@@ -278,7 +281,7 @@ export default function PublicChoicePage({ initialCollection }: { initialCollect
                   <p className="mt-1 truncate text-[11px] font-bold text-zinc-600">{item.genre} · {item.recognition}</p>
                 </div>
                 <button type="button" onClick={() => void toggleItemHeart(item)} disabled={Boolean(itemHeartBusy[itemKey])} className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-45 ${itemHeart.myHeart ? "border-rose-200/55 bg-rose-500/20 text-rose-200" : "border-white/15 text-zinc-400 hover:border-rose-200/45 hover:text-rose-200"}`} aria-label={itemHeart.myHeart ? copy.removeTrack(item.title) : copy.favoriteTrack(item.title)} aria-pressed={itemHeart.myHeart}><Heart className="h-4 w-4" fill={itemHeart.myHeart ? "currentColor" : "none"} /></button>
-                <button type="button" onClick={() => void play(item)} disabled={!item.audioUrl} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={copy.playTrack(item.title)}><Play className="h-4 w-4" fill="currentColor" /></button>
+                <button type="button" onClick={() => void play(item)} disabled={!choiceHasPlayback(item)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={copy.playTrack(item.title)}><Play className="h-4 w-4" fill="currentColor" /></button>
               </article>
               );
             })}
@@ -307,7 +310,7 @@ export default function PublicChoicePage({ initialCollection }: { initialCollect
                   <img src={item.coverUrl} alt="" className="h-11 w-11 rounded object-cover" />
                   <span className="min-w-0"><span className="block truncate text-sm font-black text-white">{item.title}</span><span className="mt-1 block truncate text-xs font-bold text-zinc-500">{item.artist}</span></span>
                   <button type="button" onClick={() => void toggleItemHeart(item)} disabled={Boolean(itemHeartBusy[itemKey])} className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-wait disabled:opacity-45 ${itemHeart.myHeart ? "border-rose-200/55 bg-rose-500/20 text-rose-200" : "border-white/15 text-zinc-400 hover:border-rose-200/45 hover:text-rose-200"}`} aria-label={itemHeart.myHeart ? copy.removeTrack(item.title) : copy.favoriteTrack(item.title)} aria-pressed={itemHeart.myHeart}><Heart className="h-4 w-4" fill={itemHeart.myHeart ? "currentColor" : "none"} /></button>
-                  <button type="button" onClick={() => void play(item)} disabled={!item.audioUrl} className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={copy.playTrack(item.title)}><Play className="h-4 w-4" fill="currentColor" /></button>
+                  <button type="button" onClick={() => void play(item)} disabled={!choiceHasPlayback(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-black transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:opacity-30" aria-label={copy.playTrack(item.title)}><Play className="h-4 w-4" fill="currentColor" /></button>
                 </article>
                 );
               })}

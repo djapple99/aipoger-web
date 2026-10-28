@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { loadPublicIdentity } from "@/lib/server-public-identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
@@ -161,8 +162,8 @@ export async function POST(request: NextRequest) {
   try {
     const admin = adminClient();
     const user = await requiredUser(request, admin);
-    if (!user) return jsonError("請先登入，才能留下評論。", 401);
-    const body = (await request.json().catch(() => null)) as { collectionKind?: unknown; collectionId?: unknown; body?: unknown } | null;
+    if (!user || user.is_anonymous) return jsonError("請先登入，才能留下評論。", 401);
+    const body = (await request.json().catch(() => null)) as { collectionKind?: unknown; collectionId?: unknown; body?: unknown; requestId?: unknown } | null;
     const kind = collectionKind(body?.collectionKind);
     const collectionId = body?.collectionId;
     const commentBody = typeof body?.body === "string" ? body.body.trim() : "";
@@ -172,20 +173,15 @@ export async function POST(request: NextRequest) {
     if (!(await isPublishedCollection(admin, kind, collectionId))) return jsonError("這份 Choice 目前未公開。", 404);
 
     const identity = await commentIdentity(admin, user);
-    const { data, error } = await admin
-      .from("aipoger_choice_collection_comments")
-      .insert({
-        collection_kind: kind,
-        collection_id: collectionId,
-        user_id: user.id,
-        display_name: identity.displayName,
-        avatar_url: identity.avatarUrl,
-        body: commentBody,
-      })
-      .select("id,collection_kind,collection_id,user_id,display_name,avatar_url,body,created_at")
-      .single();
+    if (body?.requestId != null && !isUuid(body.requestId)) return jsonError("評論請求資料不完整。");
+    const { data, error } = await admin.rpc("post_choice_comment", {
+      p_user: user.id, p_request: body?.requestId ?? randomUUID(), p_kind: kind,
+      p_collection: collectionId, p_name: identity.displayName, p_avatar: identity.avatarUrl, p_body: commentBody,
+    });
+    if (error?.code === "22023") return jsonError(error.message);
     if (error) throw error;
-    return NextResponse.json({ comment: publicComment(data as ChoiceCommentRow, user.id) });
+    return NextResponse.json({ comment: publicComment(data.comment as ChoiceCommentRow, user.id),
+      awarded: Number(data.awarded) || 0, replayed: Boolean(data.replayed) });
   } catch (error) {
     if (isMissingChoiceCommentsSchema(error)) return jsonError("Choice 評論服務尚未準備完成。", 503);
     return jsonError(error instanceof Error ? error.message : "Choice 評論送出失敗。", 500);

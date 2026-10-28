@@ -1,3 +1,4 @@
+import { parseExternalMusic } from "./external-music.ts";
 export const AIPOGER_CHOICE_MIN_ITEMS = 5;
 export const AIPOGER_CHOICE_MAX_ITEMS = 10;
 export const AIPOGER_CHOICE_INTRO_MAX_LENGTH = 3000;
@@ -22,6 +23,7 @@ export type AipogerChoiceCatalogItem = {
   genre: string;
   coverUrl: string;
   audioUrl: string | null;
+  externalUrl?: string | null;
   recognition: string;
   certifiedAt: string;
   isPublic: boolean;
@@ -97,4 +99,8 @@ export function choiceItemCountMessage(count: number, isZh = true) {
     return isZh ? "Choice 每週最多 10 首。" : "Choice allows at most 10 works per week.";
   }
   return isZh ? `可發布：${safeCount} 首人工策展作品。` : `Ready to publish: ${safeCount} human-curated works.`;
+}
+
+export function choiceHasPlayback(item: { audioUrl?: string | null; externalUrl?: string | null } | null | undefined) {
+  return Boolean(item && (item.audioUrl?.trim() || parseExternalMusic(item.externalUrl)));
 }

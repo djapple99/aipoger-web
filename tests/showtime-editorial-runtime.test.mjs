@@ -70,12 +70,12 @@ test("latest Choice uses publication time within the same calendar week, separat
   assert.equal(nodes(tree).find(n => n.props["data-choice-lead"] === true).props["data-choice-key"], "creator:newer");
 });
 
-test("most saved Choice uses real collection Hearts without duplicating the lead", () => {
+test("popular Choice uses 30-day distinct saves without duplicating the lead", () => {
   const render = shelf();
   const entries = [entry("newer", { weekStart: "2026-10-12" }), entry("popular", { weekStart: "2026-09-14" })];
-  const options = { hearts: { "creator:newer": { heartCount: 1 }, "creator:popular": { heartCount: 8 } } };
+  const options = { hearts: { "creator:newer": { heartCount: 100, popularCount: 1 }, "creator:popular": { heartCount: 8, popularCount: 3 } } };
   let tree = render(entries, null, options);
-  nodes(tree).find(n => n.type === "button" && content(n) === "Most saved").props.onClick();
+  nodes(tree).find(n => n.type === "button" && content(n) === "Popular · 30 days").props.onClick();
   tree = render(entries, null, options);
   assert.deepEqual(nodes(tree).filter(n => n.type === "article").map(n => n.props["data-choice-key"]), ["creator:popular", "creator:newer"]);
 });
