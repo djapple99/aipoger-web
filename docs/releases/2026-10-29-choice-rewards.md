@@ -23,6 +23,8 @@ Choice catalog仍用音檔限定的airplay條件，未讀external_url；正式�
 
 瀏覽器證據位於私人工作區 `operations/qa/2026-10-29-choice-rewards`；本機fixture已移除，不進正式站。
 
-第一版應用90f6937、部署dpl_Fp42k3NpwD8txHB5eGfeueNHWiyD已READY且apex／www同版。正式帳號Choices由98增為118首；個人收藏123首＋2份歌單，剩餘5項為專輯／撤下／失效來源（同名新版不替換原收藏ID）。正式10項HTTP均200、console error0、指定部署runtime error／fatal0。點數視窗實際顯示新＋50／＋10任務，未發布真人測試資料。
+第一版應用90f6937、部署dpl_Fp42k3NpwD8txHB5eGfeueNHWiyD已READY且apex／www同版。正式帳號Choices由98增為118首；個人收藏123首＋2份歌單，剩餘5項為專輯／撤下／失效來源（同名新版不替換原收藏ID）。正式13項HTTP均200、console error0、指定部署runtime error／fatal0。點數視窗實際顯示新＋50／＋10任務，未發布真人測試資料。
 
-同輪驗收補修：個人收藏API原已讀external_url但publicRecord漏序列化，造成公開連結歌播放鍵停用。補回經白名單正規化且仍公開的來源；不新增隱藏／撤下來源播放。定向17項與TypeScript通過，路由lint通過；最終部署證據後補。
+同輪驗收補修：個人收藏API原已讀external_url但publicRecord漏序列化，造成公開連結歌播放鍵停用。補回經白名單正規化且仍公開的來源；不新增隱藏／撤下來源播放。定向15項與TypeScript通過，路由lint通過；最終應用dc9dfc5537c203beb95c845a16d6f78eebb8abde；Vercel dpl_BdMzqmeJ42BsAMAKtk3ZS8KMtbQA READY，apex／www同版。
+
+最終版正式驗收：個人收藏中的原停用連結歌「播放」按鈕已可用，實際開啟原平台播放器；Choices搜尋萬聖節可找到新收藏的三首連結歌，總數118。原125收藏總數＝123歌曲＋2歌單不改寫。最終部署runtime error／fatal為0，未對正式歌單與評論做測試寫入。

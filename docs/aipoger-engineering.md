@@ -1,6 +1,6 @@
 # AIPOGER 開發與維運
 
-目前最新應用 `b47bfba`／`codex/public-rule-copy`（2026-10-29）：Suno V5／V5.5 顯示文案統一為 V6，Prompt 保留。Vercel `dpl_6QLKcvSfoBUygrjNWwHQX7WnDTAY` READY，apex／www 同部署；8 HTTP、四語實際頁面、39 JS 資產掃描通過。無 DB／Credit 變更。見[版本文案發布驗收](releases/2026-10-29-suno-v6-copy.md)。
+目前最新應用 `dc9dfc5`／`codex/public-rule-copy`（2026-10-29）：Choice每週首次發布50點、有效歌單評論10點，可全部選自己作品；近30天熱門歌單及既有樂評Top5已接入。修復收藏連結單曲漏選與個人收藏播放連結遺漏，正式Choices由98增為118首。Vercel `dpl_BdMzqmeJ42BsAMAKtk3ZS8KMtbQA` READY、apex／www同版；SQL ledger20261028232710已套用並回滾驗證，舊681筆點數流水hash不變。全套965項964通過／1選用略過，補修15項與TypeScript通過，webpack與四語320px驗收通過。見[Choice發布report](releases/2026-10-29-choice-rewards.md)。
 
 前輪應用發布基準：應用`9960874`／`codex/public-rule-copy`；Vercel `dpl_454ciSRmkpYTsTCunDSL1n7ktv1b` READY，待驗收後promote同一build，aipoger.com／www核對同一SHA。2026-10-29（Asia/Taipei）全站正式Prompt每次複製8點、成功才提供全文；教學快捷範例免費。1,763份正式內容（223招／21歌詞控制／772 DNA／747配方）所有入口共用服務端白名單與receipt。Owner由已確認Auth判定，免扣點且不受餘額／欠額限制，新使用記0點owner_prompt_copy；原Owner投稿免扣不限次、每日回訪15及其他獎勵／原流水保留。正式migration ledger20261028181706已套用並回滾驗證，一般會員8點、重試0點、Owner0點；6筆舊收據與獎勵函式hash不變。33項定向全通過，952全套920通過／32既有選用略過／0失敗，TypeScript／webpack通過，lint0 errors／9既有warnings，250份公開JS／map零正式全文命中。待發布與正式各17項HTTP、四語320px及Owner實際複製／原生貼上／餘額不變與0點明細驗收通過，console errors及指定部署近30分鐘runtime error／fatal均0。詳見[全站Prompt與Owner免扣report](releases/2026-10-29-all-prompt-credit.md)。
 
@@ -680,7 +680,7 @@ Check:
 
 - 額度parser保留一般會員在Credit啟用後的實際投稿件數，不套舊的used≤3驗證；僅接受帶正確Credit欄位的超額資料，舊／畸形quota仍拒绝。UI免費件數最高3/3；音檔及連結的60點確認條件為used≥3，音檔重讀伺服器額度後亦再次核對，不只擋第四件。
 
-## Choice獎勵與收藏連結修復（2026-10-29，SQL已套用／應用待發布）
+## Choice獎勵與收藏連結修復（2026-10-29，已正式發布）
 
 使用者已確認每週發布50點、有效評論10點、全選自己歌曲可行。新增migration `20261028230113_choice_rewards_popularity.sql`，以私有首次發布／首次收藏／文字去重紀錄及追加式Choice流水，與既有Credit共用會員鎖；不更新舊流水。`post_choice_comment`為service-only、request UUID冪等，公開資料只輸出署名與聚合。新增熱門30天RPC及既有Showtime人物榜的歌單評論來源。收藏漏歌根因為Choice catalog沿音檔專用airplay篩選，未讀external_url；改共用公開單曲資格與來源白名單，選曲／發布／分享頁／播放同步修正。細節與驗證見[本輪report](releases/2026-10-29-choice-rewards.md)。
 
