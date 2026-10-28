@@ -42,7 +42,7 @@ test('unknown news does not resolve to another article or enter static params',a
  const page=loadTs('src/app/news/[slug]/page.tsx',mocks('zh'));
  assert.equal(musicNewsArticle('missing-news'),undefined);
  assert.deepEqual(page.generateStaticParams(),publishedMusicNews().map(({slug})=>({slug})));
- assert.equal(page.generateStaticParams().length,4);
+ assert.equal(page.generateStaticParams().length,5);
  await assert.rejects(page.default({params:Promise.resolve({slug:'missing-news'}),searchParams:Promise.resolve({})}),/NEWS_404/);
  assert.equal((await page.generateMetadata({params:Promise.resolve({slug:'missing-news'})})).robots.index,false);
 });
@@ -73,7 +73,7 @@ for(const slug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-l
   else { assert.ok(html.includes('原本就可能取得 SBA 支援'));assert.ok(html.includes('不是 SBA 申請文件清單'));assert.ok(html.includes('5122 / 錄音產業')); }
  });
 }
-test('home keeps its existing cards while news index has one lead and all four accessible cover-only links',async()=>{
+test('home keeps its existing cards while news index has one lead and all five accessible cover-only links',async()=>{
  const deps=mocks('zh'), Shelf=loadTs('src/components/latest-music-news.tsx',deps).default;
  const Index=loadTs('src/app/news/page.tsx',deps).default;
  const shelf=renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'}));
@@ -83,7 +83,7 @@ test('home keeps its existing cards while news index has one lead and all four a
  assert.equal((html.match(/class="music-news-card"/g)||[]).length,1);
  assert.ok(html.includes('熱門新聞'));assert.ok(html.includes('尚無互動'));
  const grid=html.split('class="music-news-cover-grid"')[1].split('</section>')[0];
- assert.equal((grid.match(/<article/g)||[]).length,4);
+ assert.equal((grid.match(/<article/g)||[]).length,5);
  assert.ok(!grid.includes('music-news-card-body'));assert.ok(!grid.includes('aria-hidden'));assert.ok(!grid.includes('tabindex="-1"'));
  for(const story of publishedMusicNews()) {assert.ok(grid.includes(`/news/${story.slug}?lang=zh`));assert.ok(grid.includes(`aria-label="${story.title}"`));assert.ok(grid.includes(story.cover));}
 });
@@ -113,4 +113,24 @@ test('news layout handles sparse editions and additional stories without duplica
   assert.equal(html.includes('music-news-companions'),count>1);
   for(let i=0;i<count;i++){assert.ok(html.includes(`/news/fixture-${i}?lang=ja`));assert.equal((html.match(new RegExp(`title="Story ${i}"`,'g'))||[]).length,1);}
  }
+});
+
+for(const lang of ['zh','en','ja','ko']) test(`Deezer news keeps its timeline, scope, sources and language links (${lang})`,async()=>{
+ const slug='deezer-ai-music-search-toggle',story=musicNewsArticle(slug),deps=mocks(lang),page=loadTs('src/app/news/[slug]/page.tsx',deps);
+ const props={params:Promise.resolve({slug}),searchParams:Promise.resolve({lang})};
+ const html=renderToStaticMarkup(await page.default(props));
+ assert.equal(publishedMusicNews()[0].slug,slug);
+ assert.deepEqual([story.publishedOn,story.eventOn,story.verifiedOn],['2026-10-28','2026-10-27','2026-10-28']);
+ assert.ok(html.indexOf('30 秒先看懂')<html.indexOf('01 / 先把時間對好'));
+ for(const text of ['10 月 13 日','10 月 27 日','2026 年底前推出','尚未確認上線','全 AI 生成','關閉後','有限 AI 輔助','不代表搜尋排名或播放量有保證','並非 Deezer 公布的新文件要求','非 Deezer 產品介面'])assert.ok(html.includes(text),text);
+ assert.ok(!html.includes('€133.8'));assert.ok(!html.includes('42 million'));
+ const json=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+ assert.equal(json.headline,story.title);assert.deepEqual(json.citation,story.sources.map(x=>x.url));
+ assert.equal(json.mainEntityOfPage,`https://aipoger.com/news/${slug}?lang=zh`);
+ const metadata=await page.generateMetadata(props);
+ assert.equal(metadata.openGraph.images[0].url,`https://aipoger.com${story.cover}`);assert.equal(metadata.twitter.card,'summary_large_image');
+ assert.ok(html.includes(`/news?lang=${lang}`));
+ for(const other of publishedMusicNews().filter(x=>x.slug!==slug))assert.ok(html.includes(`/news/${other.slug}?lang=${lang}`));
+ const bytes=readFileSync(new URL(`../public${story.cover}`,import.meta.url));
+ assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1200);assert.equal(bytes.readUInt32BE(20),630);assert.ok(bytes.length<150_000);
 });

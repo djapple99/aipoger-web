@@ -66,6 +66,20 @@ const catalog: readonly MusicNews[] = [{
     { label: "美國勞工統計局：NAICS 5121 影音與 5122 錄音產業分類", url: "https://www.bls.gov/iag/tgs/iag512.htm" },
     { label: "Inc.：SBA 新指引與創作者融資（2026-10-26）", url: "https://www.inc.com/melissa-angell/are-you-a-content-creator-heres-how-the-sbas-new-guidance-could-help-you-get-funding/91422681" },
   ],
+}, {
+  slug: "deezer-ai-music-search-toggle", published: true, language: "zh-Hant",
+  title: "Deezer 再確認年底前推出 AI 音樂搜尋開關：上架、推薦、被找到，是三件事",
+  summary: "Deezer 10 月 27 日重申 AI 音樂搜尋開關預計年底前推出，尚未確認上線。開關針對全 AI 生成內容；上架、推薦與搜尋可見度，要分開理解。",
+  category: "發行與曝光", publishedOn: "2026-10-28", eventOn: "2026-10-27", verifiedOn: "2026-10-28",
+  cover: "/news/deezer-ai-music-search-toggle.png",
+  coverAlt: "AIPOGER 原創概念圖：曲庫、推薦與搜尋是三個不同的作品曝光層次",
+  coverCaption: "圖／AIPOGER 原創概念圖，非 Deezer 產品介面",
+  deck: "歌上了架，不代表每個人都會看見。Deezer 再次確認搜尋過濾計畫，先把三層曝光拆清楚。",
+  sources: [
+    { label: "Deezer 官方 Q3 公告：重申 AI 搜尋開關預計年底前推出（2026-10-27）", url: "https://newsroom-deezer.com/2026/10/deezer-delivers-second-consecutive-quarter-of-revenue-growth-and-upgrades-its-fy26-outlook/" },
+    { label: "Deezer 官方功能公告與 FAQ：AI music toggle（2026-10-13）", url: "https://newsroom-deezer.com/2026/10/deezer-ai-music-toggle/" },
+    { label: "MBW：Deezer Q3 報導，本文議題發現來源（2026-10-27）", url: "https://www.musicbusinessworldwide.com/deezer-raises-2026-outlook-as-q3-revenues-grow-1-8-yoy-to-149-5m-but-total-subscribers-fall-to-8-7m/" },
+  ],
 }];
 export function publishedMusicNews(): MusicNews[] {
   return catalog.filter(article => article.published).sort((a, b) => b.publishedOn.localeCompare(a.publishedOn) || a.slug.localeCompare(b.slug));
