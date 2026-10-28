@@ -29,6 +29,13 @@
 
 - 正式migration ledger `20261028181706` 已套用；私人白名單1,763鍵、RLS=true，anon／authenticated無新RPC執行權。以service_role實際交易回滾驗證一般會員8點／receipt重試／Owner免扣與餘額不變，0測試receipt殘留。6份既有receipt MD5仍為原值，5個creator_credit獎勵函式內容hash全部不變。
 - Supabase security advisors比較：0個新WARN／ERROR；新私人service-only key表出現1個INFO「RLS enabled no policy」，符合只供bypassrls service_role讀取、一般角色無grant的設計。既有15個WARN未由本輪新增，未擴張任一member權限。
-- 本機最終952測試920通過／32略過，TypeScript／webpack／lint通過。待本輪待發布／正式HTTP及會員瀏覽器驗收後補上應用commit、部署ID與Owner實際0點使用證據。
+- 應用commit `99608745c7ef0d6b2b6da5b94e41d0bc4fc9ce8d`，發布分支`codex/public-rule-copy`，乾淨worktree打包。Vercel `dpl_454ciSRmkpYTsTCunDSL1n7ktv1b` READY，待發布17項HTTP通過後promote同一build；apex／www均核對同ID與SHA。原部署`dpl_CufBFRAUUSDnCcs1jYJEErYRcUuZ`為回退基準。
+- 正式17項HTTP全通過：中英日韓聖經、匿名內容／複製／創作者中心／管理API 401、公開導讀、Deezer／新聞、MV、探索、Battle、首頁、登入及Sitemap。原五篇新聞與其他入口保留。
+- Owner正式頁實際點一次正式卡：成功揭曉全文並顯示Owner免扣，原生Chrome貼到本機驗收欄59字完全一致；餘額590→590，新增恰好1份0點owner_prompt_copy收據。這份授權使用紀錄保留，沒有刪除。點數視窗顯示Owner身分、免扣提示及最近5筆含舊-8／-5紀錄。
+- 免費人聲教學範例點擊後，Owner收據仍1份、餘額仍590；正式Studio／歌詞／DNA與配方未複製前均沒有正式pre正文，DNA／配方頁各12張顯示8點。4語320px的document scrollWidth305，沒有水平溢出；既有日韓聖經正文沿英文fallback、導航語系保留，測試為Chrome viewport而非iOS真機。
+- 正式console error0，指定新部署近30分鐘runtime error／fatal0；原生複製已實際核對。一般會員實扣／不足／回滾、Owner零餘額／欠額，以及clipboard拒絕與重試分支另有真實PostgreSQL及元件測試覆蓋；未留下會員測試扣款。
+- 現行產品／體驗／工程／索引及私人agent更新；沿固定文件及既有Drive ID原地同步，保留其餘現行內容。5份Drive現行文件以既有ID原地更新，下載原始bytes與本機SHA256逐份相符；產品／體驗隨應用9960874提交，工程／索引／最終report以同發布分支的文件提交保存。
 
 私人QA：`/Users/huangyihong/Documents/New project/operations/qa/2026-10-29-all-prompt-credit/`。環境檔、憑證、截圖與工具輸出不提交。
+
+驗收證據：`test-release.log`、`tsc-final.log`、`lint-final.log`、`build-final.log`、`bundle-audit.json`、`staged-http.json`、`production-http.json`、`production-ui.json`、`production-mobile.json`、`drive-readback.json`及正式畫面截圖均保存在上述私人QA目錄。完成發布，不待使用者再次批准。
