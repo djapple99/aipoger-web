@@ -1,6 +1,6 @@
 # AIPOGER 最新文件索引
 
-2026-10-29 Suno V5／V5.5 顯示文案統一為 V6，Prompt 保留；本機完成、尚未部署。見[版本文案 report](releases/2026-10-29-suno-v6-copy.md)。
+2026-10-29 Suno V5／V5.5 顯示文案統一為 V6，Prompt 保留；已正式部署 b47bfba；四語 V6 與線上資產驗收通過。見[版本文案 report](releases/2026-10-29-suno-v6-copy.md)。
 
 唯一現行正文是以下六份；檔名固定，內容持續更新。
 
