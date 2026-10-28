@@ -111,6 +111,29 @@ test('sitemap paginates published playlists, deduplicates, localizes real pages 
   fail = true; await assert.rejects(sitemap(), /incomplete/);
 });
 
+test('sitemap cache keeps old, newly published and revised news editions separate', async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.invalid'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'fixture-only';
+  const cache = new Map(), admin = mockAdmin({ aipoger_choice_collections: [], aipoger_creator_choice_collections: [] });
+  const first = { slug: 'existing-story', verifiedOn: '2026-10-27' }, added = { slug: 'deezer-ai-music-search-toggle', verifiedOn: '2026-10-28' };
+  async function edition(stories) {
+    const sitemapModule = loadTs('src/lib/server-public-sitemap.ts', {
+      'next/cache': { unstable_cache: (fn, parts) => async () => { const key = JSON.stringify(parts); if (!cache.has(key)) cache.set(key, await fn()); return cache.get(key); } },
+      '@supabase/supabase-js': { createClient: () => admin },
+      '@/lib/music-news': { publishedMusicNews: () => stories },
+      '@/lib/server-home-discovery': { readPublicWorkIndex: async () => [] },
+      '@/lib/server-albums': { readPublicAlbums: async () => [] },
+      '@/lib/server-public-battles': { readPublicBattles: async () => ({ live: [], pool: [], qCrash: [] }) },
+    });
+    return (await sitemapModule.readPublicSitemap()).filter(row => row.url.includes('/news/'));
+  }
+  assert.equal((await edition([first])).length, 1);
+  const current = await edition([first, added]); assert.equal(current.length, 2);
+  assert.ok(current.some(row => row.url.includes(added.slug)));
+  const revised = await edition([first, { ...added, verifiedOn: '2026-10-29' }]);
+  assert.equal(revised.find(row => row.url.includes(added.slug)).lastModified.toISOString(), '2026-10-29T00:00:00.000Z');
+  assert.equal((await edition([first])).length, 1);
+});
+
 test('read-only Q Crash catalog never settles expired voting cards; existing API default still settles once', async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.invalid'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'fixture-only';
   const card = { id: uuid(90), founder_queue_id: uuid(91), battle_id: uuid(92), status: 'q_crash_voting', voting_ends_at: '2020-01-01T00:00:00Z' };

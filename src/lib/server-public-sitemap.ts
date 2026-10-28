@@ -43,5 +43,5 @@ const buildSitemap = unstable_cache(async (): Promise<MetadataRoute.Sitemap> => 
     } } }))),
   ];
   return [...new Map(entries.map(entry => [entry.url, entry])).values()];
-}, ["aipoger-public-sitemap-v2-news"], { revalidate: 300 });
+}, ["aipoger-public-sitemap-v2-news", ...publishedMusicNews().map(article => `${article.slug}:${article.verifiedOn}`)], { revalidate: 300 });
 export async function readPublicSitemap() { return buildSitemap(); }
