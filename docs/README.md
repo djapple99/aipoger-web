@@ -11,11 +11,15 @@
 
 2026-10-26新聞按讚／討論已發布：文章底部新增會員按讚與留言，公開署名、訪客登入返回、重送去重與Owner管理已接上；見[新聞互動report](releases/2026-10-26-news-discussion.md)。
 
-音樂新聞現有四篇原創繁中圖文（YouTube Music、Suno／Reservoir、Spotify × Believe、SBA創作者事業分類）；先講重點、再詳解，使用愛波哥口語與自製圖解。首頁仍最多三篇，列表保留全部；最新文章2026-10-27發布，見[SBA新聞report](releases/2026-10-27-sba-creator-news.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
+音樂新聞現有五篇原創繁中圖文（YouTube Music、Suno／Reservoir、Spotify × Believe、SBA創作者事業分類、Deezer搜尋開關）；先講重點、再詳解，使用愛波哥口語與自製圖解。首頁仍最多三篇，列表保留全部；最新文章2026-10-28發布，見[Deezer新聞report](releases/2026-10-28-deezer-ai-search-news.md)。編輯標準讀「內容與營運」；沒有新增出刊排程。
 
 ## 現況與查找順序
 
-- 最新應用基準`cb7a722`／`codex/public-rule-copy`（2026-10-28）：49張表情詞／對照卡每次新複製8點，其他獎勵及投稿費用不變，賺點任務先列評分與評論。舊5點紀錄、會員餘額與已付款重試保留，舊頁面新扣點須刷新。migration正式ledger20261027194919已套用，11項定向及933全套901通過／32略過，四語手機與正式10項HTTP通過；部署`dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY且apex／www同版。[發布report](releases/2026-10-28-expression-eight-credit.md)。
+- 最新應用`e662882`／`codex/public-rule-copy`；Vercel `dpl_CufBFRAUUSDnCcs1jYJEErYRcUuZ` READY，驗收後promote同一build，apex／www同版。2026-10-28晚間，49張表情詞／對照卡改為扣點前只顯示描述、分類與用途，伺服器內容投影與公開bundle不提供原詞／完整Prompt；成功8點複製才揭曉，剪貼簿失敗保留文字與免費重試，舊key連結及已付款receipt沿用。原費率、獎勵、會員餘額／流水、播放／留言／評分保留，沒有SQL或正式ledger寫入。21項定向全通過，945全套913通過／32選用略過／0失敗，TypeScript／webpack通過，lint0 errors／9既有warnings；250份JS掃描零付費內容命中。待發布與正式各14項HTTP、正式49張預覽與四語320px驗收通過，console error0，指定部署近30分鐘runtime error／fatal0。[Prompt扣點揭曉report](releases/2026-10-28-expression-prompt-gate.md)。
+
+- 前輪`25ef2fb`新增Deezer新聞與Sitemap edition快取，正式`dpl_CTVmoRDa7qkwaGPnh64qGoKik3cv`；五篇原創新聞與相關路由本輪保留。[新聞report](releases/2026-10-28-deezer-ai-search-news.md)。
+
+- 前輪應用基準`cb7a722`／`codex/public-rule-copy`（2026-10-28）：49張表情詞／對照卡每次新複製8點，其他獎勵及投稿費用不變，賺點任務先列評分與評論。舊5點紀錄、會員餘額與已付款重試保留，舊頁面新扣點須刷新。migration正式ledger20261027194919已套用，11項定向及933全套901通過／32略過，四語手機與正式10項HTTP通過；部署`dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY且apex／www同版。[發布report](releases/2026-10-28-expression-eight-credit.md)。
 
 - 前輪應用基準`4acfd8b`／`codex/public-rule-copy`：預設網站分享採1200×630實心黑底與原白色AIPOGER符號／字標，OG／Twitter及無封面品牌回退集中同一版本化路徑；既有專屬作品／新聞／Battle模式封面保留。932測試893通過／39略過，部署`dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY並綁定aipoger.com／www。[發布report](releases/2026-10-27-dark-share-preview.md)。
 

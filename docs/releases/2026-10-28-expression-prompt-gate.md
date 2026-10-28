@@ -23,6 +23,11 @@
 
 ## 發布狀態
 
-本地整站回歸、正式 build、瀏覽器與 production 驗收完成後在此補上最終應用 commit、deployment ID 與驗收結果。
+- 正式應用 `e662882`，`codex/public-rule-copy` 已 push；從乾淨來源建立 production `--skip-domain`，Vercel `dpl_CufBFRAUUSDnCcs1jYJEErYRcUuZ` READY。待發布 host `aipoger-web-rnz8-oa2l3m73k-yohungs-projects.vercel.app` 完成14項HTTP後promote同一build；apex與www即時讀回同ID。
+- 待發布與正式各14項HTTP全通過：聖經四語、訪客content／copy 401、公開導讀、Deezer新文／列表、首頁、MV、Explore、Battle與Sitemap。原五篇新聞及edition快取修正保留。
+- 正式已登入Chrome確認49張描述卡、0個Prompt區塊、原詞未出現在標題／展開說明；舊sotto-voce deeplink會打開對應opaque卡。桌機與中英日韓各320px實測，document scrollWidth305／viewport320，沒有水平溢出；日韓正文沿原英文回退。未點擊真人帳號付費複製或製造正式測試流水；付費成功／不足／剪貼簿重試由前述真實API fixture、React rendering及PGlite驗證。
+- Chrome console error0；本次指定deployment最近30分鐘error／fatal runtime logs查無紀錄，只代表該部署與觀察時間窗。
+- 本機docs與既有Drive固定ID更新；產品／體驗／工程／協作入口／索引五份從Drive原始bytes讀回，與本機SHA-256逐一相同。沒有新增另一套正文或分享權限。
+- 回復目標為前正式 `dpl_CTVmoRDa7qkwaGPnh64qGoKik3cv`。沒有修改DB、Auth、Storage、排程、依賴、環境變數或登入憑證。
 
 私人 QA：`/Users/huangyihong/Documents/New project/operations/qa/2026-10-28-expression-prompt-gate/`；不提交環境檔、會員資料、截圖或工具輸出。

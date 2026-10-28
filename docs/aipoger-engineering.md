@@ -1,6 +1,10 @@
 # AIPOGER 開發與維運
 
-目前應用發布基準：`cb7a722`／`codex/public-rule-copy`，2026-10-28（Asia/Taipei）；Vercel `dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY並promote同一build，aipoger.com與www核對同版。46個表情詞＋3張對照卡的新複製改8 Credit，其他獎勵與投稿規則保留，賺點任務先列評分與評論＋10。正式migration ledger `20261027194919`已套用；舊-5收據保留且可零扣點重試，舊版5點請求只阻擋新扣款並要求刷新。11項定向通過，全套933項901通過／32選用略過／0失敗，TypeScript、本機及雲端webpack通過，lint0 errors／9既有warnings；正式service_role回滾驗證15→7、額度不足與重試，0測試帳號／收據殘留。四語320px、正式49張按鈕與10項HTTP／登入限制驗收通過，發布前後會員餘額／最近五筆收支一致，既有4筆-5收據hash不變，runtime error／fatal 0。詳見[8點複製調整report](releases/2026-10-28-expression-eight-credit.md)。
+目前應用發布基準：應用`e662882`／`codex/public-rule-copy`；Vercel `dpl_CufBFRAUUSDnCcs1jYJEErYRcUuZ` READY，驗收後promote同一build，apex／www同版。2026-10-28晚間，49張表情詞／對照卡改為扣點前只顯示描述、分類與用途，伺服器內容投影與公開bundle不提供原詞／完整Prompt；成功8點複製才揭曉，剪貼簿失敗保留文字與免費重試，舊key連結及已付款receipt沿用。原費率、獎勵、會員餘額／流水、播放／留言／評分保留，沒有SQL或正式ledger寫入。21項定向全通過，945全套913通過／32選用略過／0失敗，TypeScript／webpack通過，lint0 errors／9既有warnings；250份JS掃描零付費內容命中。待發布與正式各14項HTTP、正式49張預覽與四語320px驗收通過，console error0，指定部署近30分鐘runtime error／fatal0。詳見[Prompt扣點揭曉report](releases/2026-10-28-expression-prompt-gate.md)。
+
+前輪新聞發布：`25ef2fb`／`dpl_CTVmoRDa7qkwaGPnh64qGoKik3cv`，Deezer原創新聞與依新聞edition分隔的Sitemap快取已發布，五篇新聞沿用。本輪保留此基準，見[Deezer新聞report](releases/2026-10-28-deezer-ai-search-news.md)。
+
+前輪應用發布基準：`cb7a722`／`codex/public-rule-copy`，2026-10-28（Asia/Taipei）；Vercel `dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY並promote同一build，aipoger.com與www核對同版。46個表情詞＋3張對照卡的新複製改8 Credit，其他獎勵與投稿規則保留，賺點任務先列評分與評論＋10。正式migration ledger `20261027194919`已套用；舊-5收據保留且可零扣點重試，舊版5點請求只阻擋新扣款並要求刷新。11項定向通過，全套933項901通過／32選用略過／0失敗，TypeScript、本機及雲端webpack通過，lint0 errors／9既有warnings；正式service_role回滾驗證15→7、額度不足與重試，0測試帳號／收據殘留。四語320px、正式49張按鈕與10項HTTP／登入限制驗收通過，發布前後會員餘額／最近五筆收支一致，既有4筆-5收據hash不變，runtime error／fatal 0。詳見[8點複製調整report](releases/2026-10-28-expression-eight-credit.md)。
 
 前輪應用發布基準：`4acfd8b`／`codex/public-rule-copy`，2026-10-27；Vercel `dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY，aipoger.com／www綁定同版。預設品牌分享改1200×630黑底白Logo，root及共用OG／Twitter、無封面作品／Choice同一版本化路徑；各作品與新聞、教材、Battle模式專屬封面沿原資料。32項定向與932全套（893通過／39選用略過／0失敗）、TypeScript／本機webpack通過，lint0 errors／9既有warnings。原透明白Logo素材未覆寫，沒有DB或其他功能變動；同日晚間完成Facebook根網址／中文版重新抓取及指定原貼文「更新分享的附件」，原貼文已顯示黑底，沒有新增發文；正式分享驗收見[黑底分享預覽report](releases/2026-10-27-dark-share-preview.md)。
 
