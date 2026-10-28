@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {SUNO_EXPRESSION_MOVES, SUNO_EXPRESSION_TERMS, SUNO_EXPRESSION_BASE_STYLE, SUNO_EXPRESSION_COMPARISON_MOVES} from '../src/lib/suno-expression-prompts.ts';
 import {SUNO_PROMPT_MOVES} from '../src/lib/suno-practice-library.ts';
 import {SUNO_STUDIO_MASTERING_AUDIO_PREVIEWS} from '../src/lib/suno-studio-mastering-audio-previews.ts';
-import {BIBLE_EXPRESSION_COPY_COST,bibleExpressionCardKey,bibleMoveKeyFromHash,resolveBiblePaidCopy} from '../src/lib/bible-prompt-copy.ts';
+import {BIBLE_EXPRESSION_COPY_COST,bibleExpressionCardKey,bibleMoveKeyFromHash,biblePromptCopyKey,resolveBiblePaidCopy} from '../src/lib/bible-prompt-copy.ts';
 import {loadTs, USER, uuid, request} from './helpers/choice-runtime.mjs';
 const KEY='expression-sotto-voce';
 const {previewBibleCatalog}=loadTs('src/lib/bible-expression-preview.ts');
@@ -82,25 +82,14 @@ import {mountMv,text as nodeText} from './helpers/mv-runtime.mjs';
 import * as taxonomy from '../src/lib/suno-practice-taxonomy.ts';
 import * as audio from '../src/lib/suno-studio-mastering-audio-previews.ts';
 import {SUNO_PROMPT_CATEGORIES} from '../src/lib/suno-practice-library.ts';
-test('prompt UI searches descriptions, reveals only paid copies, retries clipboard and preserves old free copying',async t=>{
- let blocked=true,requests=0;const copied=[];const operations=[];const timers=[];
+test('prompt UI filters expression families and descriptive search; formal cards use the shared paid control',async t=>{
  const ui=await mountMv(t,'src/components/suno-practice-library-section.tsx',{locale:'zh',promptMoves:previewBibleCatalog(bibleCatalogDefaults()).promptMoves,lyricMoves:[],genreGroups:[],productionFlow:[],promptCategories:SUNO_PROMPT_CATEGORIES,lyricCategories:[],artistDnaEntries:[],promptRecipes:[],recipeGenres:[]},{
- 'lucide-react':new Proxy({}, {get:(_,key)=>String(key)}),
- 'next/link':{__esModule:true,default:'a'},
- '@/components/studio-audio-preview-button':{__esModule:true,default:()=>null},
- '@/components/showtime-queue-player':{__esModule:true,default:()=>null},
- '@/lib/fonts':{fontRighteous:{className:''}},
- '@/lib/suno-practice-taxonomy':taxonomy,
- '@/lib/suno-studio-mastering-audio-previews':audio,
- '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:{user:{id:USER},access_token:'verified'}}})}}},
- '@/lib/bible-prompt-copy':{
- BIBLE_EXPRESSION_COPY_COST,
- bibleMoveKeyFromHash,
- createBibleCopyOperation:(key,locale)=>{const op={key,locale,requestId:uuid(100+operations.length)};operations.push(op);return op;},
- completeBibleCopyOperation:()=>{},
- resolveBiblePaidCopy:(op,token)=>resolveBiblePaidCopy(op,token,async()=>{requests++;return new Response(JSON.stringify({text:'paid server snapshot'}));}),
- },
- },{window:{location:{hash:''},addEventListener(){},removeEventListener(){},setTimeout:fn=>timers.push(fn),dispatchEvent(){}},document:{getElementById:()=>null},navigator:{clipboard:{writeText:async value=>{if(blocked)throw Error('blocked');copied.push(value);}}}});
+ 'lucide-react':new Proxy({}, {get:(_,key)=>String(key)}),'next/link':{__esModule:true,default:'a'},
+ '@/components/studio-audio-preview-button':{default:()=>null},'@/components/showtime-queue-player':{default:()=>null},
+ '@/components/bible-prompt-copy':{__esModule:true,default:'PaidPrompt'},'@/lib/fonts':{fontRighteous:{className:''}},
+ '@/lib/suno-practice-taxonomy':taxonomy,'@/lib/suno-studio-mastering-audio-previews':audio,
+ '@/lib/bible-prompt-copy':{BIBLE_PROMPT_COPY_COST:8,bibleMoveKeyFromHash,biblePromptCopyKey},
+ },{window:{location:{hash:''},addEventListener(){},removeEventListener(){},setTimeout(){},dispatchEvent(){}},document:{getElementById:()=>null}});
  const click=async label=>{const button=ui.nodes().find(x=>x.type==='button'&&nodeText(x)===label);assert.ok(button,label);button.props.onClick();await ui.flush();};
  await click('表情與氛圍');assert.match(ui.text(),/找到 49 招/);assert.match(ui.text(),/每次複製 8 點/);
  await click('人聲與樂句');assert.match(ui.text(),/找到 7 招/);
@@ -109,15 +98,7 @@ test('prompt UI searches descriptions, reveals only paid copies, retries clipboa
  await click('全部表情詞');
  const search=ui.nodes().find(x=>x.type==='input'&&x.props['aria-label']==='搜尋 Prompt 招式');search.props.onChange({target:{value:'sonoro'}});await ui.flush();assert.match(ui.text(),/找到 0 招/);
  search.props.onChange({target:{value:'飽滿共鳴'}});await ui.flush();assert.match(ui.text(),/找到 1 招/);
- const cardKey=bibleExpressionCardKey('expression-sonore');
- let card=ui.nodes().find(x=>x.props?.item?.key===cardKey);assert.ok(card);assert.equal(card.props.revealedText,undefined);card.props.onCopy();card.props.onCopy();await ui.flush();
- card=ui.nodes().find(x=>x.props?.item?.key===cardKey);assert.equal(card.props.copyIssue,'clipboard');assert.equal(card.props.revealedText,'paid server snapshot');assert.equal(requests,1);assert.equal(operations.length,1);
- blocked=false;card.props.onCopy();await ui.flush();assert.equal(requests,1);assert.deepEqual(copied,['paid server snapshot']);
- card=ui.nodes().find(x=>x.props?.item?.key===cardKey);card.props.onCopy();await ui.flush();assert.equal(requests,2);assert.equal(operations.length,2);
- await click('全部');search.props.onChange({target:{value:'prompt-focus'}});await ui.flush();
- // Reset search through the visible control and use the original free move.
- const fresh=ui.nodes().find(x=>x.type==='input'&&x.props['aria-label']==='搜尋 Prompt 招式');fresh.props.onChange({target:{value:''}});await ui.flush();
- const old=ui.nodes().find(x=>x.props?.item&&!x.props.item.expressionFamily);assert.ok(old);old.props.onCopy();await ui.flush();assert.equal(requests,2);assert.equal(copied.length,3);
+ const card=ui.nodes().find(x=>x.props?.item?.key===bibleExpressionCardKey('expression-sonore'));assert.ok(card);assert.deepEqual(card.props.item.copy,{zh:'',en:''});
 });
 
 import React from 'react';

@@ -33,8 +33,8 @@ import type {
   SunoExpressionFamily,
 } from "@/lib/suno-practice-library";
 import { SUNO_STUDIO_MASTERING_FAMILY_OPTIONS, SUNO_EXPRESSION_FAMILY_OPTIONS } from "@/lib/suno-practice-taxonomy";
-import { supabase } from "@/lib/supabase";
-import { BIBLE_EXPRESSION_COPY_COST, bibleMoveKeyFromHash, createBibleCopyOperation, completeBibleCopyOperation, resolveBiblePaidCopy, type BiblePaidCopy } from "@/lib/bible-prompt-copy";
+import { BIBLE_PROMPT_COPY_COST, bibleMoveKeyFromHash, biblePromptCopyKey } from "@/lib/bible-prompt-copy";
+import BiblePromptCopy from "@/components/bible-prompt-copy";
 import type { SunoArtistDnaEntry, SunoPromptRecipe } from "@/lib/suno-inspiration-index";
 import {
   getSunoStudioMasteringAudioPreview,
@@ -117,22 +117,14 @@ export function TechniqueCard({
   item,
   locale,
   navigationLang = locale,
-  copied,
-  onCopy,
-  copyBusy = false,
-  copyIssue,
-  revealedText,
+  copyKind = "prompt_move",
   hasAudioPreview = false,
   onPlayAudioPreview,
 }: {
   item: AnyTechnique;
   locale: SunoLibraryLocale;
   navigationLang?: Lang;
-  copied: boolean;
-  onCopy: () => void;
-  copyBusy?: boolean;
-  copyIssue?: string;
-  revealedText?: string;
+  copyKind?: "prompt_move" | "lyric_move";
   hasAudioPreview?: boolean;
   onPlayAudioPreview?: () => void;
 }) {
@@ -196,21 +188,7 @@ export function TechniqueCard({
             </span>
           </div>
         ) : null}
-        <div className="mt-4 overflow-hidden rounded-xl border border-white/9 bg-[#050707]">
-          {(!item.expressionFamily || revealedText !== undefined) && <pre className="overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-xs font-bold leading-6 text-cyan-50/88">{item.expressionFamily ? revealedText : sunoLibraryText(item.copy, locale)}</pre>}
-          <button
-            type="button"
-            onClick={onCopy}
-            disabled={copyBusy}
-            className={`flex min-h-11 disabled:opacity-50 w-full items-center justify-center gap-2 bg-white/[0.025] px-4 text-xs font-black text-zinc-400 transition hover:bg-white/[0.055] hover:text-white ${!item.expressionFamily || revealedText !== undefined ? "border-t border-white/8" : ""}`}
-          >
-            {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4" />}
-            {copyBusy ? (isZh ? "處理中…" : "Processing…") : copied ? (isZh ? "已複製" : "Copied") : item.expressionFamily ? (copyIssue === "clipboard" ? (isZh ? "重試複製・不再扣點" : "Retry copy · already paid") : (isZh ? `複製並顯示・${BIBLE_EXPRESSION_COPY_COST} 點` : `Copy & reveal · ${BIBLE_EXPRESSION_COPY_COST} Credit`)) : (isZh ? "複製這一招" : "Copy move")}
-          </button>
-        </div>
-        {copyIssue && <p role="status" className="mt-3 text-xs font-bold leading-6 text-orange-200">
-          {copyIssue === "INSUFFICIENT_CREDIT" ? <>{isZh ? "目前點數不足，" : "Not enough Credit. "}<Link className="underline underline-offset-4" href={`/profile?lang=${navigationLang}#my-credit`}>{isZh ? "查看我的點數" : "View my Credit"}</Link></> : copyIssue === "AUTH_REQUIRED" ? <Link href={`/auth?lang=${navigationLang}&next=${encodeURIComponent(`/ai-music-bible?lang=${navigationLang}#bible-move-${item.key}`)}`}>{isZh ? "請重新登入後複製" : "Sign in again to copy"}</Link> : copyIssue === "COPY_PRICE_CHANGED" ? (isZh ? "複製費用已更新，請重新整理頁面後再試。" : "The copy price has changed. Refresh this page before trying again.") : copyIssue === "clipboard" ? (isZh ? "點數已扣除，但瀏覽器未允許複製。請按重試，同次操作不再扣點。" : "Credit was spent, but clipboard access was blocked. Retry this copy at no extra cost.") : (isZh ? "暫時無法確認結果，請重試；同次請求不會重複扣點。" : "Result unavailable. Retry this request without a duplicate charge.")}
-        </p>}
+        <BiblePromptCopy key={`${copyKind}:${item.key}:${locale}`} copyKey={biblePromptCopyKey(copyKind, item.key)} locale={locale} navigationLang={navigationLang} />
       </div>
       {expanded && (
         <div className="border-t border-white/8 bg-white/[0.018] px-5 py-4 sm:px-6">
@@ -256,11 +234,6 @@ export default function SunoPracticeLibrarySection({
   const [promptCategory, setPromptCategory] = useState<SunoPromptCategory | "all">("all");
   const [promptStudioFamily, setPromptStudioFamily] = useState<SunoStudioMasteringFamily | "all">("all");
   const [promptExpressionFamily, setPromptExpressionFamily] = useState<SunoExpressionFamily | "all">("all");
-  const [paidCopyBusy, setPaidCopyBusy] = useState<string | null>(null);
-  const [copyIssues, setCopyIssues] = useState<Record<string, string>>({});
-  const [revealedCopies, setRevealedCopies] = useState<Record<string, string>>({});
-  const paidOperations = useRef(new Map<string, BiblePaidCopy>());
-  const copying = useRef(false);
   const [lyricCategory, setLyricCategory] = useState<SunoLyricCategory | "all">("all");
   const [promptSearch, setPromptSearch] = useState("");
   const [lyricSearch, setLyricSearch] = useState("");
@@ -326,32 +299,6 @@ export default function SunoPracticeLibrarySection({
     } catch {
       setCopiedKey(null);
     }
-  };
-
-  const copyPaid = async (key: string) => {
-    if (copying.current) return;
-    copying.current = true; setPaidCopyBusy(key);
-    setCopyIssues(current => ({ ...current, [key]: "" }));
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session || data.session.user.is_anonymous) throw new Error("AUTH_REQUIRED");
-      if (!navigator.clipboard?.writeText) throw new Error("COPY_UNAVAILABLE");
-      const operationKey = `${data.session.user.id}:${locale}:${key}`;
-      let operation = paidOperations.current.get(operationKey);
-      if (!operation) { operation = createBibleCopyOperation(key, locale, data.session.user.id); paidOperations.current.set(operationKey, operation); }
-      let value: string;
-      try { value = await resolveBiblePaidCopy(operation, data.session.access_token); }
-      finally { window.dispatchEvent(new CustomEvent("aipoger:credit")); }
-      setRevealedCopies(current => ({ ...current, [`${locale}:${key}`]: value }));
-      try { await navigator.clipboard.writeText(value); }
-      catch { setCopyIssues(current => ({ ...current, [key]: "clipboard" })); return; }
-      paidOperations.current.delete(operationKey);
-      completeBibleCopyOperation(operation, data.session.user.id);
-      setCopiedKey(key);
-      window.setTimeout(() => setCopiedKey(current => current === key ? null : current), 1500);
-    } catch (error) {
-      setCopyIssues(current => ({ ...current, [key]: error instanceof Error ? error.message : "COPY_UNAVAILABLE" }));
-    } finally { copying.current = false; setPaidCopyBusy(null); }
   };
 
   const visiblePrompt = showAllPrompt ? promptResults : promptResults.slice(0, PROMPT_PREVIEW_COUNT);
@@ -427,7 +374,7 @@ export default function SunoPracticeLibrarySection({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-base font-black text-white">{isZh ? "找你需要的 Prompt 招式" : "Find the prompt move you need"}</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{isZh ? "輸入關鍵字，或直接點下面的分類。" : "Type a keyword or choose a category below."}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-zinc-400">{isZh ? "輸入關鍵字，或選擇分類；正式 Prompt 複製並顯示每次 8 點，教學快捷範例免費。" : "Search or choose a category. Formal prompts cost 8 Credit to copy and reveal; quick teaching examples are free."}</p>
             </div>
             <span aria-live="polite" className="rounded-full border border-cyan-200/25 bg-cyan-300/[0.08] px-3 py-1.5 text-xs font-black text-cyan-50">
               {isZh ? `找到 ${promptResults.length} 招` : `${promptResults.length} moves found`}
@@ -461,7 +408,7 @@ export default function SunoPracticeLibrarySection({
           {promptCategory === "expression" && <fieldset className="mt-4 border-t border-violet-200/15 pt-4">
             <legend className="text-xs font-black tracking-[0.12em] text-violet-100">{isZh ? "表情與氛圍・46 個詞＋3 張對照卡" : "EXPRESSION & MOOD · 46 TERMS + 3 COMPARISON CARDS"}</legend>
             <div className="mt-2.5 flex flex-wrap gap-2">{SUNO_EXPRESSION_FAMILY_OPTIONS.map(family => <button type="button" key={family.key} aria-pressed={promptExpressionFamily === family.key} onClick={() => { setPromptExpressionFamily(family.key); setShowAllPrompt(false); }} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-black ${promptExpressionFamily === family.key ? "border-violet-200 bg-violet-300/15 text-white" : "border-white/20 text-zinc-300 hover:border-violet-200/50"}`}>{sunoLibraryText(family.label, locale)}</button>)}</div>
-            <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{isZh ? `先選想要的唱法或氛圍；完整 Prompt 在複製後顯示，每次複製 ${BIBLE_EXPRESSION_COPY_COST} 點。` : `Choose the delivery or atmosphere you want. Copy to reveal the complete prompt; each copy costs ${BIBLE_EXPRESSION_COPY_COST} Credit.`}</p>
+            <p className="mt-3 text-xs font-bold leading-6 text-zinc-400">{isZh ? `先選想要的唱法或氛圍；完整 Prompt 在複製後顯示，每次複製 ${BIBLE_PROMPT_COPY_COST} 點。` : `Choose the delivery or atmosphere you want. Copy to reveal the complete prompt; each copy costs ${BIBLE_PROMPT_COPY_COST} Credit.`}</p>
             <details className="mt-2 text-sm leading-7 text-zinc-300"><summary className="min-h-11 cursor-pointer py-2 font-black text-violet-100">{isZh ? "怎麼比較唱法與氛圍？" : "Compare delivery and atmosphere"}</summary><p>{isZh ? "A 不加表情詞；B 只加原詞；C 再補英文描述。三組維持同一段歌詞、模型、速度、調性與人聲設定，各留幾個版本，輪流聽起音、樂句、情緒和重音。比較 C 時，也把英文描述帶來的變化一起記下來。" : "A has no expression term; B adds only the term; C adds English direction. Keep lyrics, model, tempo, key and vocal settings the same. Save several versions and compare attacks, phrasing, mood and accents. Note the English direction's contribution in C."}</p><button type="button" onClick={() => { setPromptExpressionFamily("comparison"); setPromptSearch(""); setShowAllPrompt(false); }} className="my-3 min-h-11 rounded-full border border-violet-200/35 px-4 font-black">{isZh ? "查看 A／B／C 對照卡" : "Open A/B/C cards"}</button></details>
           </fieldset>}
           {promptCategory === "mastering" && (
@@ -489,11 +436,6 @@ export default function SunoPracticeLibrarySection({
               item={item}
               locale={locale}
               navigationLang={navigationLang}
-              copied={copiedKey === item.key}
-              onCopy={() => item.expressionFamily ? void copyPaid(item.key) : void copyValue(item.key, sunoLibraryText(item.copy, locale))}
-              copyBusy={Boolean(item.expressionFamily && paidCopyBusy)}
-              copyIssue={copyIssues[item.key]}
-              revealedText={revealedCopies[`${locale}:${item.key}`]}
               hasAudioPreview={Boolean(getSunoStudioMasteringAudioPreview(item.key))}
               onPlayAudioPreview={() => playMasteringPreview(item.key)}
             />
@@ -573,6 +515,7 @@ export default function SunoPracticeLibrarySection({
         <div id="suno-inspiration-index" className="scroll-mt-24">
           <SunoInspirationIndexSection
             isZh={isZh}
+            navigationLang={navigationLang}
             artistDnaEntries={artistDnaEntries}
             promptRecipes={promptRecipes}
             recipeGenres={recipeGenres}
@@ -702,7 +645,7 @@ export default function SunoPracticeLibrarySection({
 
           <div id="lyric-move-results" className="mt-5 grid gap-3 lg:grid-cols-2">
             {visibleLyrics.map((item) => (
-              <TechniqueCard key={item.key} item={item} locale={locale} copied={copiedKey === item.key} onCopy={() => copyValue(item.key, sunoLibraryText(item.copy, locale))} />
+              <TechniqueCard key={item.key} item={item} locale={locale} navigationLang={navigationLang} copyKind="lyric_move" />
             ))}
           </div>
           {lyricResults.length === 0 && <p className="mt-6 rounded-xl border border-white/10 p-5 text-sm font-bold text-zinc-500">{isZh ? "找不到這個歌詞招式，換個關鍵字試試。" : "No matching lyric move. Try another search."}</p>}

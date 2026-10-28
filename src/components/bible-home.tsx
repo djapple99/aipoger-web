@@ -1,12 +1,14 @@
 "use client";
 
-import { ArrowRight, Check, ChevronRight, Copy, Disc3, ExternalLink, MessageSquare, Mic2, Music2, Piano, SlidersHorizontal, Video } from "lucide-react";
+import { ArrowRight, ChevronRight, Disc3, ExternalLink, MessageSquare, Mic2, Music2, Piano, SlidersHorizontal, Video } from "lucide-react";
 import { useState } from "react";
 import type { BibleCatalog } from "@/lib/ai-music-bible-content";
 import type { SunoPromptCategory } from "@/lib/suno-practice-library";
 import { AIPOGER_TUTORIAL_PLAYLIST_URL } from "@/lib/brand";
 import { navigateBible } from "@/lib/bible-navigation";
 import styles from "./bible-home.module.css";
+import BiblePromptCopy from "@/components/bible-prompt-copy";
+import { biblePromptCopyKey } from "@/lib/bible-prompt-copy";
 
 const areas = [
   { tone: "orange", icon: Piano, target: "suno-control-desk", title: ["先做出第一首", "Make your first track"], body: ["Suno 起手式・欄位速查", "Suno basics · Field reference"] },
@@ -28,20 +30,11 @@ export default function BibleHome({ locale, catalog, loading, error, onRetry, on
   const zh = locale === "zh";
   const n = zh ? 0 : 1;
   const [category, setCategory] = useState<SunoPromptCategory>("foundation");
-  const [copied, setCopied] = useState("");
-  const [copyError, setCopyError] = useState(false);
   const moves = category === "foundation"
     ? featuredKeys.flatMap(key => catalog.promptMoves.filter(item => item.key === key))
     : catalog.promptMoves.filter(item => item.category === category).slice(0, 3);
   const first = catalog.promptMoves.find(item => item.key === "two-field-routing");
   const dna = catalog.promptMoves.find(item => item.key === "prompt-dna");
-  const copy = async (key: string, value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyError(false); setCopied(key);
-      window.setTimeout(() => setCopied(current => current === key ? "" : current), 1800);
-    } catch { setCopyError(true); }
-  };
   return <section id="bible-home" className={styles.home}>
     <nav className={styles.areas} aria-label={zh ? "創作學習路線" : "Creative learning path"}>
       {areas.map(({ tone, icon: Icon, target, title, body }, index) => <button type="button" key={tone} className={`${styles.area} ${styles[tone]}`} onClick={() => navigateBible(target)}>
@@ -60,11 +53,11 @@ export default function BibleHome({ locale, catalog, loading, error, onRetry, on
     <div className={styles.lower}>
       <section className={styles.moves} aria-labelledby="bible-moves-heading">
         <div className={styles.sectionHeading}><h2 id="bible-moves-heading">{zh ? "常用招式，直接拿來試" : "Practical moves to try"}</h2><button type="button" onClick={() => navigateBible("suno-prompt-library")}>{zh ? `全部 ${catalog.promptMoves.length || ""} 招` : `All ${catalog.promptMoves.length || ""} moves`}<ArrowRight size={18} /></button></div>
-        <div className={styles.tabs} role="group" aria-label={zh ? "常用招式分類" : "Featured move categories"}>{categories.map(item => <button type="button" key={item.key} aria-pressed={category === item.key} onClick={() => { setCategory(item.key); setCopyError(false); }}>{item[locale]}</button>)}</div>
+        <div className={styles.tabs} role="group" aria-label={zh ? "常用招式分類" : "Featured move categories"}>{categories.map(item => <button type="button" key={item.key} aria-pressed={category === item.key} onClick={() => setCategory(item.key)}>{item[locale]}</button>)}</div>
         <div className={styles.moveList} aria-live="polite">
-          {loading ? <p className={styles.status}>{zh ? "正在整理招式…" : "Loading moves…"}</p> : error ? <p className={styles.status}>{zh ? "招式暫時載入失敗。" : "Unable to load moves."}<button onClick={onRetry} type="button">{zh ? "重新載入" : "Try again"}</button></p> : moves.length ? moves.map((item, index) => <div className={styles.move} key={item.key}><span className={styles.moveNumber}>0{index + 1}</span><button className={styles.moveTitle} type="button" onClick={() => navigateBible(`bible-move-${item.key}`)}>{item.title[locale]}</button><p>{item.summary[locale]}</p><button className={styles.copy} type="button" aria-label={`${zh ? "複製" : "Copy"} ${item.title[locale]}`} onClick={() => void copy(item.key, item.copy[locale])}>{copied === item.key ? <Check size={18} /> : <Copy size={18} />}<span>{copied === item.key ? (zh ? "已複製" : "Copied") : (zh ? "複製" : "Copy")}</span></button></div>) : <p className={styles.status}>{zh ? "這個分類暫無招式，請查看完整資料庫。" : "No moves here yet. Browse the full library."}</p>}
+          {loading ? <p className={styles.status}>{zh ? "正在整理招式…" : "Loading moves…"}</p> : error ? <p className={styles.status}>{zh ? "招式暫時載入失敗。" : "Unable to load moves."}<button onClick={onRetry} type="button">{zh ? "重新載入" : "Try again"}</button></p> : moves.length ? moves.map((item, index) => <div className={styles.move} key={item.key}><span className={styles.moveNumber}>0{index + 1}</span><button className={styles.moveTitle} type="button" onClick={() => navigateBible(`bible-move-${item.key}`)}>{item.title[locale]}</button><p>{item.summary[locale]}</p><BiblePromptCopy key={`${item.key}:${locale}`} copyKey={biblePromptCopyKey("prompt_move", item.key)} locale={locale} label={item.title[locale]} compact /></div>) : <p className={styles.status}>{zh ? "這個分類暫無招式，請查看完整資料庫。" : "No moves here yet. Browse the full library."}</p>}
         </div>
-        {copyError && <p className={styles.status} role="alert">{zh ? "無法使用剪貼簿，請點招式名稱開啟並選取文字。" : "Clipboard unavailable. Open the move to select its text."}</p>}
+
       </section>
       <aside className={styles.help}><h2>{zh ? "卡在哪裡？" : "Where are you stuck?"}</h2><div className={styles.helpLinks}>{[
         ["歌詞唱不清楚", "Unclear lyrics", "suno-troubleshooting"], ["副歌沒有記憶點", "A forgettable chorus", "suno-troubleshooting"], ["台語咬字不自然", "Taiwanese pronunciation", "taiwanese-lab"], ["不知道怎麼拆軌", "Choosing a stem workflow", "stem-separation-guide"],

@@ -8,7 +8,7 @@ type CreditEntry = { id: string; delta: number; reason: string; created_at: stri
 const EMPTY_ENTRIES: CreditEntry[] = [];
 const HISTORY_PAGE_SIZE = 5;
 
-export default function CreditWallet({ lang, balance, debt = 0, entries = EMPTY_ENTRIES }: { lang: Lang; balance: number | null; debt?: number; entries?: CreditEntry[] }) {
+export default function CreditWallet({ lang, balance, debt = 0, entries = EMPTY_ENTRIES, isOwner = false }: { lang: Lang; balance: number | null; debt?: number; entries?: CreditEntry[]; isOwner?: boolean }) {
   const [panel, setPanel] = useState<"earn" | "history" | null>(null);
   const [historyPage, setHistoryPage] = useState(0);
   const sortedEntries = [...entries].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
@@ -29,10 +29,11 @@ export default function CreditWallet({ lang, balance, debt = 0, entries = EMPTY_
       <p className="text-xs font-bold tracking-wide text-zinc-400">{t("目前可用", "Available now", "利用可能", "사용 가능")}</p>
       <p className="mt-1 flex items-baseline gap-2"><strong className="text-5xl font-black tracking-tight text-orange-300">{balance ?? "—"}</strong><span className="text-xs text-zinc-500">Credit</span></p>
       {debt > 0 && <p role="status" className="mt-2 text-xs text-orange-200">{creditCopy(lang).debt}：{debt} Credit</p>}
+      {isOwner && <p className="mt-2 text-xs text-orange-200">{t("Owner：餘額與使用紀錄保留，操作免扣點，不受點數不足限制。", "Owner: balance and usage stay visible. Actions are exempt from Credit charges and balance limits.", "Owner：残高・利用履歴を表示し、Credit消費・残高制限は適用しません。", "Owner: 잔액과 이용 내역은 표시하며 포인트 차감과 잔액 제한은 적용하지 않습니다.")}</p>}
     </div>
     <section className="border-t border-white/10 py-4">
       <h3 className="text-xs font-bold text-zinc-500">{t("使用規則", "How to use", "使い方", "사용 규칙")}</h3>
-      <p className="mt-2 text-sm leading-6 text-zinc-300">{t("表情與氛圍提示詞／對照卡：每次複製 8 點。", "Expression & mood prompts / comparison cards: 8 Credit per copy.", "表情・雰囲気のPrompt／比較カード：コピー1回8点。", "표정·분위기 프롬프트／비교 카드: 복사당 8점.")}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-300">{t("正式 Prompt：每次複製並顯示 8 點；教學快捷範例免費。", "Formal prompts: 8 Credit to copy and reveal. Quick teaching examples are free.", "正式Prompt：コピー・全文表示は1回8点。簡単な教材サンプルは無料。", "정식 프롬프트: 복사 및 전문 표시당 8점. 빠른 학습 예제는 무료입니다.")}</p>
       <p className="mt-1 text-sm leading-6 text-zinc-300">{t("投稿：每 168 小時（一週）前三件免費，之後每件成功投稿 60 點。", "Submissions: first 3 free per 168 hours (one week), then 60 Credit per successful work.", "投稿：168時間（1週間）ごとに最初の3件無料。その後は投稿成功ごとに60点。", "제출: 168시간(1주일)마다 첫 3건 무료, 이후 제출 성공당 60점.")}</p>
       <p className="mt-1 text-xs leading-5 text-zinc-500">{t("從第一件成功投稿起算；連結與 MP3 共用，刪除不退額度。", "Starts with your first successful submission. Links and MP3s share the allowance; deletion does not refund it.", "最初の投稿成功から起算。リンク・MP3で共有し、削除しても枠は戻りません。", "첫 제출 성공부터 계산합니다. 링크와 MP3가 한도를 공유하며 삭제해도 복구되지 않습니다.")}</p>
     </section>

@@ -902,7 +902,7 @@ export function CreatorCenterLayout({
             />
           ) : dialog === "credit" ? (
             <div>
-              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} entries={data.credits.entries} /> : <p>{!error ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : <button type="button" onClick={onRefresh}>{tx("無法讀取點數，按此重試", "Credit unavailable. Retry", "Creditを再読み込み", "Credit 다시 불러오기")}</button>}</p>}
+              {data?.credits.enabled ? <CreditWallet lang={lang} balance={data.credits.balance} debt={data.credits.debt} entries={data.credits.entries} isOwner={data.isOwner} /> : <p>{!error ? tx("讀取點數中…", "Loading Credit…", "Creditを読み込み中…", "Credit 불러오는 중…") : <button type="button" onClick={onRefresh}>{tx("無法讀取點數，按此重試", "Credit unavailable. Retry", "Creditを再読み込み", "Credit 다시 불러오기")}</button>}</p>}
 
             </div>
           ) : (

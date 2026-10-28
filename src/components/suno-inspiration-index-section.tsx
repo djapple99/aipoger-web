@@ -2,10 +2,8 @@
 
 
 import {
-  Check,
   ChevronDown,
   ChevronUp,
-  Copy,
   LibraryBig,
   MessageCircle,
   Search,
@@ -16,6 +14,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import BibleEntryCommentsDialog from "@/components/bible-entry-comments-dialog";
+import BiblePromptCopy from "@/components/bible-prompt-copy";
+import { biblePromptCopyKey } from "@/lib/bible-prompt-copy";
+import type { Lang } from "@/lib/locale";
 import type {
   SunoArtistDnaEntry,
   SunoInspirationKind,
@@ -24,6 +25,7 @@ import type {
 
 type SunoInspirationIndexSectionProps = {
   isZh: boolean;
+  navigationLang?: Lang;
   artistDnaEntries: readonly SunoArtistDnaEntry[];
   promptRecipes: readonly SunoPromptRecipe[];
   recipeGenres: readonly { key: string; zh: string; en: string }[];
@@ -62,13 +64,12 @@ function highlightClass(active: boolean, tone: "orange" | "cyan") {
     : "border-cyan-200/65 bg-cyan-200/12 text-cyan-50 shadow-[0_0_24px_rgba(103,232,249,0.1)]";
 }
 
-export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, promptRecipes, recipeGenres }: SunoInspirationIndexSectionProps) {
+export default function SunoInspirationIndexSection({ isZh, navigationLang, artistDnaEntries, promptRecipes, recipeGenres }: SunoInspirationIndexSectionProps) {
   const [activeKind, setActiveKind] = useState<SunoInspirationKind>("artist_dna");
   const [query, setQuery] = useState("");
   const [artistGenre, setArtistGenre] = useState("all");
   const [recipeGenre, setRecipeGenre] = useState("all");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [copiedKey, setCopiedKey] = useState("");
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
   const [indexOpen, setIndexOpen] = useState(false);
 
@@ -124,16 +125,6 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
   const activeFilterCount = activeKind === "artist_dna"
     ? Number(artistGenre !== "all") + Number(Boolean(query.trim()))
     : Number(recipeGenre !== "all") + Number(Boolean(query.trim()));
-
-  async function copyPrompt(key: string, prompt: string) {
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setCopiedKey(key);
-      window.setTimeout(() => setCopiedKey((current) => (current === key ? "" : current)), 1800);
-    } catch {
-      setCopiedKey("");
-    }
-  }
 
   function switchKind(kind: SunoInspirationKind) {
     setActiveKind(kind);
@@ -347,17 +338,8 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                       ))}
                     </div>
 
-                    <p className="mt-4 line-clamp-3 break-words text-xs font-bold leading-6 text-zinc-500">{entry.prompt}</p>
-                    <div className="mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-5">
-                      <button
-                        type="button"
-                        onClick={() => void copyPrompt(entry.key, entry.prompt)}
-                        className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-full bg-cyan-200 px-4 text-xs font-black text-black transition hover:bg-cyan-100"
-                        aria-label={isZh ? "複製不含藝術家名稱的聲音 DNA" : "Copy sonic DNA without artist name"}
-                      >
-                        {copiedKey === entry.key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        <span className="truncate">{copiedKey === entry.key ? (isZh ? "已複製" : "Copied") : (isZh ? "複製聲音 DNA" : "Copy Sonic DNA")}</span>
-                      </button>
+                    <div className="mt-auto flex flex-col gap-2 pt-4">
+                      <BiblePromptCopy key={`${entry.key}:${isZh}`} copyKey={biblePromptCopyKey("artist_dna", entry.key)} locale={isZh ? "zh" : "en"} navigationLang={navigationLang} label={isZh ? "複製聲音 DNA" : "Copy Sonic DNA"} />
                       <button
                         type="button"
                         onClick={() => setCommentTarget({ kind: "artist_dna", key: entry.key, title: entry.artist })}
@@ -399,16 +381,8 @@ export default function SunoInspirationIndexSection({ isZh, artistDnaEntries, pr
                       ))}
                     </dl>
 
-                    <p className="mt-4 line-clamp-3 break-words text-xs font-bold leading-6 text-zinc-500">{entry.prompt}</p>
-                    <div className="mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-5">
-                      <button
-                        type="button"
-                        onClick={() => void copyPrompt(entry.key, entry.prompt)}
-                        className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-xs font-black text-black transition hover:bg-orange-400"
-                      >
-                        {copiedKey === entry.key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        <span className="truncate">{copiedKey === entry.key ? (isZh ? "已複製" : "Copied") : (isZh ? "複製英文 Prompt" : "Copy Prompt")}</span>
-                      </button>
+                    <div className="mt-auto flex flex-col gap-2 pt-4">
+                      <BiblePromptCopy key={`${entry.key}:${isZh}`} copyKey={biblePromptCopyKey("prompt_recipe", entry.key)} locale={isZh ? "zh" : "en"} navigationLang={navigationLang} label={isZh ? "複製英文 Prompt" : "Copy Prompt"} />
                       <button
                         type="button"
                         onClick={() => setCommentTarget({

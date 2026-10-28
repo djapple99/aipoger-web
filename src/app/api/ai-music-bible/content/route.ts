@@ -1,4 +1,3 @@
-import { withBibleMetadata } from "@/lib/bible-metadata";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -18,7 +17,7 @@ import {
   SUNO_RECIPE_GENRES,
 } from "@/lib/suno-inspiration-index";
 import { STEM_ENGINES, STEM_GOALS } from "@/lib/stem-separation-guide";
-import { previewBibleCatalog } from "@/lib/bible-expression-preview";
+import { previewBibleCatalog, previewArtistDna, previewPromptRecipes } from "@/lib/bible-expression-preview";
 
 export const runtime = "nodejs";
 
@@ -67,8 +66,8 @@ export async function GET(request: NextRequest) {
       lyricCategories: SUNO_LYRIC_CATEGORIES,
       stemEngines: STEM_ENGINES,
       stemGoals: STEM_GOALS,
-      artistDnaEntries: SUNO_ARTIST_DNA_ENTRIES.map(withBibleMetadata),
-      promptRecipes: SUNO_PROMPT_RECIPES.map(withBibleMetadata),
+      artistDnaEntries: previewArtistDna(SUNO_ARTIST_DNA_ENTRIES),
+      promptRecipes: previewPromptRecipes(SUNO_PROMPT_RECIPES),
       recipeGenres: SUNO_RECIPE_GENRES,
       defaultsAvailable: Boolean(bibleCatalogDefaults()),
     }, { headers: { "Cache-Control": "private, no-store" } });

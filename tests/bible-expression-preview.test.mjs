@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {loadTs, mockAdmin, mocksFor, request, USER, uuid} from './helpers/choice-runtime.mjs';
-import {mountMv} from './helpers/mv-runtime.mjs';
 import {SUNO_EXPRESSION_MOVES, SUNO_EXPRESSION_TERMS} from '../src/lib/suno-expression-prompts.ts';
 import * as copy from '../src/lib/bible-prompt-copy.ts';
 import * as taxonomy from '../src/lib/suno-practice-taxonomy.ts';
@@ -27,7 +26,7 @@ const uiMocks={
 };
 const props={locale:'zh',promptMoves:paid,lyricMoves:[],genreGroups:[],productionFlow:[],promptCategories:[{key:'all',label:{zh:'全部',en:'All'}}],lyricCategories:[],artistDnaEntries:[],promptRecipes:[],recipeGenres:[]};
 
-test('all 49 member previews omit paid text, term aliases and original IDs, while free catalog is unchanged',()=>{
+test('all 49 member previews omit paid text, term aliases and original IDs, while all formal text stays gated',()=>{
  assert.equal(paid.length,49);
  assert.equal(new Set(paid.map(item=>item.key)).size,49);
  const encoded=JSON.stringify(paid);
@@ -39,8 +38,8 @@ test('all 49 member previews omit paid text, term aliases and original IDs, whil
    assert.ok(!new RegExp(`\\b${term}\\b`,'i').test(encoded),term);
  }
  for(const item of paid){assert.match(item.key,/^expression-card-[0-9a-f]{8}$/);assert.deepEqual(item.copy,{zh:'',en:''});assert.ok(item.title.zh&&item.summary.en&&item.use.zh);}
- assert.deepEqual(preview.promptMoves.filter(item=>!item.expressionFamily),bibleCatalogDefaults().promptMoves.filter(item=>!item.expressionFamily));
- assert.deepEqual(preview.lyricMoves,bibleCatalogDefaults().lyricMoves);
+ assert.ok(preview.promptMoves.every(item=>!item.copy.zh&&!item.copy.en));
+ assert.ok(preview.lyricMoves.every(item=>!item.copy.zh&&!item.copy.en));
  assert.deepEqual(preview.taiwaneseEntries,bibleCatalogDefaults().taiwaneseEntries);
 });
 
@@ -102,19 +101,9 @@ test('real card rendering shows descriptions and price, without a prompt block, 
  }
 });
 
-test('UI reveals nothing on insufficient funds, auth or uncertain result; reveals returned text before clipboard retry',async t=>{
- let state='INSUFFICIENT_CREDIT',requests=0,clipboardBlocked=true;const writes=[];
- const ui=await mountMv(t,'src/components/suno-practice-library-section.tsx',props,{
-  ...uiMocks,
-  '@/lib/supabase':{supabase:{auth:{getSession:async()=>({data:{session:state==='AUTH_REQUIRED'?null:{user:{id:USER},access_token:'fixture'}}})}}},
-  '@/lib/bible-prompt-copy':{...copy,createBibleCopyOperation:(key,locale)=>({key,locale,requestId:uuid(555)}),completeBibleCopyOperation:()=>{},resolveBiblePaidCopy:(op,token)=>copy.resolveBiblePaidCopy(op,token,async()=>{requests++;if(state==='network')throw Error('response lost');if(state!=='success')return new Response(JSON.stringify({error:state}),{status:402});return new Response(JSON.stringify({text:'PRIVATE PAID SNAPSHOT'}));})},
- },{window:{location:{hash:'#bible-move-expression-sotto-voce'},addEventListener(){},removeEventListener(){},setTimeout(){},dispatchEvent(){}},document:{getElementById:()=>null},navigator:{clipboard:{writeText:async value=>{if(clipboardBlocked)throw Error('blocked');writes.push(value);}}}});
- const card=()=>ui.nodes().find(node=>node.props?.item?.key===key);
- for(state of ['INSUFFICIENT_CREDIT','AUTH_REQUIRED','network']){card().props.onCopy();await ui.flush();assert.equal(card().props.revealedText,undefined);assert.equal(writes.length,0);}
- state='success';card().props.onCopy();await ui.flush();assert.equal(card().props.revealedText,'PRIVATE PAID SNAPSHOT');assert.equal(card().props.copyIssue,'clipboard');
- const before=requests;clipboardBlocked=false;card().props.onCopy();await ui.flush();assert.equal(requests,before);assert.deepEqual(writes,['PRIVATE PAID SNAPSHOT']);
+test('paid expression cards have no inline catalog copy path',()=>{
  const {TechniqueCard:Card}=loadTs('src/components/suno-practice-library-section.tsx',{...uiMocks,'next/dynamic':{default:()=>()=>null},'@/lib/supabase':{supabase:{auth:{}}}});
- // Actual child markup exposes only the paid server response, never an unchecked item.copy.
- const html=renderToStaticMarkup(React.createElement(Card,{...card().props,item:{...card().props.item,copy:{zh:'UNTRUSTED CATALOG BODY',en:'UNTRUSTED CATALOG BODY'}}}));
- assert.match(html,/PRIVATE PAID SNAPSHOT/);assert.ok(!html.includes('UNTRUSTED CATALOG BODY'));
+ const item={...paid[0],copy:{zh:'UNTRUSTED CATALOG BODY',en:'UNTRUSTED CATALOG BODY'}};
+ const html=renderToStaticMarkup(React.createElement(Card,{item,locale:'zh'}));
+ assert.ok(!html.includes('UNTRUSTED CATALOG BODY'));assert.ok(!html.includes('<pre'));assert.match(html,/8 點/);
 });

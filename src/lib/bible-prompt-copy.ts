@@ -1,6 +1,12 @@
 // Client-safe pricing and identifiers. Paid bodies are returned only by the copy API.
-export const BIBLE_EXPRESSION_COPY_COST = 8;
-export type BiblePaidCopy = { requestId: string; key: string; locale: string; text?: string };
+export const BIBLE_PROMPT_COPY_COST = 8;
+export const BIBLE_EXPRESSION_COPY_COST = BIBLE_PROMPT_COPY_COST;
+export type BiblePaidCopy = { requestId: string; key: string; locale: string; text?: string; exempt?: boolean };
+
+export function biblePromptCopyKey(kind: "prompt_move" | "lyric_move" | "artist_dna" | "prompt_recipe", key: string) {
+  if (kind === "prompt_move" && key.startsWith("expression-")) return key;
+  return `${kind}:${key}`;
+}
 
 /** Stable opaque card IDs, without shipping the term-to-card lookup to clients. */
 export function bibleExpressionCardKey(key: string) {
@@ -62,5 +68,6 @@ export async function resolveBiblePaidCopy(operation: BiblePaidCopy, token: stri
   if (!response.ok) throw new Error(result.error || "COPY_UNAVAILABLE");
   if (typeof result.text !== "string") throw new Error("COPY_UNAVAILABLE");
   operation.text = result.text;
+  operation.exempt = result.exempt === true;
   return result.text as string;
 }

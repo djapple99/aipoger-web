@@ -31,7 +31,7 @@ test("AI Music Bible publishes 100 distinct audited Studio Mastering audio previ
   assert.equal(previewKeys.includes("studio-mastering-taiwanese-pop"), false);
   assert.equal(previewKeys.includes("studio-mastering-chinese-gufeng"), true);
   assert.ok(previewKeys.some((key) => key.includes("beatport")));
-  assert.ok(productRules.includes("all 100 free prompts"));
+  assert.ok(productRules.includes("all 100 preview clips"));
 });
 
 test("every Bible preview URL has a compact public MP3 asset", () => {
