@@ -22,3 +22,7 @@ Choice catalog仍用音檔限定的airplay條件，未讀external_url；正式�
 正式migration ledger `20261028232710` 已套用成功（對應本機migration20261028230113）。正式交易回滾驗證＋50／＋10／重送0／自評0／自存排除／summary與權限通過；驗證後新增獎勵0、測試帳號0。舊681筆／4669合計及上述hash完全相同。Security advisors未新增WARN；新增4個RLS無policy的INFO均為刻意service-only的私有日誌／流水。
 
 瀏覽器證據位於私人工作區 `operations/qa/2026-10-29-choice-rewards`；本機fixture已移除，不進正式站。
+
+第一版應用90f6937、部署dpl_Fp42k3NpwD8txHB5eGfeueNHWiyD已READY且apex／www同版。正式帳號Choices由98增為118首；個人收藏123首＋2份歌單，剩餘5項為專輯／撤下／失效來源（同名新版不替換原收藏ID）。正式10項HTTP均200、console error0、指定部署runtime error／fatal0。點數視窗實際顯示新＋50／＋10任務，未發布真人測試資料。
+
+同輪驗收補修：個人收藏API原已讀external_url但publicRecord漏序列化，造成公開連結歌播放鍵停用。補回經白名單正規化且仍公開的來源；不新增隱藏／撤下來源播放。定向17項與TypeScript通過，路由lint通過；最終部署證據後補。

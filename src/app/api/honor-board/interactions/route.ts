@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { parseExternalMusic } from "@/lib/external-music";
+import { isPublicDiscoveryTrack } from "@/lib/listen-bar-airplay";
 import { setFavoriteMembership } from "@/lib/favorite-recency";
 
 type HonorTargetKind = "battle" | "bar";
@@ -68,6 +70,12 @@ type HonorInteractionDatabase = {
           mood: string | null;
           audio_path: string | null;
           external_url: string | null;
+          work_kind: string | null;
+          is_active: boolean | null;
+          review_status: string | null;
+          hidden_at: string | null;
+          removed_at: string | null;
+          ai_music_showtime_public_removed_at: string | null;
           created_by: string | null;
           created_at: string | null;
         };
@@ -221,6 +229,7 @@ function publicRecord(record: StoredHonorRecord, userId: string | null) {
     targetArtist: record.targetArtist ?? null,
     targetGenre: record.targetGenre ?? null,
     audioUrl: (record as StoredHonorRecord & { audioUrl?: string | null }).audioUrl ?? null,
+    externalUrl: parseExternalMusic((record as StoredHonorRecord & { externalUrl?: string | null }).externalUrl)?.url ?? null,
     targetOwnerId: (record as StoredHonorRecord & { targetOwnerId?: string | null }).targetOwnerId ?? null,
     updatedAt: record.updatedAt,
     favoriteCount: record.favoriteUserIds.length,
@@ -329,7 +338,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
   if (uuidBarTargets.length > 0) {
     const readBars = await admin
       .from("listen_bar_tracks")
-      .select("id,title,artist,genre,mood,audio_path,external_url,created_by,created_at")
+      .select("id,title,artist,genre,mood,audio_path,external_url,created_by,created_at,work_kind,is_active,review_status,hidden_at,removed_at,ai_music_showtime_public_removed_at")
       .in("id", uuidBarTargets);
     if (!readBars.error) {
       for (const row of readBars.data ?? []) {
@@ -338,7 +347,7 @@ async function fetchTargetMetadata(admin: AdminClient, records: StoredHonorRecor
           artist: cleanText(row.artist, 80),
           genre: cleanText(row.genre, 80) || cleanText(row.mood, 80),
           audioUrl: publicStorageUrl(admin, LISTEN_BAR_AUDIO_BUCKET, row.audio_path),
-          ownerId: row.created_by ?? null, externalUrl: row.external_url ?? null,
+          ownerId: row.created_by ?? null, externalUrl: isPublicDiscoveryTrack(row) ? parseExternalMusic(row.external_url)?.url ?? null : null,
           createdAt: row.created_at ?? null,
         });
       }
