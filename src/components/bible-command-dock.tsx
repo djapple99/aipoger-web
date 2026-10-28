@@ -44,7 +44,7 @@ const BIBLE_DOCK_ITEMS: readonly DockItem[] = [
   { id: "lyric-control-library", eyebrow: "LYRICS", zh: "歌詞控制", en: "Lyric control", keywords: "歌詞 唱法 段落 duet chorus", icon: BookOpenText, accent: "orange" },
   { id: "stem-separation-guide", eyebrow: "STEMS", zh: "AI 拆軌指南", en: "Stem separation", keywords: "人聲 伴奏 stem vocal separation", icon: AudioWaveform, accent: "cyan" },
   { id: "taiwanese-lab", eyebrow: "LAB", zh: "台語調音實驗室", en: "Taiwanese lyrics lab", keywords: "台語 發音 taiwanese pronunciation", icon: FlaskConical, accent: "orange" },
-  { id: "suno-version-watch", eyebrow: "WATCH", zh: "版本與功能追蹤", en: "Version & feature watch", keywords: "v5.5 sliders song editor 版本 官方", icon: Command, accent: "cyan" },
+  { id: "suno-version-watch", eyebrow: "WATCH", zh: "版本與功能追蹤", en: "Version & feature watch", keywords: "V6 sliders song editor 版本 官方", icon: Command, accent: "cyan" },
   { id: "rights-release", eyebrow: "RIGHTS", zh: "權利與發行", en: "Rights & release", keywords: "商用 著作權 copyright commercial release", icon: FileKey2, accent: "amber" },
 ];
 

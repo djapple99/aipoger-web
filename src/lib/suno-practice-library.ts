@@ -191,7 +191,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "編曲很好但咬字一直破壞結果時", en: "When lyric delivery keeps damaging a good arrangement" },
     copy: { zh: "[Intro: atmospheric pads, filtered drums]\n[Build-Up: rising snare, pitch riser]\n[Drop: heavy bass, main synth lead, high energy]", en: "[Intro: atmospheric pads, filtered drums]\n[Build-Up: rising snare, pitch riser]\n[Drop: heavy bass, main synth lead, high energy]" },
     evidence: "official",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno Add Vocals", "Suno Extend"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno Add Vocals", "Suno Extend"],
     keywords: ["instrumental", "extend", "add vocals", "骨架"],
   },
   {
@@ -202,7 +202,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "只有 Drop、尾奏或第二段不滿意時", en: "When only the drop, ending, or second section fails" },
     copy: { zh: "Extend from the end of [Build-Up]. Next section: explosive festival drop, heavy sub-bass, supersaw lead, no lead vocal.", en: "Extend from the end of [Build-Up]. Next section: explosive festival drop, heavy sub-bass, supersaw lead, no lead vocal." },
     evidence: "official",
-    sources: ["Suno Extend", "Suno V5 Dance Music Tips 2025"],
+    sources: ["Suno Extend", "Suno V6 Dance Music Tips 2025"],
     keywords: ["extend", "drop", "續寫", "局部"],
   },
   {
@@ -213,7 +213,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "旋律成立，但單一段落失控時", en: "When the song works except for one section" },
     copy: { zh: "Replace this section: keep the chord movement, reduce instrumentation, clearer lead vocal, shorter transition into chorus.", en: "Replace this section: keep the chord movement, reduce instrumentation, clearer lead vocal, shorter transition into chorus." },
     evidence: "official",
-    sources: ["Suno Song Editor", "Suno V5 Dance Music Tips 2025"],
+    sources: ["Suno Song Editor", "Suno V6 Dance Music Tips 2025"],
     keywords: ["replace", "crop", "song editor", "剪輯"],
   },
   {
@@ -224,7 +224,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "鼓點太碎、舞池推進感不足時", en: "When the beat is too busy or lacks club drive" },
     copy: { zh: "Tech House, 128 BPM, four-on-the-floor, punchy short kick, tight off-beat hi-hats, rolling bassline, dry club mix", en: "Tech House, 128 BPM, four-on-the-floor, punchy short kick, tight off-beat hi-hats, rolling bassline, dry club mix" },
     evidence: "field",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno Music Glossary"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno Music Glossary"],
     keywords: ["house", "techno", "kick", "4/4", "舞曲"],
   },
   {
@@ -235,7 +235,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "Drop 不夠彈、不夠呼吸時", en: "When the drop lacks bounce and breathing space" },
     copy: { zh: "sidechained synth bass, heavy kick pump, clear transients, mono sub, wide stereo synths", en: "sidechained synth bass, heavy kick pump, clear transients, mono sub, wide stereo synths" },
     evidence: "field",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno AI God Mode Manual"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno AI God Mode Manual"],
     keywords: ["sidechain", "pump", "bass", "compression"],
   },
   {
@@ -246,7 +246,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "段落黏在一起、高潮沒有到站感時", en: "When sections blur together and the climax has no arrival" },
     copy: { zh: "[Build-Up: layered white-noise riser | rising snare roll | high-pass filter sweep | tension increasing]\n[Drop: full-range sub-bass | supersaw lead | impact hit | high energy]", en: "[Build-Up: layered white-noise riser | rising snare roll | high-pass filter sweep | tension increasing]\n[Drop: full-range sub-bass | supersaw lead | impact hit | high energy]" },
     evidence: "field",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno AI God Mode Manual"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno AI God Mode Manual"],
     keywords: ["riser", "filter", "build-up", "transition", "drop"],
   },
   {
@@ -257,7 +257,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "想要錄音室感或 Club 感時", en: "When asking for a studio or club character" },
     copy: { zh: "club-ready mix, punchy sub-bass, clear transients, controlled dynamics, wide stereo synth field, centered kick and bass", en: "club-ready mix, punchy sub-bass, clear transients, controlled dynamics, wide stereo synth field, centered kick and bass" },
     evidence: "field",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno AI God Mode Manual"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno AI God Mode Manual"],
     keywords: ["mix", "master", "club", "stereo", "transient"],
   },
   {
@@ -268,7 +268,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "Final Chorus 需要抬升或 Breakdown 需要降溫時", en: "For a lifted final chorus or a cooler breakdown" },
     copy: { zh: "[Final Chorus | key change from C major to D major | uplifting | full band return]", en: "[Final Chorus | key change from C major to D major | uplifting | full band return]" },
     evidence: "version",
-    sources: ["Suno V5 Dance Music Tips 2025", "Suno Music Glossary"],
+    sources: ["Suno V6 Dance Music Tips 2025", "Suno Music Glossary"],
     keywords: ["key change", "modulation", "升調", "降調", "final chorus"],
   },
   {
@@ -279,7 +279,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "大型舞台、派對、Drop Battle", en: "Festival stages, parties, and Drop Battle" },
     copy: { zh: "Festival EDM, Big Room House, uplifting and high-energy, supersaw lead, punchy kick, sidechained sub-bass, 132 BPM, bright modern club mix", en: "Festival EDM, Big Room House, uplifting and high-energy, supersaw lead, punchy kick, sidechained sub-bass, 132 BPM, bright modern club mix" },
     evidence: "field",
-    sources: ["SUNO Prompt", "Suno V5 Dance Music Tips 2025"],
+    sources: ["SUNO Prompt", "Suno V6 Dance Music Tips 2025"],
     keywords: ["edm", "festival", "big room", "drop"],
   },
   {
@@ -290,7 +290,7 @@ const SUNO_CORE_PROMPT_MOVES: SunoTechnique<SunoPromptCategory>[] = [
     use: { zh: "黑暗 Club、地下派對、工業影像", en: "Dark clubs, underground sets, and industrial visuals" },
     copy: { zh: "Raw Techno, Industrial Techno, dark and hypnotic, rumble bass, metallic percussion, short distorted synth riff, 138 BPM, dry warehouse mix", en: "Raw Techno, Industrial Techno, dark and hypnotic, rumble bass, metallic percussion, short distorted synth riff, 138 BPM, dry warehouse mix" },
     evidence: "field",
-    sources: ["SUNO Prompt", "Suno V5 Dance Music Tips 2025"],
+    sources: ["SUNO Prompt", "Suno V6 Dance Music Tips 2025"],
     keywords: ["techno", "industrial", "dark", "rumble"],
   },
   {
@@ -388,7 +388,7 @@ export const SUNO_LYRIC_MOVES: SunoTechnique<SunoLyricCategory>[] = [
     use: { zh: "EDM、House、Trance、Bass Music", en: "EDM, House, Trance, and bass music" },
     copy: { zh: "[Intro]\n[Build-Up]\n[Drop]\n[Verse]\n[Breakdown]\n[Build-Up]\n[Final Drop]\n[Outro]", en: "[Intro]\n[Build-Up]\n[Drop]\n[Verse]\n[Breakdown]\n[Build-Up]\n[Final Drop]\n[Outro]" },
     evidence: "field",
-    sources: ["Suno V5 Dance Music Tips 2025", "愛波哥的 Suno 聖經 2026 V1"],
+    sources: ["Suno V6 Dance Music Tips 2025", "愛波哥的 Suno 聖經 2026 V1"],
     keywords: ["build-up", "drop", "breakdown", "edm", "舞曲"],
   },
   {

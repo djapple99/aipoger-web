@@ -253,7 +253,7 @@ export default function AiMusicBiblePage() {
         toolboxTitle: "卡關再分析", toolboxBody: "挑一個適合的網站，依照使用說明自行分析 BPM、調性、串流音量或曲風情緒。每個入口都標明免費範圍。", analyze: "分析你的音樂",
         modalTitle: "補一筆實測資料", modalBody: "送出後先進待驗證區，不會直接改正式對照表。", close: "關閉",
         meaning: "華語原意 *", meaningPlaceholder: "例如：回家", standard: "推薦漢字／台文", standardPlaceholder: "例如：轉去厝", suno: "Suno 實測寫法 *", sunoPlaceholder: "輸入最容易唱準的寫法",
-        note: "實測說明 *", notePlaceholder: "在哪個句子、哪種旋律有效？有什麼容易唱錯的地方？", version: "Suno 版本", versionPlaceholder: "例如：v4.5／v5", name: "你的名稱（可不填）", namePlaceholder: "顯示名稱", cancel: "取消", submit: "送進待驗證區",
+        note: "實測說明 *", notePlaceholder: "在哪個句子、哪種旋律有效？有什麼容易唱錯的地方？", version: "Suno 版本", versionPlaceholder: "例如：v4.5／V6", name: "你的名稱（可不填）", namePlaceholder: "顯示名稱", cancel: "取消", submit: "送進待驗證區",
         submitting: "正在送進待驗證區…", submitted: "收到！資料已進待驗證區，確認後才會加入正式表。", submitError: "投稿失敗，請稍後再試。", copy: "複製 Suno 寫法", effective: "這個寫法有效", incorrect: "這個寫法會唱錯", reported: "已回報", unavailable: "暫時送不出",
       }
     : {
@@ -269,7 +269,7 @@ export default function AiMusicBiblePage() {
         toolboxTitle: "Analyze when you are stuck", toolboxBody: "Pick a website and follow its steps to check tempo, key, streaming loudness, or genre and mood. Each link explains what is free.", analyze: "Analyze Your Music",
         modalTitle: "Add a pronunciation test", modalBody: "Submissions enter a review queue and never edit the public catalog directly.", close: "Close",
         meaning: "Mandarin meaning *", meaningPlaceholder: "Example: go home", standard: "Recommended Taiwanese form", standardPlaceholder: "Example: 轉去厝", suno: "Tested Suno spelling *", sunoPlaceholder: "Enter the spelling that sang correctly",
-        note: "Test note *", notePlaceholder: "Which phrase, melody, or voice worked? What usually goes wrong?", version: "Suno version", versionPlaceholder: "Example: v4.5 / v5", name: "Your name (optional)", namePlaceholder: "Display name", cancel: "Cancel", submit: "Send to review",
+        note: "Test note *", notePlaceholder: "Which phrase, melody, or voice worked? What usually goes wrong?", version: "Suno version", versionPlaceholder: "Example: v4.5 / V6", name: "Your name (optional)", namePlaceholder: "Display name", cancel: "Cancel", submit: "Send to review",
         submitting: "Sending to the review queue…", submitted: "Received. Your test is waiting for review before it can join the public catalog.", submitError: "Submission failed. Please try again later.", copy: "Copy Suno spelling", effective: "This spelling worked", incorrect: "This spelling was wrong", reported: "Reported", unavailable: "Unavailable",
       };
   const shareCopy = bibleShareCopyForLanguage(lang);

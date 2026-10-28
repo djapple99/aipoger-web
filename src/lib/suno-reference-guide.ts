@@ -268,10 +268,10 @@ export const SUNO_FEATURE_WATCH: readonly {
 }[] = [
   {
     key: "v55",
-    title: { zh: "Suno v5.5", en: "Suno v5.5" },
+    title: { zh: "Suno V6", en: "Suno V6" },
     status: { zh: "官方功能", en: "Official feature" },
     body: { zh: "Voices、Custom Models 與 My Taste 會影響可用工作流；方案與介面改動時要重新核對。", en: "Voices, Custom Models, and My Taste change the available workflow; re-check plan and interface changes." },
-    source: { label: "Suno v5.5", url: "https://help.suno.com/en/articles/11362305" },
+    source: { label: "Suno V6", url: "https://help.suno.com/en/articles/13924801" },
   },
   {
     key: "sliders",
