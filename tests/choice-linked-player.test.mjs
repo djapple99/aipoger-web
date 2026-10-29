@@ -32,6 +32,7 @@ test('a Suno song later in the queue does not make YouTube transitions manual',a
  const h=harness(),queue=[song('yt1',{audioUrl:'',externalUrl:'https://youtu.be/abcdefghijk'}),song('yt2',{audioUrl:'',externalUrl:'https://youtu.be/lmnopqrstuv'}),song('audio'),song('suno',{audioUrl:'',externalUrl:'https://suno.com/song/00000000-0000-4000-8000-000000000001'})];
  await h.handle.start(queue,0);
  let tree=h.render(),first=nodes(tree).find(n=>n.type==='ExternalPlayer');assert.equal(first.props.autoPlay,true);
+ first.props.onAutoplayBlocked();assert.equal(h.state.error,'blocked');first.props.onPlaying();assert.equal(h.state.error,undefined);
  first.props.onEnded();first.props.onEnded();assert.equal(h.state.index,1);
  tree=h.render();let second=nodes(tree).find(n=>n.type==='ExternalPlayer');assert.equal(second.props.autoPlay,true);
  second.props.onEnded();tree=h.render();const audio=nodes(tree).find(n=>n.type==='audio');assert.equal(audio.props.autoPlay,true);assert.equal(h.state.index,2);
