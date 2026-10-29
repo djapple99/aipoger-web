@@ -80,6 +80,24 @@ const catalog: readonly MusicNews[] = [{
     { label: "Deezer 官方功能公告與 FAQ：AI music toggle（2026-10-13）", url: "https://newsroom-deezer.com/2026/10/deezer-ai-music-toggle/" },
     { label: "MBW：Deezer Q3 報導，本文議題發現來源（2026-10-27）", url: "https://www.musicbusinessworldwide.com/deezer-raises-2026-outlook-as-q3-revenues-grow-1-8-yoy-to-149-5m-but-total-subscribers-fall-to-8-7m/" },
   ],
+}, {
+  slug: "easol-teammates-festival-ai-agents", published: true, language: "zh-Hant",
+  title: "AI 不只幫你寫歌：Easol 推出音樂節營運代理，支援客服、銷售與訂單工作",
+  summary: "Easol 10 月 28 日宣布推出 Teammates，使用平台內業務資料支援活動營運。三種 AI 代理各做什麼？從創作到經營，先找自己的流程瓶頸。",
+  category: "AI 音樂工具", publishedOn: "2026-10-29", eventOn: "2026-10-28", verifiedOn: "2026-10-29",
+  cover: "/news/easol-teammates-festival-ai-agents.png",
+  coverAlt: "AIPOGER 原創概念圖：活動資料連結營運、銷售與客服三種 AI 代理",
+  coverCaption: "圖／AIPOGER 原創營運分工示意，非 Easol 產品介面",
+  deck: "歌做好了，後台還有一串工作。這次 AI 隊友處理的是活動營運，我們先看它接哪一棒。",
+  sources: [
+    { label: "Easol 公司公告（PR Newswire，2026-10-28 11:00 ET）", url: "https://www.prnewswire.com/news-releases/experience-commerce-platform-easol-raises-30-million-launches-total-ai-solution-for-experience-businesses-302921596.html" },
+    { label: "Easol：Teammates 官方產品頁（2026-10-29 查核）", url: "https://easol.com/teammates/" },
+    { label: "Easol：Easol Agent 官方說明（2026-10-29 查核）", url: "https://easol.com/teammates/easol-agent/" },
+    { label: "Easol：Sales Agent 官方說明（2026-10-29 查核）", url: "https://easol.com/teammates/sales-agent/" },
+    { label: "Easol：Support Agent 官方說明（2026-10-29 查核）", url: "https://easol.com/teammates/support-agent/" },
+    { label: "Easol Newsroom：官方收錄（2026-10-29 查核）", url: "https://easol.com/newsroom/" },
+    { label: "MBW：Easol 與音樂節 AI 代理，本文議題發現來源（2026-10-28）", url: "https://www.musicbusinessworldwide.com/event-tech-startup-easol-secures-30m-in-new-funding-launches-ai-agents-for-festival-promoters/" },
+  ],
 }];
 export function publishedMusicNews(): MusicNews[] {
   return catalog.filter(article => article.published).sort((a, b) => b.publishedOn.localeCompare(a.publishedOn) || a.slug.localeCompare(b.slug));

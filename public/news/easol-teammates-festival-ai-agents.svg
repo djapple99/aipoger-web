@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#101010"/><rect width="12" height="630" fill="#ff7a20"/><path d="M690 0V528" stroke="#ffffff18"/>
+<g font-family="PingFang TC, Noto Sans CJK TC, sans-serif"><text x="64" y="81" fill="#ff9851" font-size="22" font-weight="600" letter-spacing="3">AIPOGER / MUSIC NEWS</text>
+<text x="60" y="210" fill="#f6f2ed" font-size="65" font-weight="700">AI 隊友上工，</text><text x="60" y="300" fill="#f6f2ed" font-size="58" font-weight="700">音樂節後台怎麼變？</text>
+<text x="64" y="375" fill="#aaa8a4" font-size="25">Easol Teammates · 活動營運 AI 代理</text><rect x="64" y="428" width="325" height="47" rx="23.5" fill="#ff7a20"/><text x="88" y="460" fill="#111" font-size="23" font-weight="600">客服、銷售、訂單分工</text>
+<g fill="none" stroke-width="2"><rect x="813" y="133" width="230" height="105" rx="14" fill="#191919" stroke="#ff9851"/><path d="M928 238V282M786 282H1070M786 282V319M928 282V319M1070 282V319" stroke="#ffffff55"/>
+<rect x="731" y="320" width="111" height="122" rx="12" fill="#142322" stroke="#82b7b3"/><rect x="873" y="320" width="111" height="122" rx="12" fill="#272015" stroke="#ff9851"/><rect x="1015" y="320" width="111" height="122" rx="12" fill="#241f2a" stroke="#b7abc9"/>
+<path d="M765 353H808M765 366H798M765 379H802" stroke="#82b7b3" stroke-width="3"/>
+<path d="M907 348H915L922 376H943L950 355H919M926 385H927M941 385H942" stroke="#ff9851" stroke-width="3" stroke-linecap="round"/>
+<path d="M1043 349H1097V376H1072L1058 387V376H1043Z" stroke="#b7abc9" stroke-width="3"/>
+<path d="M842 160H875M842 175H875M842 190H866" stroke="#ff9851" stroke-width="3"/></g>
+<text x="891" y="179" fill="#f6f2ed" font-size="24" font-weight="600">活動資料</text><text x="928" y="214" fill="#a6a19b" font-size="12" text-anchor="middle" letter-spacing="1">ORDERS / GUESTS / SALES</text>
+<g text-anchor="middle" font-size="21" font-weight="600"><text x="786" y="417" fill="#82b7b3">營運</text><text x="928" y="417" fill="#ff9851">銷售</text><text x="1070" y="417" fill="#b7abc9">客服</text></g>
+<text x="928" y="483" fill="#aaa8a4" font-size="18" text-anchor="middle">原創分工示意 · 非產品介面</text>
+<path d="M64 528H1136" stroke="#ffffff35"/><text x="64" y="574" fill="#b4b0aa" font-size="20" letter-spacing="1">CREATOR BUSINESS / LIVE MUSIC / AI TOOLS</text><text x="1041" y="574" fill="#ff9851" font-size="20">NO. 006</text></g></svg>

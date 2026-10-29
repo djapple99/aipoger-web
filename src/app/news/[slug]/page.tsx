@@ -9,6 +9,7 @@ import SunoCommercialRightsArticle from "@/components/suno-commercial-rights-art
 import SpotifyBelieveRemixesArticle from "@/components/spotify-believe-remixes-article";
 import SbaCreatorBusinessArticle from "@/components/sba-creator-business-article";
 import DeezerAiSearchArticle from "@/components/deezer-ai-search-article";
+import EasolTeammatesArticle from "@/components/easol-teammates-article";
 import MusicNewsDiscussion from "@/components/music-news-discussion";
 import { musicNewsArticle, musicNewsCopy, musicNewsHref, publishedMusicNews } from "@/lib/music-news";
 import { publicShareCopy } from "@/lib/public-share-copy";
@@ -22,6 +23,7 @@ const bodies = {
   "spotify-believe-licensed-ai-remixes": SpotifyBelieveRemixesArticle,
   "sba-creator-small-business-guidance": SbaCreatorBusinessArticle,
   "deezer-ai-music-search-toggle": DeezerAiSearchArticle,
+  "easol-teammates-festival-ai-agents": EasolTeammatesArticle,
 };
 export function generateStaticParams() { return publishedMusicNews().map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props) {
