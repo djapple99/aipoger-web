@@ -1,6 +1,6 @@
 # 2026-10-29 每日新聞：Easol 主辦實務與 PRS 播放資料
 
-狀態：兩篇內容完成，待最終本機檢查及同一 production --skip-domain build 驗收後發布。本頁完成時補記正式證據。
+狀態：兩篇均已正式發布。最終應用 `764af97fb982b7da16617662e4f108e27724639d`，Vercel `dpl_9wNsNtvcZH1djU1nGRqufRujoTRF` READY，已將完成驗收的同一 production build promote；apex／www 讀回同 ID。
 
 ## 正式基線與工作範圍
 
@@ -48,7 +48,7 @@
 
 ## 最終驗證與發布
 
-待補最終測試、build、待發布及正式驗收。私人 log、HTTP 結果與截圖保存在本任務目錄，未提交或上傳。正式資料庫 QA 不在本次內容任務範圍。
+最終測試、build、待發布及正式驗收均已完成，見下方。私人 log、HTTP 結果與截圖保存在本任務目錄，未提交或上傳。正式資料庫 QA 不在本次內容任務範圍。
 
 本機視覺驗收發現同名封面曾命中前稿的 Next image 快取；改用描述人工核准的新素材路徑 `easol-festival-ai-approval.png`，避免跨版本舊圖，未改圖片快取設定。
 
@@ -58,3 +58,18 @@
 - TypeScript 通過；lint 0 errors／9 既有 img warnings；最終 webpack 建置通過，未改字型、依賴或環境值。
 - 兩篇實際 Chrome 1440×900、四語 320×812：正確封面載入、無水平溢出、zh-Hant 正文與語言提示、手機摘要先於封面、延伸閱讀保留語言。320px 列表七篇，圖片的 lazy loading 與資料 API 完整狀態在待發布版本續驗。
 - Vercel dry upload 1,165 檔，未含環境檔、node_modules、私人證據或測試輸出。本機沿既有 ignore 環境配置，未下載或修正正式 key。
+
+
+## 待發布驗收與正式發布完成
+
+- 待發布 host：`aipoger-web-rnz8-24r3uz093-yohungs-projects.vercel.app`，Vercel meta 精確對應 `764af97fb982b7da16617662e4f108e27724639d`。在 API 確認 READY 後才執行最終 HTTP 驗收。
+- 待發布 25/25、正式 25/25 HTTP 通過：兩篇四語 SSR／日期／來源／NewsArticle／中文 canonical、七篇列表、首頁三篇且含兩篇新文、兩張 PNG 原檔 bytes／1200×630、Sitemap 兩篇各一次、兩篇公開討論、未知 slug 404、舊五篇及登入／探索／MV／Battle。
+- 待發布 Chrome 1440×900 兩篇正文與正確版本化封面、四語 320px、七篇列表桌機／手機（捲動載入全部封面）、首頁最新三篇入口驗收完成；無水平溢出，延伸閱讀保留語言。新文公開討論實際為 0 讚／0 留言。
+- `764af97` 已以正常 fast-forward push 至 `codex/public-rule-copy`（原 `5882ac5`），未 force、未重設其他工作樹。發布前再次讀回 apex／www 仍為原正式基線後，使用 request_promote 提升 `dpl_9wNsNtvcZH1djU1nGRqufRujoTRF`，沒有重建未驗版本。
+- 正式兩篇桌機 1440px／手機 390px、列表全部七篇／全部封面、兩張原始 PNG（1200×630）均實際開啟；優化圖片 URL 帶相同正式 deployment ID。已登入 Chrome 的兩篇原會員表單及 0 讚／0 留言讀取正常，沒有送出測試互動。
+- 待發布及正式新聞頁指定 origin 的瀏覽器 console error 為 0。指定部署最近 15 分鐘 error／fatal runtime log 查無紀錄（查核窗 2026-10-29 08:24:30–08:39:30 UTC），不代表專案歷史無錯誤。
+- 證據：本任務 `news-two-staged-http.json`、`news-two-production-http.json`、`news-two-*-tests.log`、TypeScript／lint／build log 及 `evidence/` 內桌機、手機、列表、首頁、原始圖片與會員討論截圖。
+- 正式列表：https://aipoger.com/news?lang=zh
+- 正式 Easol 封面：https://aipoger.com/news/easol-festival-ai-approval.png
+- 正式 PRS 封面：https://aipoger.com/news/prs-soundtrack-uk-play-data-royalties.png
+- 沒有剩餘發布阻礙。Easol 未公開 AI 單價、完整報價與台灣服務條件，以及 PRS 合作公告只找到公開重刊等資料限制，均在正文如實揭露；沒有為發布擴權或補造答案。
