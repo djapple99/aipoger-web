@@ -6,7 +6,7 @@ function harness(){
  const Component=loadTs('src/components/showtime-queue-player.tsx',{
   react:{forwardRef:f=>f,useRef:()=>({current:null}),useEffect:()=>{},useState:()=>[state,v=>{state=typeof v==='function'?v(state):v;}],useImperativeHandle:(_ref,fn)=>{handle=fn();}},
   'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
-  'next/dynamic':{__esModule:true,default:()=> 'ExternalPlayer'},'lucide-react':{},
+  '@/components/youtube-radio-player':{__esModule:true,default:'YouTubePlayer'},'next/dynamic':{__esModule:true,default:()=> 'ExternalPlayer'},'lucide-react':{},
   '@/lib/i18n':{useI18n:()=>({lang:'en'})},
   '@/lib/music-player-store':{musicPlayer:{start:async(...args)=>{calls.push(args);return true;},toggle:()=>calls.push('pause'),close:()=>calls.push('close')},getMusicPlayerState:()=>({playing:true})},
  }).default;
@@ -31,11 +31,11 @@ test('mixed provider queue pauses background audio and retains manual navigation
 test('a Suno song later in the queue does not make YouTube transitions manual',async()=>{
  const h=harness(),queue=[song('yt1',{audioUrl:'',externalUrl:'https://youtu.be/abcdefghijk'}),song('yt2',{audioUrl:'',externalUrl:'https://youtu.be/lmnopqrstuv'}),song('audio'),song('suno',{audioUrl:'',externalUrl:'https://suno.com/song/00000000-0000-4000-8000-000000000001'})];
  await h.handle.start(queue,0);
- let tree=h.render(),first=nodes(tree).find(n=>n.type==='ExternalPlayer');assert.equal(first.props.autoPlay,true);
- first.props.onAutoplayBlocked();assert.equal(h.state.error,'blocked');first.props.onPlaying();assert.equal(h.state.error,undefined);
+ let tree=h.render(),first=nodes(tree).find(n=>n.type==='YouTubePlayer');assert.equal(first.props.autoplay,true);
+ first.props.onError(true);assert.equal(h.state.error,'blocked');first.props.onPlaying(true);assert.equal(h.state.error,undefined);
  first.props.onEnded();first.props.onEnded();assert.equal(h.state.index,1);
- tree=h.render();let second=nodes(tree).find(n=>n.type==='ExternalPlayer');assert.equal(second.props.autoPlay,true);
- second.props.onEnded();tree=h.render();const audio=nodes(tree).find(n=>n.type==='audio');assert.equal(audio.props.autoPlay,true);assert.equal(h.state.index,2);
+ tree=h.render();let second=nodes(tree).find(n=>n.type==='YouTubePlayer');assert.equal(second.props.autoplay,true);
+ second.props.onEnded();tree=h.render();const audio=nodes(tree).find(n=>n.type==='audio');assert.equal(audio.props.autoPlay,true);assert.equal(h.state.index,2);assert.equal(nodes(tree).find(n=>n.type==='YouTubePlayer').props.active,false);
  first.props.onEnded();assert.equal(h.state.index,2);
  audio.props.onEnded();tree=h.render();assert.equal(h.state.index,3);assert.equal(nodes(tree).find(n=>n.type==='ExternalPlayer').props.media.provider,'suno');
  nodes(tree).find(n=>n.props['aria-label']==='Previous track').props.onClick();tree=h.render();assert.equal(h.state.index,2);assert.equal(nodes(tree).find(n=>n.type==='audio').props.autoPlay,true);

@@ -12,29 +12,22 @@ export default function ExternalMusicPlayer({
   onPlaying,
   onError,
   onEnded,
-  autoPlay = false,
-  onAutoplayBlocked,
 }: {
   media: ExternalMusic;
   title: string;
   onPlaying?: () => void;
   onError?: () => void;
   onEnded?: () => void;
-  autoPlay?: boolean;
-  onAutoplayBlocked?: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onPlaying, onError, onEnded, onAutoplayBlocked });
-  callbacks.current = { onPlaying, onError, onEnded, onAutoplayBlocked };
+  const callbacks = useRef({ onPlaying, onError, onEnded });
+  callbacks.current = { onPlaying, onError, onEnded };
   const { lang } = useI18n();
   const { provider, mediaId } = media;
   useEffect(() => {
     if (getMusicPlayerState().playing) musicPlayer?.toggle();
     if (provider !== "youtube") return;
     let active = true;
-    let started = false;
-    let ended = false;
-    const timeout = window.setTimeout(() => { if (active) callbacks.current.onError?.(); }, 15_000);
     let player: YouTubePlayer | undefined;
     void loadYouTubeAPI()
       .then((api) => {
@@ -51,29 +44,20 @@ export default function ExternalMusicPlayer({
             origin: window.location.origin,
             playsinline: 1,
             rel: 0,
-            autoplay: autoPlay ? 1 : 0,
           },
           events: {
             onReady: () => {
-              if (!active) return;
-              window.clearTimeout(timeout);
               const frame = container.current?.querySelector("iframe");
               if (frame) {
                 frame.title = title;
                 frame.style.position = "absolute";
                 frame.style.inset = "0";
               }
-              if (autoPlay) player?.playVideo();
             },
             onStateChange: (event: { data: number }) => {
-              if (!active) return;
-              if (event.data === 1) { started = true; ended = false; callbacks.current.onPlaying?.(); }
-              if (event.data === 0 && started && !ended) {
-                ended = true;
-                callbacks.current.onEnded?.();
-              }
+              if (active && event.data === 1) callbacks.current.onPlaying?.();
+              if (active && event.data === 0) callbacks.current.onEnded?.();
             },
-            onAutoplayBlocked: () => { if (active) callbacks.current.onAutoplayBlocked?.(); },
             onError: () => {
               if (active) callbacks.current.onError?.();
             },
@@ -85,10 +69,9 @@ export default function ExternalMusicPlayer({
       });
     return () => {
       active = false;
-      window.clearTimeout(timeout);
       player?.destroy();
     };
-  }, [provider, mediaId, title, autoPlay]);
+  }, [provider, mediaId, title]);
   return (
     <div>
       {provider === "youtube" ? (

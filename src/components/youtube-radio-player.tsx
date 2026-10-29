@@ -6,6 +6,8 @@ import { loadYouTubeAPI, type YouTubePlayer } from "@/lib/youtube-player-api";
 /** One visible official player; no extraction, hidden audio, or background playback. */
 export default function YouTubeRadioPlayer(props: {
   videoId: string; requestId: number; autoplay: boolean; volume: number; title: string;
+  active?: boolean;
+  playbackDialogRef?: MutableRefObject<HTMLDialogElement | null>;
   playerRef: MutableRefObject<YouTubePlayer | null>;
   onPlaying: (playing: boolean) => void;
   onProgress: (time: number, duration: number) => void;
@@ -23,7 +25,7 @@ export default function YouTubeRadioPlayer(props: {
     let active = true;
     let player: YouTubePlayer | null = null;
     const timeout = window.setTimeout(() => { if (active && !ready.current) latest.current.onError(false); }, 15_000);
-    const obscured = () => document.hidden || Boolean(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'));
+    const obscured = () => latest.current.active === false || document.hidden || Array.from(document.querySelectorAll('dialog[open], [role="dialog"][aria-modal="true"]')).some(dialog => dialog !== latest.current.playbackDialogRef?.current);
     const pauseIfObscured = () => {
       if (obscured()) { suspended.current = true; if (ready.current) player?.pauseVideo(); }
     };
@@ -43,7 +45,7 @@ export default function YouTubeRadioPlayer(props: {
       player = new api.Player(child, {
         width: "100%", height: "100%", host: "https://www.youtube-nocookie.com",
         videoId: latest.current.videoId,
-        playerVars: { origin: window.location.origin, playsinline: 1, rel: 0, autoplay: latest.current.autoplay && !obscured() ? 1 : 0 },
+        playerVars: { origin: window.location.origin, playsinline: 1, rel: 0, autoplay: 0, loop: 0 },
         events: {
           onReady: () => {
             if (!active) return;
@@ -55,7 +57,7 @@ export default function YouTubeRadioPlayer(props: {
             load.current();
           },
           onStateChange: (event: { data: number }) => {
-            if (!active || !ready.current || player?.getVideoData()?.video_id !== latest.current.videoId) return;
+            if (!active || !ready.current || latest.current.active === false || player?.getVideoData()?.video_id !== latest.current.videoId) return;
             if (event.data === 1) {
               if (obscured()) { pauseIfObscured(); return; }
               suspended.current = false;
@@ -76,7 +78,7 @@ export default function YouTubeRadioPlayer(props: {
       });
     }).catch(() => { if (active) latest.current.onError(false); });
     const timer = window.setInterval(() => {
-      if (ready.current && player?.getVideoData()?.video_id === latest.current.videoId) {
+      if (ready.current && latest.current.active !== false && player?.getVideoData()?.video_id === latest.current.videoId) {
         latest.current.onProgress(player.getCurrentTime() || 0, player.getDuration() || 0);
       }
     }, 400);
@@ -90,7 +92,7 @@ export default function YouTubeRadioPlayer(props: {
       player?.destroy();
     };
   }, []);
-  useEffect(() => { load.current(); }, [props.requestId, props.videoId]);
+  useEffect(() => { load.current(); }, [props.requestId, props.videoId, props.active]);
   useEffect(() => { props.playerRef.current?.setVolume(props.volume * 100); }, [props.volume, props.playerRef]);
-  return <div ref={mount} aria-label={props.title} style={{ width: "100%", height: 200, background: "#080808" }} />;
+  return <div ref={mount} aria-label={props.title} style={{ width: "100%", height: props.playbackDialogRef ? undefined : 200, aspectRatio: props.playbackDialogRef ? "16/9" : undefined, minHeight: 200, background: "#080808" }} />;
 }

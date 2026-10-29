@@ -5,6 +5,8 @@ import { musicPlayer, getMusicPlayerState, type MusicTrack } from "@/lib/music-p
 import { parseExternalMusic } from "@/lib/external-music";
 import { useI18n } from "@/lib/i18n";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import YouTubeRadioPlayer from "@/components/youtube-radio-player";
+import type { YouTubePlayer } from "@/lib/youtube-player-api";
 const ExternalMusicPlayer = dynamic(() => import("@/components/external-music-player"));
 export type ShowtimePlayerTrack = MusicTrack & { externalUrl?: string | null };
 export type ShowtimeQueuePlayerHandle = {
@@ -21,6 +23,7 @@ const ShowtimeQueuePlayer = forwardRef<ShowtimeQueuePlayerHandle, { isZh: boolea
   const { lang } = useI18n();
   const copy = labels[lang];
   const dialog = useRef<HTMLDialogElement>(null);
+  const youtube = useRef<YouTubePlayer | null>(null);
   const [session, setSession] = useState<{ queue: ShowtimePlayerTrack[]; index: number; error?: "blocked" | "failed" } | null>(null);
   useEffect(() => { if (session && !dialog.current?.open) dialog.current?.showModal(); }, [session]);
   useImperativeHandle(ref, () => ({
@@ -44,12 +47,21 @@ const ShowtimeQueuePlayer = forwardRef<ShowtimeQueuePlayerHandle, { isZh: boolea
   if (!session) return null;
   const track = session.queue[session.index];
   const media = !track.audioUrl ? parseExternalMusic(track.externalUrl) : null;
+  const currentYouTube = media?.provider === "youtube" ? media : null;
+  const firstYouTube = session.queue.map(item => !item.audioUrl ? parseExternalMusic(item.externalUrl) : null).find(item => item?.provider === "youtube");
+  const youtubeMedia = currentYouTube ?? firstYouTube;
   // Ignore late/duplicate end events from an iframe or audio element we just left.
   const next = () => setSession(current => current?.queue === session.queue && current.index === session.index && current.index + 1 < current.queue.length ? { ...current, index: current.index + 1, error: undefined } : current);
   const reportError = (error?: "blocked" | "failed") => setSession(current => current?.queue === session.queue && current.index === session.index && current.error !== error ? { ...current, error } : current);
   return <dialog ref={dialog} aria-label={track.title} onCancel={() => setSession(null)} onClick={event => { if (event.target === event.currentTarget) setSession(null); }} className="fixed inset-0 m-auto max-h-[90dvh] w-[min(92vw,720px)] overflow-auto border border-white/20 bg-[#101010] p-4 text-white backdrop:bg-black/80">
     <div className="mb-3 flex items-center gap-3"><h2 className="min-w-0 flex-1 break-words font-bold">{track.title}</h2><button type="button" autoFocus aria-label={copy.close} onClick={() => setSession(null)} className="flex h-11 w-11 shrink-0 items-center justify-center"><X /></button></div>
-    {media ? <ExternalMusicPlayer key={track.id} media={media} title={track.title} autoPlay onEnded={next} onPlaying={() => reportError()} onAutoplayBlocked={() => reportError("blocked")} onError={() => reportError("failed")} /> : <audio key={track.id} src={track.audioUrl} controls autoPlay onEnded={next} onPlay={() => reportError()} onError={() => reportError("failed")} className="w-full" />}
+    {/* Keep one official YouTube iframe alive for this queue. Cue and pause it
+        during other sources; never play a hidden video or recreate it per song. */}
+    {youtubeMedia ? <div hidden={!currentYouTube}>
+      <YouTubeRadioPlayer videoId={youtubeMedia.mediaId} requestId={session.index} autoplay={Boolean(currentYouTube)} active={Boolean(currentYouTube)} volume={0.85} title={track.title} playerRef={youtube} playbackDialogRef={dialog} onPlaying={playing => { if (playing) reportError(); }} onProgress={() => {}} onEnded={next} onError={blocked => { if (currentYouTube) reportError(blocked ? "blocked" : "failed"); }} />
+      {currentYouTube ? <a href={currentYouTube.url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 underline">YouTube ↗</a> : null}
+    </div> : null}
+    {media && !currentYouTube ? <ExternalMusicPlayer key={track.id} media={media} title={track.title} onError={() => reportError("failed")} /> : !media ? <audio key={track.id} src={track.audioUrl} controls autoPlay onEnded={next} onPlay={() => reportError()} onError={() => reportError("failed")} className="w-full" /> : null}
     {session.error ? <p role="status" className="mt-3 text-xs text-orange-200">{copy[session.error]}</p> : null}
     {media && media.provider !== "youtube" ? <p className="mt-3 text-xs text-zinc-400">{copy.manual}</p> : null}
     <div className="mt-3 flex items-center justify-between gap-3"><button type="button" disabled={session.index === 0} onClick={() => setSession(current => current ? { ...current, index: Math.max(0, current.index - 1), error: undefined } : current)} aria-label={copy.previous} className="flex h-11 w-11 items-center justify-center border border-white/20 disabled:opacity-30"><ChevronLeft /></button><span>{session.index + 1} / {session.queue.length}</span><button type="button" disabled={session.index + 1 === session.queue.length} onClick={next} aria-label={copy.next} className="flex h-11 w-11 items-center justify-center border border-white/20 disabled:opacity-30"><ChevronRight /></button></div>

@@ -6,7 +6,7 @@
 
 正式歌單「萬聖節的音樂狂歡派對」含5支YouTube、4首上傳音檔、1首Suno《L.N.C｜藍幽靈》。任一Suno／Spotify會將全歌單送入混合來源dialog；其中ExternalMusicPlayer原未提供autoPlay，第一首與每次YouTube換曲都停在封面。正式站舊版已重現。
 
-混合播放器現在明確要求YouTube autoplay=1及ready後playVideo，播畢接續；一般作品預覽維持需點擊開始。結束事件只有實際播放後才生效、同首只推進一次，已切換／關閉的來源不能跳曲。初始化15秒無回應／播放器失敗及瀏覽器阻擋均提供短提示。手動來源說明僅在目前為Suno／Spotify時出現。
+混合歌單改為整個session共用同一個YouTubeRadioPlayer，ready後loadVideoById直接播放，切曲重用iframe而不重建。非YouTube曲目時只cue且暫停，隱藏期間不播放。播放器只豁免自身dialog，其他視窗／背景頁仍暫停；曲終去重與舊來源事件防護保留。明確loop=0，避免實播發現Shorts預設循環、不到下一首。初始化失敗與瀏覽器阻擋顯示短提示，恢復播放即清除。Suno／Spotify仍用原ExternalMusicPlayer，一般作品預覽不變。
 
 ## 範圍與限制
 
@@ -16,6 +16,8 @@ YouTube技術依據：https://developers.google.com/youtube/iframe_api_reference
 
 ## 驗證與發布
 
-14項定向通過；全套969項968通過／1既有選用略過／0失敗，TypeScript通過，lint0 errors／9既有img warnings。後續加入初始化逾時處理，7項定向重測通過。
+13項定向通過；全套968項967通過／1既有選用略過／0失敗，TypeScript通過，lint0 errors／9既有img warnings。最後loop=0修正另跑11項定向全通過。
 
-本機可驗證音檔自動結束切到下一支YouTube，但localhost的YouTube iframe空白，未算實播成功；正式舊版相同影片可載入並確實停在手動Play。待部署版本以實際影片進度及自動換曲驗收，再補發布證據。本機測試頁與合成短音檔已移除，不提交。
+本機實播：YouTube下一首直接開始，實際video paused=false與秒數前進；Eve的30秒Shorts自然播畢後自動接2秒合成音檔，再自動進Suno（原限制），未按Play或下一首。官方iframe維持同一個widget2。先前重建iframe與未關閉Shorts循環的候選未發布；一般preview環境缺正式設定也未promote。正式設定使用CLI --prod --skip-domain驗收後才promote。測試不寫歌單、收藏、點數。
+
+待補最終發布證據。本機fixture、短音檔、診斷log於驗收後移除。

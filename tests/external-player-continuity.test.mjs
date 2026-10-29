@@ -8,9 +8,9 @@ const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.Comm
 function mount(){
  let cursor=0;const refs=[],effects=[],players=[];const host={children:[],appendChild(node){this.children.push(node)},querySelector(){return this.children[0]?.frame??null}};
  const react={useRef(initial){const i=cursor++;return refs[i]??={current:initial===null?host:initial}},useEffect(fn,deps){const i=cursor++;if(!effects[i]||deps.some((v,j)=>v!==effects[i].deps[j])){effects[i]?.cleanup?.();effects[i]={deps,cleanup:fn()}}}};
- class Player{constructor(element,options){this.options=options;this.currentTime=78;this.playing=true;this.destroyed=false;element.frame={style:{}};players.push(this);queueMicrotask(()=>options.events.onReady());}playVideo(){this.playCalls=(this.playCalls??0)+1}destroy(){this.destroyed=true}}
+ class Player{constructor(element,options){this.options=options;this.currentTime=78;this.playing=true;this.destroyed=false;element.frame={style:{}};players.push(this);queueMicrotask(()=>options.events.onReady());}destroy(){this.destroyed=true}}
  const modules={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},'@/lib/external-music':{externalEmbedUrl},'@/lib/music-player-store':{getMusicPlayerState:()=>({playing:false}),musicPlayer:{toggle(){throw new Error('Review must not pause playback')}}},'@/lib/i18n':{useI18n:()=>({lang:'en'})},'@/lib/youtube-player-api':{loadYouTubeAPI:async()=>({Player})}};
- const loaded={exports:{}};new Function('require','module','exports','document','window',code)(name=>{assert.ok(name in modules,name);return modules[name]},loaded,loaded.exports,{createElement:()=>({})},{location:{origin:'http://localhost'},setTimeout,clearTimeout});
+ const loaded={exports:{}};new Function('require','module','exports','document','window',code)(name=>{assert.ok(name in modules,name);return modules[name]},loaded,loaded.exports,{createElement:()=>({})},{location:{origin:'http://localhost'}});
  return {players,async render(props){cursor=0;loaded.exports.default(props);await new Promise(setImmediate)},close(){effects.forEach(e=>e?.cleanup?.())}};
 }
 test('typing, review saves, language/viewport-style parent renders retain the same running YouTube instance',async()=>{
@@ -26,21 +26,4 @@ test('switching to a different work destroys the previous instance, while dismis
  await ui.render({media,title:'First'});await ui.render({media:{...media,mediaId:'zBaBcDeFghi'},title:'Second'});
  assert.equal(ui.players.length,2);assert.equal(ui.players[0].destroyed,true);assert.equal(ui.players[1].destroyed,false);
  ui.close();assert.equal(ui.players[1].destroyed,true);
-});
-
-test('Choice autoplay starts each YouTube item, advances once, and ignores callbacks after switching',async()=>{
- const ui=mount(),media={provider:'youtube',mediaId:'MdxaU0l3FzI',url:'https://www.youtube.com/watch?v=MdxaU0l3FzI'};let ends=0,blocked=0;
- await ui.render({media,title:'First',autoPlay:true,onEnded:()=>ends++,onAutoplayBlocked:()=>blocked++});
- const first=ui.players[0];assert.equal(first.options.playerVars.autoplay,1);assert.equal(first.playCalls,1);
- first.options.events.onStateChange({data:0});assert.equal(ends,0);
- first.options.events.onStateChange({data:1});first.options.events.onStateChange({data:0});first.options.events.onStateChange({data:0});assert.equal(ends,1);
- await ui.render({media:{...media,mediaId:'zBaBcDeFghi'},title:'Second',autoPlay:true,onEnded:()=>ends++,onAutoplayBlocked:()=>blocked++});
- assert.equal(first.destroyed,true);assert.equal(ui.players[1].playCalls,1);
- first.options.events.onStateChange({data:1});first.options.events.onStateChange({data:0});assert.equal(ends,1);
- ui.players[1].options.events.onAutoplayBlocked();assert.equal(blocked,1);assert.equal(ends,1);
- ui.close();
-});
-test('ordinary external preview still waits for user playback',async()=>{
- const ui=mount();await ui.render({media:{provider:'youtube',mediaId:'MdxaU0l3FzI'},title:'Preview'});
- assert.equal(ui.players[0].options.playerVars.autoplay,0);assert.equal(ui.players[0].playCalls,undefined);ui.close();
 });
