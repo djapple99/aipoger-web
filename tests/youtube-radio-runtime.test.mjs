@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {mountMv} from './helpers/mv-runtime.mjs';
 async function setup(t, initiallyReady = true, extra = {}){
- let options,resolveAPI,video='',state=2,ended=0,hidden=false,modal=false,paused=0,instances=0,volume;
+ let options,resolveAPI,video='',state=2,time=12,duration=180,ended=0,hidden=false,modal=false,paused=0,instances=0,volume;
  const loads=[],cues=[],errors=[],progress=[],states=[],listeners={};let observer;
  const playerRef={current:null};
- const player={loadVideoById(id){video=id;loads.push(id)},cueVideoById(id){video=id;cues.push(id)},setVolume(v){volume=v},getVideoData(){return {video_id:video}},getPlayerState(){return state},getCurrentTime(){return 12},getDuration(){return 180},pauseVideo(){paused++;state=2},destroy(){playerRef.current=null}};
+ const player={loadVideoById(id){video=id;loads.push(id)},cueVideoById(id){video=id;cues.push(id)},setVolume(v){volume=v},getVideoData(){return {video_id:video}},getPlayerState(){return state},getCurrentTime(){return time},getDuration(){return duration},pauseVideo(){paused++;state=2},destroy(){playerRef.current=null}};
  const apiPromise=new Promise(r=>resolveAPI=r);
  const ui=await mountMv(t,'src/components/youtube-radio-player.tsx',{videoId:'abcdefghijk',requestId:1,autoplay:true,volume:.85,title:'Test song',playerRef,onPlaying:v=>states.push(v),onProgress:(...p)=>progress.push(p),onEnded:()=>ended++,onError:b=>errors.push(b),...extra}, {'@/lib/youtube-player-api':{loadYouTubeAPI:()=>apiPromise}}, {
  document:{body:{},get hidden(){return hidden},querySelector:()=>modal?{}:null,querySelectorAll:selector=>selector.startsWith('dialog') && modal ? [modal] : [],createElement:()=>({}),addEventListener:(n,f)=>listeners[n]=f,removeEventListener(){}},
@@ -14,7 +14,7 @@ async function setup(t, initiallyReady = true, extra = {}){
  });
  ui.refs[0].current={appendChild(){},querySelector:()=>({})};
  resolveAPI({Player:class{constructor(_,opts){instances++;options=opts;return player}}});await ui.flush();if(initiallyReady)options.events.onReady();
- return {ui,loads,cues,errors,progress,states,playerRef,options,timeout:()=>listeners.timeout(),events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(node={}){modal=node;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'},missingData(){player.getVideoData=()=>undefined;}};
+ return {position(value, length=30){time=value;duration=length;state=1;},ui,loads,cues,errors,progress,states,playerRef,options,timeout:()=>listeners.timeout(),events:options.events,ended:()=>ended,paused:()=>paused,instances:()=>instances,volume:()=>volume,hide(){hidden=true;listeners.visibilitychange()},show(){hidden=false;listeners.visibilitychange()},modal(node={}){modal=node;observer()},tick:()=>listeners.tick(),stale(){video='stalevideo1'},missingData(){player.getVideoData=()=>undefined;}};
 }
 test('radio reuses one visible YouTube player and advances once after a real end',async t=>{
  const x=await setup(t);assert.equal(x.options.playerVars.loop,0);assert.equal(x.options.playerVars.autoplay,0);assert.equal(x.loads[0],'abcdefghijk');assert.equal(x.volume(),85);assert.equal(x.ui.find('div').style.height,200);
@@ -57,4 +57,16 @@ test('mixed Choice reuses its YouTube player across audio and permits only its o
  await x.ui.update({active:false,requestId:4});x.events.onStateChange({data:0});assert.equal(x.ended(),1);
  await x.ui.update({active:true,requestId:5});assert.equal(x.instances(),1);assert.equal(x.loads.at(-1),'lmnopqrstuv');
  x.modal({});x.events.onStateChange({data:0});assert.equal(x.ended(),1);
+});
+
+test('Choice Shorts natural loop advances once without an ENDED event',async t=>{
+ const x=await setup(t,true,{playbackDialogRef:{current:{}}});
+ x.events.onStateChange({data:1});
+ for(const time of [28.8,29.2,29.6,.05]){x.position(time);x.tick();}
+ assert.equal(x.ended(),1);x.events.onStateChange({data:0});assert.equal(x.ended(),1);
+});
+test('Shorts rewind away from the end or hidden playback does not advance',async t=>{
+ const x=await setup(t,true,{playbackDialogRef:{current:{}}});x.events.onStateChange({data:1});
+ for(const time of [12,14,.05,29.6,.05]){x.position(time);x.tick();}assert.equal(x.ended(),0);
+ for(const time of [28.8,29.2,29.6]){x.position(time);x.tick();}x.hide();x.position(.05);x.tick();assert.equal(x.ended(),0);
 });

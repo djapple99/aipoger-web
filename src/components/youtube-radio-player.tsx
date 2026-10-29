@@ -24,6 +24,7 @@ export default function YouTubeRadioPlayer(props: {
   useEffect(() => {
     let active = true;
     let player: YouTubePlayer | null = null;
+    let previousProgress: { time: number; duration: number; at: number; nearEnd: boolean } | null = null;
     const timeout = window.setTimeout(() => { if (active && !ready.current) latest.current.onError(false); }, 15_000);
     const obscured = () => latest.current.active === false || document.hidden || Array.from(document.querySelectorAll('dialog[open], [role="dialog"][aria-modal="true"]')).some(dialog => dialog !== latest.current.playbackDialogRef?.current);
     const pauseIfObscured = () => {
@@ -33,7 +34,7 @@ export default function YouTubeRadioPlayer(props: {
       if (!ready.current || !player) return;
       const p = latest.current;
       suspended.current = obscured();
-      endedRequest.current = null; startedRequest.current = null;
+      endedRequest.current = null; startedRequest.current = null; previousProgress = null;
       player.setVolume(p.volume * 100);
       if (p.autoplay && !suspended.current) player.loadVideoById(p.videoId);
       else player.cueVideoById(p.videoId);
@@ -79,7 +80,23 @@ export default function YouTubeRadioPlayer(props: {
     }).catch(() => { if (active) latest.current.onError(false); });
     const timer = window.setInterval(() => {
       if (ready.current && latest.current.active !== false && player?.getVideoData()?.video_id === latest.current.videoId) {
-        latest.current.onProgress(player.getCurrentTime() || 0, player.getDuration() || 0);
+        const time = player.getCurrentTime() || 0;
+        const duration = player.getDuration() || 0;
+        const now = performance.now();
+        const previous = previousProgress;
+        // Some Shorts embeds loop despite loop=0 and never emit ENDED. Only
+        // advance after observing continuous playback across the actual end;
+        // do not use an estimated song duration or a wall-clock timeout.
+        const playing = player.getPlayerState() === 1 && !suspended.current && !obscured();
+        const continuous = playing && previous && now - previous.at < 1_500 && duration === previous.duration;
+        const wrapped = continuous && previous.nearEnd && previous.time >= duration - 0.8 && time < 0.8 && time < previous.time;
+        previousProgress = playing ? { time, duration, at: now, nearEnd: Boolean(continuous && time >= duration - 1.2 && time > previous.time && time - previous.time < 1.2) } : null;
+        latest.current.onProgress(time, duration);
+        if (latest.current.playbackDialogRef && wrapped && startedRequest.current === latest.current.requestId && endedRequest.current !== latest.current.requestId) {
+          endedRequest.current = latest.current.requestId;
+          player.pauseVideo();
+          latest.current.onEnded();
+        }
       }
     }, 400);
     document.addEventListener("visibilitychange", pauseIfObscured);
