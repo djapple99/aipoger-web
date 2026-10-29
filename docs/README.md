@@ -17,50 +17,7 @@
 
 ## 現況與查找順序
 
-- 前輪應用`9960874`／`codex/public-rule-copy`；Vercel `dpl_454ciSRmkpYTsTCunDSL1n7ktv1b` READY，待驗收後promote同一build，aipoger.com／www核對同一SHA。2026-10-29（Asia/Taipei）全站正式Prompt每次複製8點、成功才提供全文；教學快捷範例免費。1,763份正式內容（223招／21歌詞控制／772 DNA／747配方）所有入口共用服務端白名單與receipt。Owner由已確認Auth判定，免扣點且不受餘額／欠額限制，新使用記0點owner_prompt_copy；原Owner投稿免扣不限次、每日回訪15及其他獎勵／原流水保留。正式migration ledger20261028181706已套用並回滾驗證，一般會員8點、重試0點、Owner0點；6筆舊收據與獎勵函式hash不變。33項定向全通過，952全套920通過／32既有選用略過／0失敗，TypeScript／webpack通過，lint0 errors／9既有warnings，250份公開JS／map零正式全文命中。待發布與正式各17項HTTP、四語320px及Owner實際複製／原生貼上／餘額不變與0點明細驗收通過，console errors及指定部署近30分鐘runtime error／fatal均0。[全站Prompt與Owner免扣report](releases/2026-10-29-all-prompt-credit.md)。
-
-- 前輪應用`e662882`／`codex/public-rule-copy`；Vercel `dpl_CufBFRAUUSDnCcs1jYJEErYRcUuZ` READY，驗收後promote同一build，apex／www同版。2026-10-28晚間，49張表情詞／對照卡改為扣點前只顯示描述、分類與用途，伺服器內容投影與公開bundle不提供原詞／完整Prompt；成功8點複製才揭曉，剪貼簿失敗保留文字與免費重試，舊key連結及已付款receipt沿用。原費率、獎勵、會員餘額／流水、播放／留言／評分保留，沒有SQL或正式ledger寫入。21項定向全通過，945全套913通過／32選用略過／0失敗，TypeScript／webpack通過，lint0 errors／9既有warnings；250份JS掃描零付費內容命中。待發布與正式各14項HTTP、正式49張預覽與四語320px驗收通過，console error0，指定部署近30分鐘runtime error／fatal0。[Prompt扣點揭曉report](releases/2026-10-28-expression-prompt-gate.md)。
-
-- 前輪`25ef2fb`新增Deezer新聞與Sitemap edition快取，正式`dpl_CTVmoRDa7qkwaGPnh64qGoKik3cv`；五篇原創新聞與相關路由本輪保留。[新聞report](releases/2026-10-28-deezer-ai-search-news.md)。
-
-- 前輪應用基準`cb7a722`／`codex/public-rule-copy`（2026-10-28）：49張表情詞／對照卡每次新複製8點，其他獎勵及投稿費用不變，賺點任務先列評分與評論。舊5點紀錄、會員餘額與已付款重試保留，舊頁面新扣點須刷新。migration正式ledger20261027194919已套用，11項定向及933全套901通過／32略過，四語手機與正式10項HTTP通過；部署`dpl_5GCDUYakRuHNw6yj9436aN33XkHL` READY且apex／www同版。[發布report](releases/2026-10-28-expression-eight-credit.md)。
-
-- 前輪應用基準`4acfd8b`／`codex/public-rule-copy`：預設網站分享採1200×630實心黑底與原白色AIPOGER符號／字標，OG／Twitter及無封面品牌回退集中同一版本化路徑；既有專屬作品／新聞／Battle模式封面保留。932測試893通過／39略過，部署`dpl_CAANdf6Et3wotnFC4HbKaSa6g7nG` READY並綁定aipoger.com／www。[發布report](releases/2026-10-27-dark-share-preview.md)。
-
-- 前輪應用基準`56825bf`／`codex/public-rule-copy`：探索音樂／傷心酒吧進頁即嘗試一次隨機連播，音檔與可見YouTube共用電台；暫停／關閉後不被資料刷新重開，瀏覽器阻擋可手動播放，耳朵測驗保留原按鈕主動開窗。932測試893通過／39略過，實際音檔／YouTube、四語手機及正式播放驗收通過；部署`dpl_BbLTt1ikztkQDomXDTbndkTVb9Gw` READY且apex同版，原作品／評分／Credit保留。[發布report](releases/2026-10-27-radio-autoplay.md)。
-
-- 前輪應用基準`2d59278`／`codex/public-rule-copy`：新聞頁依已確認demo改為左最新、右熱門、下方純封面網格，副標緊接主標；熱門依真實按讚＋可見留言，無互動／失敗標示最新排序。926測試887通過／39略過，四語手機／平板／桌機與正式23項HTTP通過；部署`dpl_7PJe2bknPWGfaHMSRxJQTJbSstfw` READY且apex同版，原封面／互動與音樂資料保留。[發布report](releases/2026-10-27-news-cover-grid.md)。
-
-- 前輪應用基準`4cedfc1`／`codex/public-rule-copy`：首頁精選MV依已確認demo改緊湊布局、真實評分與人數、左下操作與觀看CTA對齊；「簡潔又有力」成為體驗文件的後續設計準則。918測試879通過／39略過，四語手機／桌機／平板及正式11項HTTP通過；部署`dpl_7ToYfKLHnVLp4kncCrRyp4JdhKw3` READY且apex同版，原萬聖節推薦保留。[發布report](releases/2026-10-27-compact-featured-mv.md)。
-
-- 前輪應用基準`d5c6893`（部署來源`1b99229`）／`codex/public-rule-copy`：Eve萬聖節MV固定首頁精選第一支與MV主頁頂部大幅推薦，台灣時間2026-11-01 00:00自動恢復原曝光規則。911測試872通過／39選用略過，正式12項HTTP與兩頁四語手機驗收完成；部署`dpl_DHvPYJ9nwrwPDiJFMcdL7R2aqVqU` READY且apex同版。[發布report](releases/2026-10-27-halloween-mv.md)。
-
-- 前輪應用基準`ac9178e`／`codex/public-rule-copy`：SBA創作者經營圖文新聞、原創封面與兩組圖解，首頁三篇／列表四篇，沿原會員互動與SEO。907測試868通過／39選用略過；正式16項HTTP、四語320px及桌機驗收完成；部署`dpl_4NgHY9NHe4X68k5KsqzbPyS5nfF9` READY且apex同版。[發布report](releases/2026-10-27-sba-creator-news.md)。
-
-- 前輪應用基準`35137ce`／`codex/public-rule-copy`：點數視窗精簡成餘額、使用規則與兩個小入口；任務／明細點開才看，明細每頁5筆，原點數與所有流水保留。906測試874通過／32略過，正式四語手機與50筆近期紀錄比對通過；部署`dpl_9CYrmbg17t7qtGxGHDipXDYMDeyT` READY且apex同版。[發布report](releases/2026-10-27-compact-credit-wallet.md)。
-
-- 前輪應用基準`f463313`／`codex/public-rule-copy`：46個表情詞＋3張對照卡新增到創作聖經，這49張每次複製5點；不足連到Profile「我的點數」，集中餘額、任務、費用與紀錄，投稿168小時加註一週。正式migration20261027074525已套用並回滾驗證，903測試871通過／32略過；部署`dpl_HGgqXaazUbsrvUq6giGHsoQxUFFa` READY且apex同版，會員實扣與四語手機驗收通過。[發布report](releases/2026-10-27-expression-credit-wallet.md)。
-
-- 前輪應用基準`58d3997`／`codex/public-rule-copy`：2026-10-27新增11段Boom Bap到錄音室Hip-Hop，保留英文原Prompt與版本差異、一鍵複製，這批無試聽；Studio111／原音訊100。部署`dpl_GpasoNYNHgsyvZ2zuSL5rRXXwgvE` READY且apex核對一致，896測試864通過／32略過，正式會員與8項HTTP驗收通過。[發布report](releases/2026-10-27-boom-bap-prompts.md)。
-
-- 前輪試聽控制`0968840`／`codex/public-rule-copy`：錄音室試聽卡可暫停／續播，共用音訊底欄同時顯示播放與暫停；2026-10-27正式部署`dpl_GjpSN29pChZKdKvLee5YHAsF9Fd8` READY且apex核對一致。894項測試862通過／32選用略過，正式會員原進度續播、手機四語與11項HTTP通過；[發布report](releases/2026-10-27-preview-transport.md)。
-
-- 前輪新聞比例與榜名`e83af71`／`codex/public-rule-copy`，2026-10-27完成驗收：首頁新聞一大兩小、新聞頁沿Showtime主打＋小卡、三個社群榜名三色斜切框線。部署`dpl_5jeEBqwSBfHouaKaL7nZnxL4VQxy` READY且apex核對一致；886測試854通過／32選用略過，正式19項HTTP與手機四語通過。見[新版比例與榜名report](releases/2026-10-27-news-layout.md)。
-
-- 前輪新聞互動`b80ae04`／`codex/public-rule-copy`：新聞會員按讚與討論上線，部署`dpl_2cW555nJYzdaHMDJEmbjWNmCWGrB` READY；881測試849通過／32選用略過，正式資料庫與桌機／手機驗收通過。[討論區發布report](releases/2026-10-26-news-discussion.md)。
-
-- 前輪三篇新聞`53365da`／`codex/public-rule-copy`：新增Suno權益與Spotify × Believe授權改編分析，正式部署`dpl_GEQBKTPqepFmsERT3UkFRpBPDwXW` READY且apex核對一致；885測試853通過／32選用略過，18項正式HTTP與手機／四語檢查通過。[發布與正式驗收](releases/2026-10-26-news-three-articles.md)。
-- 前輪音樂新聞`90142a6`／`codex/public-rule-copy`：音樂新聞與首篇YouTube Music AI標示圖文文章上線，正式部署`dpl_6K1wjRCjzBcgUpnDM6JkezZKMPyG` READY，870測試833通過／37選用略過；[發布與正式驗收](releases/2026-10-26-music-news.md)。
-
-- 前輪本人永久刪除基準 `50af0a8`，SQL修訂`2b775f0`／`codex/public-rule-copy`（2026-10-26）：本人刪除改永久DELETE、留言評分等附屬資料同刪、清單與件數移除；舊版頁面須刷新重新確認。Vercel `dpl_5mfEhykxfdzh5RVJxBzbka3hcMWT` READY，指定已下架舊MV已依指令清掉，上架新版保留。862測試826通過／36選用略過，現行規則與[永久刪除report](releases/2026-10-26-permanent-work-delete.md)為準。
-
-- 前輪刪除guard修復 `8579b7a`／`codex/public-rule-copy`（2026-10-26）：修復d7dfdeb刪除操作標記被資料庫guard拒絕的問題，依錯誤種類給重試提示；正式部署 `dpl_GD8r35wYea9VmtJWh7BveXZbXdUq`，無SQL規則或作品資料變更。18項定向及全套820項測試通過／36選用略過，包含真實PostgreSQL guard驗證。見[刪除失敗修復report](releases/2026-10-26-creator-delete-guard.md)。
-
-- 前輪刪除入口 `d7dfdeb`／`codex/public-rule-copy`：2026-10-25已發布「我的作品」本人刪除入口，正式部署 `dpl_8PV9p2tbVF31a6aXPeGE1sTNv12x`；一般會員與Owner均可自行下架，歷史與原額度／Credit規則保留。852項測試816通過／36選用略過，正式刪除鍵及訪客401驗收完成，沒有刪除真人作品。見[本人作品刪除report](releases/2026-10-25-creator-work-delete.md)。文件整理：2026-10-26。
-
-- 2026-10-25首頁新作輪替已發布：`544736f`，保留最新MV與近期作品輪替／一個週支持席次；探索三首改一首最新＋兩首輪替，納入YouTube／Suno／Spotify連結，原播放／評論不中斷。正式部署 `dpl_DYaF89v334r7SmmgnqXeqJepc7Bz`。見[首頁新作曝光report](releases/2026-10-25-home-rotation.md)。
-
-- 歷次發布證據（目前應用基準見上方）：[MP3／連結投稿與儲存限制統一](releases/2026-10-25-mp3-upload-policy.md)、[通知進入即已讀與紅點修復](releases/2026-10-25-notice-read.md)、[MV人氣榜與最新上架](releases/2026-10-25-mv-popularity-newest.md)、[對戰連結／60秒90秒整首與三模式指南](releases/2026-10-25-battle-link-modes.md)、[播放器還原／作者回覆與2點](releases/2026-10-25-creator-replies.md)、[公開HTML／SEO／分享預覽與聖經CTA](releases/2026-10-25-seo-architecture.md)、[Choice歌單LINE分享縮圖](releases/2026-10-25-choice-share-preview.md)、[播放與評論評分同窗](releases/2026-10-25-listen-review.md)、[人氣榜評分／收藏分開顯示](releases/2026-10-24-popularity-display.md)、[首頁社群入口與緊湊頁尾](releases/2026-10-24-community-footer.md)、[關於愛播歌／廣告合作新版](releases/2026-10-24-brand-pages.md)、[盲聽揭曉評論／評分與完整MV](releases/2026-10-24-blind-reveal-feedback.md)、[盲聽選中才揭曉／愛心與完整版](releases/2026-10-24-blind-chosen-reveal.md)、[專輯分區／投稿與載入優化](releases/2026-10-24-albums-loading.md)、[Battle三模式分享鍵／專屬縮圖](releases/2026-10-23-battle-mode-sharing.md)、[MV分享封面／作品專屬預覽](releases/2026-10-23-mv-share-cover.md)、[MV完整清單／評分優先排序](releases/2026-10-22-mv-catalog-visibility.md)、[評分鎖定／評論一次修改／獎勵不追回](releases/2026-10-15-review-finality.md)、[MV評價版面精簡](releases/2026-10-15-compact-mv-review.md)、[公開署名隱私修復](releases/2026-10-15-public-display-name.md)、[三則互動通知／保留刪除／三個月清除](releases/2026-10-15-notifications.md)、[創作聖經四色路線](releases/2026-10-15-bible-redesign.md)、[YouTube曲風電台／選用預覽／手機投稿](releases/2026-10-15-radio-link-submission.md)、[參與流程修復與會員驗收](releases/2026-10-15-participation-flow-fixes.md)、[Credit整合與公開文案修訂](releases/2026-10-15-credit-public-copy.md)、[Showtime社群舞台](releases/2026-10-14-showtime-community.md)、[歌曲／MV小數評分與累積排行](releases/2026-10-14-decimal-ratings.md)、[Top50／新歌加成與探索分享](releases/2026-10-14-top50-sharing.md)、[探索舊歌回歸](releases/2026-10-14-explore-return.md)、[探索封面歌詞與點外收合](releases/2026-10-14-explore-lyrics.md)、[盲聽HUD、8秒拖曳解鎖與配對延遲修訂](releases/2026-10-14-blind-hud-seek.md)、[盲聽8秒、自動接題與載入優化](releases/2026-10-14-blind-eight-second-flow.md)、[Battle復古入口、盲聽3點與混合人氣榜](releases/2026-10-14-blind-listening-retro.md)、[MV統一評價與連播](releases/2026-10-13-mv-ratings-continuous.md)、[投稿額度與MV分享／評論提示](releases/2026-10-13-submission-quota-mv-sharing.md)、[創作者中心與連結投稿發布證據](releases/2026-10-13-creator-center-links.md)、[電台與三個月曲庫發布證據](releases/2026-10-13-radio-chart-profile.md)、[探索音樂改版發布證據](releases/2026-10-13-explore-redesign.md)、[MV 卡片愛心與評論發布證據](releases/2026-10-13-mv-card-actions.md)、[首頁與 MV 曝光去重證據](releases/2026-10-13-featured-dedup.md)、[MV 放映室發布證據](releases/2026-10-13-mv-gallery.md)。
+- 歷次發布／遷移驗證統一見[必要發布證據](releases/README.md)；本索引只保留最新部署及現行功能摘要。
 - 首頁為精選 MV、三首單曲與社群評論／支持入口，`/mv` 集中既有公開影片及頻道連結，左側MV人氣榜／右側四支最新上架、下方完整清單預設最新並可切人氣；沿Explore原公式，平均評分／評分人數與收藏分開顯示，手機榜單可收合，提供搜尋／曲風／排序、原作品統一觀看／小數輸入／10評價與完整清單連播；探索音樂合併傷心酒吧小電台（音檔／YouTube混合曲風隨機連播）、左側Top50與右側四首封面，手機原頁展開榜單／連續名次／同分新歌優先／新歌7天加3及標題探索分享鍵、同作品評論，封面歌詞／分享、歌詞點外收合；目前公開單曲按三個日曆月展示，Explore另有舊歌回歸例外至台灣時間11月1日00:00，102首期滿作品已恢復／回歸綜合分5點且無刪檔排程，投稿搬到新版創作者中心，新增私人互動通知（每頁最多三則、進入可見通知區即標讀／清除紅點、新通知仍提醒、保留／刪除、未保留三個月到期、已保留持續保存）與全站數字同步，提供統計、Credit可用餘額／收支／待追回欠額及YouTube／Suno／Spotify連結自動解析及音檔投稿，預覽／試播選用，手機頂欄常駐投稿，原酒吧聊天撤下；Battle首頁改為盲聽／Q Crash／Drop三個復古器材區，匿名兩段最多30秒、每首聽滿8秒才可選與拖曳重聽、舞台狀態HUD，作答自動新題及常駐離開，上一題只揭曉選中作品的歌名／作者／封面、平手兩首，提供愛心收藏及完整版、原評論與十分制評價、已有MV的完整觀看；A／B／平手各3點；Explore Top50以每位Heart3分＋實際填寫評分總和＋盲聽支持累積總分排序，同分新歌先，再加原新歌3點或期滿回歸5點。正式Drop／Q、Showtime Choice／社群人物Top5（原歌曲月榜退出前台、歷史與Owner管理保留）、共用播放器與耳朵蟲仍保留。創作聖經改為黑底四色學習路線、先學三招、常用招式／卡關入口與完整章節收合；原資料、會員權限、搜尋／複製／試聽保留。
 - 公開頁已有伺服器端正文、作品獨立頁 `/works/[id]`、原ID canonical／多語hreflang及專屬OG／Twitter圖片；動態Sitemap完整XML解析通過，公開聖經五篇FAQ導讀與四語投稿／Battle CTA已發布。會員全文仍需登入，沒有爬蟲例外。原留言與評分保留，未選曲／無歌詞不顯示空歌詞區塊。Google實際收錄仍依後續抓取，未宣稱已提交Search Console。
 - 探索外部作品與MV觀看／評價整合為同一視窗：依2026-10-25後續確認，桌機與手機均還原為880px內上播下評；打字／送出／刷新不重建播放器，沿原作品ID與留言／評分API。正式原評論與評分發布前後相同，未提交正式測試評價。
@@ -79,7 +36,7 @@
 ## 維護
 
 2026-10-15使用者確認以現行MD及本輪report為後續修訂基準；未有新的明確指令不得擅改已確認的規則。每次改動須記日期、差異及驗證，保留六個固定檔名與既有Drive ID。只改對應正文；待辦完成後從 roadmap 移除。發布紀錄只保存必要驗證／遷移證據，不能反向覆蓋正文。新發布後更新本索引的產品基準；文件整理日期不冒充功能發布日期。
-Google Drive 使用固定檔名和既有檔案 ID 原地更新；不可每次另建 dated/final/v2 副本。同步不是自動執行，修改正文的任務需同步完成並核對讀回內容。
+Google Drive 使用固定檔名和既有檔案 ID 原地更新；不可每次另建 dated/final/v2 副本。同步不是自動執行，修改正文的任務需同步完成並核對讀回內容。讀回核對只保留結果，不另存整批舊MD副本；歷史發布數字只保留於必要report，避免入口重複累加。
 不更改作品、歌曲音檔、資料庫、部署環境或登入設定。文件刪除不代表刪除產品歷史資料。
 
 [必要發布證據](</Users/huangyihong/Documents/GitHub/aipoger-web/docs/releases/README.md>)
