@@ -42,7 +42,7 @@ test('unknown news does not resolve to another article or enter static params',a
  const page=loadTs('src/app/news/[slug]/page.tsx',mocks('zh'));
  assert.equal(musicNewsArticle('missing-news'),undefined);
  assert.deepEqual(page.generateStaticParams(),publishedMusicNews().map(({slug})=>({slug})));
- assert.equal(page.generateStaticParams().length,6);
+ assert.equal(page.generateStaticParams().length,7);
  await assert.rejects(page.default({params:Promise.resolve({slug:'missing-news'}),searchParams:Promise.resolve({})}),/NEWS_404/);
  assert.equal((await page.generateMetadata({params:Promise.resolve({slug:'missing-news'})})).robots.index,false);
 });
@@ -73,7 +73,7 @@ for(const slug of ['suno-reservoir-lawsuit-commercial-rights','spotify-believe-l
   else { assert.ok(html.includes('原本就可能取得 SBA 支援'));assert.ok(html.includes('不是 SBA 申請文件清單'));assert.ok(html.includes('5122 / 錄音產業')); }
  });
 }
-test('home keeps its existing cards while news index has one lead and all six accessible cover-only links',async()=>{
+test('home keeps its existing cards while news index has one lead and all seven accessible cover-only links',async()=>{
  const deps=mocks('zh'), Shelf=loadTs('src/components/latest-music-news.tsx',deps).default;
  const Index=loadTs('src/app/news/page.tsx',deps).default;
  const shelf=renderToStaticMarkup(React.createElement(Shelf,{lang:'zh'}));
@@ -83,7 +83,7 @@ test('home keeps its existing cards while news index has one lead and all six ac
  assert.equal((html.match(/class="music-news-card"/g)||[]).length,1);
  assert.ok(html.includes('熱門新聞'));assert.ok(html.includes('尚無互動'));
  const grid=html.split('class="music-news-cover-grid"')[1].split('</section>')[0];
- assert.equal((grid.match(/<article/g)||[]).length,6);
+ assert.equal((grid.match(/<article/g)||[]).length,7);
  assert.ok(!grid.includes('music-news-card-body'));assert.ok(!grid.includes('aria-hidden'));assert.ok(!grid.includes('tabindex="-1"'));
  for(const story of publishedMusicNews()) {assert.ok(grid.includes(`/news/${story.slug}?lang=zh`));assert.ok(grid.includes(`aria-label="${story.title}"`));assert.ok(grid.includes(story.cover));}
 });
@@ -141,9 +141,9 @@ for(const lang of ['zh','en','ja','ko']) test(`Easol news has its own verified s
  const html=renderToStaticMarkup(await page.default(props));
  assert.equal(publishedMusicNews()[0].slug,slug);
  assert.deepEqual([story.publishedOn,story.eventOn,story.verifiedOn],['2026-10-29','2026-10-28','2026-10-29']);
- assert.ok(html.indexOf('30 秒先看懂')<html.indexOf('01 / 發生了什麼事'));
- for(const text of ['Easol Agent','Sales Agent','Support Agent','未完成購物','本站未實測 Teammates','產品頁沒有另列獨立發布日期','AIPOGER 的編輯建議','不是生歌工具或新的音樂授權政策','非 Easol 產品介面'])assert.ok(html.includes(text),text);
- for(const omitted of ['Coachella','30 million','3,000 萬','94%','$50,000'])assert.ok(!html.includes(omitted),omitted);
+ assert.ok(html.indexOf('30 秒先看懂')<html.indexOf('01 / 工具放在哪裡'));
+ for(const text of ['Easol Agent','Sales Agent','Support Agent','本站未實測 Teammates','不會自動寄送','未批准下完成','七天確認期','每件單價','TWD','GTranslate','KKTIX','未獲確認','主辦業者','非 Easol 產品介面'])assert.ok(html.includes(text),text);
+ for(const omitted of ['Coachella','30 million','3,000 萬','94%','$50,000','不是生歌工具或新的音樂授權政策'])assert.ok(!html.includes(omitted),omitted);
  const json=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
  assert.equal(json.headline,story.title);assert.deepEqual(json.citation,story.sources.map(x=>x.url));
  assert.equal(json.datePublished,story.publishedOn);assert.equal(json.dateModified,story.verifiedOn);
@@ -153,6 +153,27 @@ for(const lang of ['zh','en','ja','ko']) test(`Easol news has its own verified s
  assert.ok(html.includes('<article lang="zh-Hant">'));
  if(lang!=='zh')assert.ok(html.includes(musicNewsCopy[lang].languageNote));
  assert.ok(html.includes(`/news?lang=${lang}`));
+ for(const other of publishedMusicNews().filter(x=>x.slug!==slug))assert.ok(html.includes(`/news/${other.slug}?lang=${lang}`));
+ const bytes=readFileSync(new URL(`../public${story.cover}`,import.meta.url));
+ assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1200);assert.equal(bytes.readUInt32BE(20),630);assert.ok(bytes.length<150_000);
+});
+
+for(const lang of ['zh','en','ja','ko']) test(`PRS news preserves attribution, planned timing, rights and language (${lang})`,async()=>{
+ const slug='prs-soundtrack-uk-play-data-royalties',story=musicNewsArticle(slug),deps=mocks(lang),page=loadTs('src/app/news/[slug]/page.tsx',deps);
+ const props={params:Promise.resolve({slug}),searchParams:Promise.resolve({lang})};
+ const html=renderToStaticMarkup(await page.default(props));
+ assert.deepEqual([story.publishedOn,story.eventOn,story.verifiedOn],['2026-10-29','2026-10-28','2026-10-29']);
+ assert.ok(html.indexOf('30 秒先看懂')<html.indexOf('01 / 這次多了什麼'));
+ for(const text of ['公開新聞稿','約 7,000','2026 年 12 月','未在 PRS 或 Soundtrack 官網找到','兩組獨立調查','詞曲作者','錄音權利人','所有估算從此取消','CAE／IPI','固定「每播放一次多少錢」','不是全英國 DJ set','沒有宣布新的 AI 接納'])assert.ok(html.includes(text),text);
+ assert.ok(html.includes(story.sourceNote));
+ const json=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+ assert.equal(json.headline,story.title);assert.deepEqual(json.citation,story.sources.map(x=>x.url));
+ assert.equal(json.datePublished,story.publishedOn);assert.equal(json.dateModified,story.verifiedOn);
+ assert.equal(json.mainEntityOfPage,`https://aipoger.com/news/${slug}?lang=zh`);
+ const metadata=await page.generateMetadata(props);
+ assert.equal(metadata.openGraph.images[0].url,`https://aipoger.com${story.cover}`);assert.equal(metadata.twitter.card,'summary_large_image');
+ assert.ok(html.includes('<article lang="zh-Hant">'));
+ if(lang!=='zh')assert.ok(html.includes(musicNewsCopy[lang].languageNote));
  for(const other of publishedMusicNews().filter(x=>x.slug!==slug))assert.ok(html.includes(`/news/${other.slug}?lang=${lang}`));
  const bytes=readFileSync(new URL(`../public${story.cover}`,import.meta.url));
  assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1200);assert.equal(bytes.readUInt32BE(20),630);assert.ok(bytes.length<150_000);

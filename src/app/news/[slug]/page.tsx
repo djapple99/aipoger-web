@@ -10,6 +10,7 @@ import SpotifyBelieveRemixesArticle from "@/components/spotify-believe-remixes-a
 import SbaCreatorBusinessArticle from "@/components/sba-creator-business-article";
 import DeezerAiSearchArticle from "@/components/deezer-ai-search-article";
 import EasolTeammatesArticle from "@/components/easol-teammates-article";
+import PrsSoundtrackArticle from "@/components/prs-soundtrack-article";
 import MusicNewsDiscussion from "@/components/music-news-discussion";
 import { musicNewsArticle, musicNewsCopy, musicNewsHref, publishedMusicNews } from "@/lib/music-news";
 import { publicShareCopy } from "@/lib/public-share-copy";
@@ -24,6 +25,7 @@ const bodies = {
   "sba-creator-small-business-guidance": SbaCreatorBusinessArticle,
   "deezer-ai-music-search-toggle": DeezerAiSearchArticle,
   "easol-teammates-festival-ai-agents": EasolTeammatesArticle,
+  "prs-soundtrack-uk-play-data-royalties": PrsSoundtrackArticle,
 };
 export function generateStaticParams() { return publishedMusicNews().map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props) {
@@ -50,7 +52,7 @@ export default async function MusicNewsArticlePage({ params, searchParams }: Pro
           <ShareButton {...publicShareCopy(lang)} title={article.title} text={article.summary} url={`${path}?lang=zh`} />
         </div><figure className="music-news-cover"><Image src={article.cover} alt={article.coverAlt} width={1200} height={630} priority sizes="(max-width: 900px) 100vw, 650px" /><figcaption>{article.coverCaption}</figcaption></figure></header>
         <Body />
-        <footer className="music-news-article-footer"><h2>查核來源</h2><p>本文依官方公開資料整理，新聞事實與本站觀點分別呈現；相關規則以官方最新說明為準。</p>
+        <footer className="music-news-article-footer"><h2>查核來源</h2><p>{article.sourceNote ?? "本文依官方公開資料整理，新聞事實與本站觀點分別呈現；相關規則以官方最新說明為準。"}</p>
           <ol>{article.sources.map(source => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.label} ↗</a></li>)}</ol>
           <nav className="music-news-related" aria-label="延伸閱讀"><h2>接著讀：AI 音樂與創作者權益</h2>{publishedMusicNews().filter(item => item.slug !== article.slug).map(item => <Link key={item.slug} href={musicNewsHref(item, lang)}>{item.title} →</Link>)}</nav>
           <Link className="music-news-read" href={`/news?lang=${lang}`}>← {copy.back}</Link></footer>

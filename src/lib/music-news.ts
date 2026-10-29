@@ -5,7 +5,7 @@ import type { Lang } from "@/lib/locale";
 export type MusicNews = {
   slug: string; title: string; summary: string; category: string;
   deck: string; coverCaption: string; sources: readonly { label: string; url: string }[];
-  publishedOn: string; eventOn: string; verifiedOn: string;
+  publishedOn: string; eventOn: string; verifiedOn: string; sourceNote?: string;
   language: "zh-Hant"; cover: string; coverAlt: string; published: boolean;
 };
 const catalog: readonly MusicNews[] = [{
@@ -82,13 +82,13 @@ const catalog: readonly MusicNews[] = [{
   ],
 }, {
   slug: "easol-teammates-festival-ai-agents", published: true, language: "zh-Hant",
-  title: "AI 不只幫你寫歌：Easol 推出音樂節營運代理，支援客服、銷售與訂單工作",
-  summary: "Easol 10 月 28 日宣布推出 Teammates，使用平台內業務資料支援活動營運。三種 AI 代理各做什麼？從創作到經營，先找自己的流程瓶頸。",
-  category: "AI 音樂工具", publishedOn: "2026-10-29", eventOn: "2026-10-28", verifiedOn: "2026-10-29",
-  cover: "/news/easol-teammates-festival-ai-agents.png",
-  coverAlt: "AIPOGER 原創概念圖：活動資料連結營運、銷售與客服三種 AI 代理",
+  title: "Easol 把 AI 放進音樂節後台：客服、套票與加購怎麼運作，主辦人該守住哪些權限？",
+  summary: "Easol Teammates 把 AI 接進活動營運。人工核准怎麼做、平台與 AI 費用怎麼算？從音樂節實例到繁中、幣別與票務串接，主辦人先看這幾個關卡。",
+  category: "創作者經營", publishedOn: "2026-10-29", eventOn: "2026-10-28", verifiedOn: "2026-10-29",
+  cover: "/news/easol-festival-ai-approval.png",
+  coverAlt: "AIPOGER 原創概念圖：AI 提案、主辦人核准與營運執行的交棒流程",
   coverCaption: "圖／AIPOGER 原創營運分工示意，非 Easol 產品介面",
-  deck: "歌做好了，後台還有一串工作。這次 AI 隊友處理的是活動營運，我們先看它接哪一棒。",
+  deck: "開演前訊息塞滿、套票又有變更，AI 能幫哪一段？先看工作流程，再把批准權與總成本問清楚。",
   sources: [
     { label: "Easol 公司公告（PR Newswire，2026-10-28 11:00 ET）", url: "https://www.prnewswire.com/news-releases/experience-commerce-platform-easol-raises-30-million-launches-total-ai-solution-for-experience-businesses-302921596.html" },
     { label: "Easol：Teammates 官方產品頁（2026-10-29 查核）", url: "https://easol.com/teammates/" },
@@ -97,6 +97,30 @@ const catalog: readonly MusicNews[] = [{
     { label: "Easol：Support Agent 官方說明（2026-10-29 查核）", url: "https://easol.com/teammates/support-agent/" },
     { label: "Easol Newsroom：官方收錄（2026-10-29 查核）", url: "https://easol.com/newsroom/" },
     { label: "MBW：Easol 與音樂節 AI 代理，本文議題發現來源（2026-10-28）", url: "https://www.musicbusinessworldwide.com/event-tech-startup-easol-secures-30m-in-new-funding-launches-ai-agents-for-festival-promoters/" },
+    { label: "Easol Help：Support Agent 操作與人工批准（2026-10-29 查核）", url: "https://support.easol.com/hc/en-gb/articles/49952471969937-Teammates-Support-Agent" },
+    { label: "Easol：Boots in the Park 音樂節案例（2026-10-29 查核）", url: "https://easol.com/case-study/boots-in-the-park/" },
+    { label: "Easol：Pricing 平台方案（2026-10-29 查核）", url: "https://easol.com/pricing/" },
+    { label: "Easol Help：Agent Resolved 案件與計費（2026-10-29 查核）", url: "https://support.easol.com/hc/en-gb/articles/49952739442833-Agent-Resolved-tickets-and-billing" },
+    { label: "Easol Help：顧客顯示與付款幣別（2026-10-29 查核）", url: "https://support.easol.com/hc/en-gb/articles/11430937653521-What-currency-will-my-customers-see-on-my-website" },
+    { label: "Easol Help：網站與帳戶多語翻譯（2026-10-29 查核）", url: "https://support.easol.com/hc/en-gb/articles/21902683536657-Multi-language-website-translations" },
+    { label: "Easol：Creator Terms（2026-10-29 查核，既有條款背景）", url: "https://easol.com/creator-terms/" },
+  ],
+}, {
+  slug: "prs-soundtrack-uk-play-data-royalties", published: true, language: "zh-Hant",
+  title: "店裡播了什麼歌，版稅就更有依據：PRS 將導入約 7,000 個英國場所的播放紀錄",
+  summary: "據公開新聞稿及 MBW，PRS 計畫 12 月起採用 Soundtrack 英國場所播放資料。使用紀錄如何對上詞曲權利？分清 PRS、PPL 與這次合作的範圍。",
+  category: "創作者權益", publishedOn: "2026-10-29", eventOn: "2026-10-28", verifiedOn: "2026-10-29",
+  cover: "/news/prs-soundtrack-uk-play-data-royalties.png",
+  coverAlt: "AIPOGER 原創概念圖：商業場所播放紀錄、權利匹配與版稅分配的資料連結",
+  coverCaption: "圖／AIPOGER 原創資料流程示意，非 PRS 或 Soundtrack 介面",
+  deck: "一首歌在店裡響起，後續資料要怎麼接？這次合作擴大英國場所紀錄，我們把權利與分配的界線拆清楚。",
+  sourceNote: "合作消息據公開新聞稿重刊及 MBW 報導，權利背景另核官方說明；未在雙方官網找到本次公告，不把同源報導當獨立查證。事實與本站觀點分別呈現。",
+  sources: [
+    { label: "Record of the Day：合作新聞稿公開重刊（2026-10-28，標示 Press release）", url: "https://www.recordoftheday.com/news-and-press/prs-for-music-and-soundtrack-partner-to-improve-distribution-of-public-performance-royalties" },
+    { label: "MBW：PRS × Soundtrack 合作報導（2026-10-28）", url: "https://www.musicbusinessworldwide.com/prs-for-music-partners-with-b2b-streaming-service-soundtrack-to-get-data-on-music-played-in-7000-uk-shops-bars-and-public-spaces-and-pay-royalties-accordingly/" },
+    { label: "PPL PRS：Where does the money go? 權利與分配背景（2026-10-29 查核）", url: "https://pplprs.co.uk/themusiclicence/music-licence-cost/where-does-the-money-go/" },
+    { label: "PRS for Music：About PPL（2026-10-29 查核）", url: "https://www.prsformusic.com/what-we-do/ppl" },
+    { label: "PRS for Music：Register your music 作品登記（2026-10-29 查核）", url: "https://www.prsformusic.com/music-and-royalties/register-and-manage-music/register-your-works" },
   ],
 }];
 export function publishedMusicNews(): MusicNews[] {
