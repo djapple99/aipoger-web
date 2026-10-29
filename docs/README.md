@@ -1,6 +1,6 @@
 # AIPOGER 最新文件索引
 
-目前最新應用 `dc9dfc5`／`codex/public-rule-copy`（2026-10-29）：Choice每週首次發布50點、有效歌單評論10點，可全部選自己作品；近30天熱門歌單及既有樂評Top5已接入。修復收藏連結單曲漏選與個人收藏播放連結遺漏，正式Choices由98增為118首。Vercel `dpl_BdMzqmeJ42BsAMAKtk3ZS8KMtbQA` READY、apex／www同版；SQL ledger20261028232710已套用並回滾驗證，舊681筆點數流水hash不變。全套965項964通過／1選用略過，補修15項與TypeScript通過，webpack與四語320px驗收通過。見[Choice發布report](releases/2026-10-29-choice-rewards.md)。
+目前最新應用 `67eec4c`／`codex/public-rule-copy`（2026-10-29）：Choices混合歌單的YouTube／上傳音檔可全部播放及換曲直接開始，YouTube iframe重用，Shorts自然循環以實際曲尾進度去重接續。Suno／Spotify仍需手動播放及下一首，不宣稱含這些來源的整份歌單已全自動。Vercel `dpl_5epqX9GjDRn9aSz8PHi6uBsg7Bup` READY，已promote，apex／www同版。970項969通過／1選用略過，webpack含TypeScript通過，lint0 errors／9既有warnings；本輪沒有DB寫入。原Choice發布50點／評論10點與收藏連結修復保留。見[Choice連播report](releases/2026-10-29-choice-autoplay.md)。
 
 唯一現行正文是以下六份；檔名固定，內容持續更新。
 

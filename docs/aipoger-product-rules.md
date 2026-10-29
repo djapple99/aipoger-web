@@ -760,3 +760,5 @@ Before deploying changes that touch product rules:
 - 月份篩選同時適用 Drop 和 Q Crash 列表及全部聲稱本月的統計；不以不同的跨月最近 N 場混入本月。
 - 單場票比顯示得票率（Vote share），不能標示跨場勝率。缺少雙方票數時不猜測百分比。
 - 跨場 audienceCount 加總稱投票人次（Voter entries），不能當跨場不同觀眾人數。這不改任何正式票數、勝敗或歷史認證資料，也不計入 Showtime 月榜。
+
+2026-10-29連播實作發布：`67eec4c`；驗證及Suno來源限制見[Choice連播report](releases/2026-10-29-choice-autoplay.md)。

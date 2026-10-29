@@ -16,8 +16,15 @@ YouTube技術依據：https://developers.google.com/youtube/iframe_api_reference
 
 ## 驗證與發布
 
-最終Shorts補修12項定向通過；全套、TypeScript、lint及webpack結果於正式發布驗收後補齊。
+最終Shorts補修12項定向通過；全套970項969通過／1既有選用略過／0失敗，webpack（含TypeScript）通過，lint0 errors／9既有img warnings。
 
-本機實播：YouTube下一首直接開始，實際video paused=false與秒數前進；Eve的30秒Shorts自然播畢後自動接2秒合成音檔，再自動進Suno（原限制），未按Play或下一首。官方iframe維持同一個widget2。先前重建iframe與未關閉Shorts循環的候選未發布；一般preview環境缺正式設定也未promote。正式設定使用CLI --prod --skip-domain驗收後才promote。測試不寫歌單、收藏、點數。
+本機實播（含音檔播畢接YouTube）：YouTube下一首直接開始，實際video paused=false與秒數前進；Eve的30秒Shorts自然播畢後自動接2秒合成音檔，再自動進Suno（原限制），未按Play或下一首。官方iframe維持同一個widget2。先前重建iframe與未關閉Shorts循環的候選未發布；一般preview環境缺正式設定也未promote。正式設定使用CLI --prod --skip-domain驗收後才promote。測試不寫歌單、收藏、點數。
 
-候選165cec3在正式設定實測第一首自動到第二首，但Shorts仍循環，因此未promote，補上實際進度越過曲尾的回退處理後重新驗收。待補最終發布證據。本機fixture、短音檔、診斷log於驗收後移除。
+候選165cec3在正式設定實測第一首自動到第二首，但Shorts仍循環，因此未promote，補上實際進度越過曲尾的回退處理後重新驗收。最終應用67eec4c，CLI以乾淨checkout加--prod --skip-domain建置（正式環境設定、webpack）；部署dpl_5epqX9GjDRn9aSz8PHi6uBsg7Bup已READY並promote，aipoger.com／www均核對同一deployment。本機fixture、短音檔、診斷log於驗收後移除。
+
+
+正式驗收：全部播放後第一首YouTube paused=false且時間前進，下一首Shorts直接開始；正式iframe實際loop=true，30秒自然播完後仍由曲尾保護自動進第3首Suno，顯示手動說明。按下一首至第4首YouTube自動播放，再切第5首MP3（paused=false、時間前進），第6首YouTube也直接播放；關閉後dialog與播放器移除。未播放／修改Suno原作。首頁、Showtime、登入、原Choice網址HTTP200；本部署近30分鐘error/fatal為0。
+
+證據：本機operations/qa/2026-10-29-choice-autoplay/production-youtube-continuous.png。前輪首次165cec3候選Shorts自然循環失敗未發布；最終67eec4c已實際驗證循環回退。
+
+正式320px手機：Suno來源提示及上下首操作可見，dialog scrollWidth=clientWidth=265，沒有橫向溢出；測試後關閉並恢復viewport。
